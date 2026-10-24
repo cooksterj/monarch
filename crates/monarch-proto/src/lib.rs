@@ -7,6 +7,8 @@
 
 mod attach;
 mod error;
+mod hello;
+mod hello_ack;
 mod screen;
 
 pub use attach::{
@@ -14,6 +16,8 @@ pub use attach::{
     Run, ServerMsg, Snapshot, StyleCache, StyleDef, StyleId, StyleTable,
 };
 pub use error::ProtoError;
+pub use hello::Hello;
+pub use hello_ack::HelloAck;
 
 pub use screen::{
     Cell, CellAttrs, CellStyle, Cursor, CursorShape, ModeFlags, Rgb, Screen, ScreenSize, TermColor,
