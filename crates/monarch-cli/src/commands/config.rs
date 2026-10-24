@@ -3,7 +3,7 @@
 use std::io::Write;
 use std::process::ExitCode;
 
-use monarch_core::{Config, ConfigLoader};
+use monarch_core::{Config, ConfigLoader, Keymap};
 
 use crate::ConfigCommand;
 
@@ -30,6 +30,9 @@ fn check(loader: &ConfigLoader, out: &mut dyn Write) -> anyhow::Result<ExitCode>
     }
     for key in &loaded.unknown_keys {
         writeln!(out, "warning: unknown key `{key}` in {path}")?;
+    }
+    for warning in Keymap::from_config(&loaded.config.keys).1 {
+        writeln!(out, "warning: {warning}")?;
     }
     writeln!(out, "{path}: ok")?;
     Ok(ExitCode::SUCCESS)
@@ -65,6 +68,15 @@ mod tests {
         let text = run_to_string(&ConfigCommand::Check, &ConfigLoader::at(&path));
         assert!(text.contains("unknown key `bogus`"), "{text}");
         assert!(text.ends_with(": ok\n"), "{text}");
+    }
+
+    #[test]
+    fn check_reports_bad_key_bindings() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("c.toml");
+        std::fs::write(&path, "[keys.bind]\nv = \"explode\"\n").expect("write");
+        let text = run_to_string(&ConfigCommand::Check, &ConfigLoader::at(&path));
+        assert!(text.contains("warning: [keys.bind] \"v\""), "{text}");
     }
 
     #[test]

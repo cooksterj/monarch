@@ -17,6 +17,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
+use monarch_core::Key;
 use monarch_proto::{HostInfo, ModeFlags, ScreenSize};
 use monarch_term::{EngineEvent, HostProfile, Terminal};
 use monarch_tui::{HostInputFilter, HostModeMirror, HostProbe, InputEvent, PaneView, PrefixParser};
@@ -224,7 +225,7 @@ fn spawn_stdin(pane: &Pane, tx: Sender<Msg>) {
                         filter.filter(&raw, flags, &mut bytes);
                         let _ = writer.lock().expect("writer lock").write_all(&bytes);
                     }
-                    InputEvent::Command(b'q') => {
+                    InputEvent::Command(Key::Char('q')) => {
                         let _ = tx.send(Msg::Quit);
                         return;
                     }

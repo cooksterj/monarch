@@ -2,7 +2,7 @@
 
 use std::thread;
 
-use monarch_core::MouseMode;
+use monarch_core::{Action, MouseMode};
 use std::time::{Duration, Instant};
 
 use super::AttachApp;
@@ -53,14 +53,20 @@ impl AttachApp {
         let (policy, notice) = if self.passthrough {
             (
                 MouseMode::Off,
-                format!("mouse: terminal ({} m to restore)", self.opts.prefix_label),
+                match self.opts.keymap.key_for(Action::ToggleMouse) {
+                    Some(key) => format!(
+                        "mouse: terminal ({} {key} to restore)",
+                        self.opts.prefix_label
+                    ),
+                    None => "mouse: terminal".to_owned(),
+                },
             )
         } else {
             (self.opts.mouse, "mouse: monarch".to_owned())
         };
         self.mirror.set_mouse(policy);
         self.selection = None;
-        self.notice = Some((notice, Instant::now()));
+        self.notice = Some((notice, Instant::now() + NOTICE));
         self.dirty = true;
     }
 
@@ -85,7 +91,7 @@ impl AttachApp {
         } else {
             "characters"
         };
-        self.notice = Some((format!("copied {count} {unit}"), Instant::now()));
+        self.notice = Some((format!("copied {count} {unit}"), Instant::now() + NOTICE));
     }
 
     /// Drops an expired notice; returns whether the screen changed.
@@ -93,7 +99,7 @@ impl AttachApp {
         if self
             .notice
             .as_ref()
-            .is_some_and(|(_, at)| at.elapsed() >= NOTICE)
+            .is_some_and(|(_, until)| Instant::now() >= *until)
         {
             self.notice = None;
             self.dirty = true;

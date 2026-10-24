@@ -1,5 +1,6 @@
 //! Everything the client's main loop reacts to, from any thread.
 
+use monarch_core::Key;
 use monarch_proto::{HostInfo, ServerMsg};
 
 use super::SelectEvent;
@@ -16,7 +17,7 @@ pub enum ClientEvent {
     /// The prefix was pressed (`true`) or its command key arrived (`false`).
     Prefix(bool),
     /// The user pressed the prefix, then this key.
-    Command(u8),
+    Command(Key),
     /// A mouse selection gesture.
     Select(SelectEvent),
     /// Keys were sent to the focused pane (a selection ends).
@@ -31,7 +32,8 @@ mod tests {
 
     #[test]
     fn events_compare_by_value() {
-        assert_eq!(ClientEvent::Command(b'd'), ClientEvent::Command(b'd'));
+        let d = ClientEvent::Command(Key::Char('d'));
+        assert_eq!(d.clone(), d);
         assert_ne!(ClientEvent::ServerClosed, ClientEvent::InputClosed);
     }
 }

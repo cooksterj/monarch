@@ -24,6 +24,8 @@ pub enum Command {
     Attach(AttachArgs),
     /// Run a session server (normally started for you by `monarch`).
     Server(ServerArgs),
+    /// List what each key after the prefix does.
+    Keys,
     /// Inspect or validate the configuration file.
     #[command(subcommand)]
     Config(ConfigCommand),

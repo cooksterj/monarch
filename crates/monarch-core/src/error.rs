@@ -28,6 +28,17 @@ pub enum CoreError {
     /// An agent name Monarch does not know.
     #[error("unknown agent {0:?}; expected one of: {choices}", choices = crate::AgentKind::choices())]
     UnknownAgent(String),
+    /// An action name Monarch does not know.
+    #[error("unknown action {0:?} (see `monarch keys` for the list)")]
+    UnknownAction(String),
+    /// A key name Monarch cannot read.
+    #[error(
+        "unknown key {0:?}: use a single character or left, right, up, down, tab, enter, esc, space"
+    )]
+    UnknownKey(String),
+    /// A keymap preset Monarch does not have.
+    #[error("unknown preset {0:?}; expected monarch, tmux or herdr")]
+    UnknownPreset(String),
 }
 
 #[cfg(test)]

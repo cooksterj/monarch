@@ -82,6 +82,7 @@ mod tests {
             session: "s",
             title: None,
             prefix: "ctrl+b",
+            detach: Some(monarch_core::Key::Char('d')),
             pending: false,
             message: None,
         }

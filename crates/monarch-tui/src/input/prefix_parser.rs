@@ -11,9 +11,17 @@
 //! key and key releases as `CSI … u` too; both forms are recognised, and the
 //! releases of keys Monarch consumed are swallowed so the pane never sees a
 //! release without its press.
+//!
+//! An escape sequence as the command key is read as an arrow (CSI or SS3,
+//! any modifiers) or, alone at the end of a read, as Esc; other sequences
+//! are swallowed rather than typed into the pane.
+
+mod command_escape;
 
 use memchr::{memchr, memchr2};
+use monarch_core::Key;
 
+use self::command_escape::{CommandEscape, EscapeStep};
 use super::{InputEvent, KittyKey};
 
 const ESC: u8 = 0x1b;
@@ -31,6 +39,7 @@ pub struct PrefixParser {
     in_paste: bool,
     marker_progress: usize,
     swallow: Vec<u32>,
+    escape: CommandEscape,
 }
 
 impl PrefixParser {
@@ -43,13 +52,14 @@ impl PrefixParser {
             in_paste: false,
             marker_progress: 0,
             swallow: Vec::new(),
+            escape: CommandEscape::default(),
         }
     }
 
     /// Whether the prefix was pressed and Monarch is waiting for the key.
     #[must_use]
     pub fn awaiting_command(&self) -> bool {
-        self.pending_prefix
+        self.pending_prefix || self.escape.is_active()
     }
 
     /// Parses one chunk of host input, appending events to `out`.
@@ -57,6 +67,11 @@ impl PrefixParser {
         let mut forward = Vec::with_capacity(bytes.len());
         let mut i = 0;
         while i < bytes.len() {
+            if self.escape.is_active() {
+                self.on_escape_byte(bytes[i], &mut forward, out);
+                i += 1;
+                continue;
+            }
             if self.marker_progress == 0 && !self.pending_prefix {
                 let rest = &bytes[i..];
                 match self.next_interesting(rest) {
@@ -83,7 +98,25 @@ impl PrefixParser {
             }
             i += 1;
         }
+        if let Some(key) = self.escape.end_of_read() {
+            flush(&mut forward, out);
+            out.push(InputEvent::Command(key));
+        }
         flush(&mut forward, out);
+    }
+
+    fn on_escape_byte(&mut self, byte: u8, forward: &mut Vec<u8>, out: &mut Vec<InputEvent>) {
+        match self.escape.push(byte) {
+            EscapeStep::More | EscapeStep::Unbound => {}
+            EscapeStep::Key(key) => {
+                flush(forward, out);
+                out.push(InputEvent::Command(key));
+            }
+            EscapeStep::Mouse(report) => {
+                forward.extend_from_slice(&report);
+                self.pending_prefix = true;
+            }
+        }
     }
 
     /// Offset of the next byte that could start a prefix or paste marker.
@@ -120,9 +153,9 @@ impl PrefixParser {
             self.pending_prefix = false;
             if key.is_ctrl_byte(self.prefix) {
                 forward.extend_from_slice(raw);
-            } else if let Some(byte) = key.ascii() {
+            } else if let Some(command) = key.ascii().and_then(Key::from_byte) {
                 flush(forward, out);
-                out.push(InputEvent::Command(byte));
+                out.push(InputEvent::Command(command));
                 self.remember_release(key.code);
             }
         } else if key.is_ctrl_byte(self.prefix) {
@@ -155,9 +188,11 @@ impl PrefixParser {
     fn after_prefix(&mut self, byte: u8, forward: &mut Vec<u8>, out: &mut Vec<InputEvent>) {
         if byte == self.prefix {
             forward.push(byte);
-        } else {
+        } else if byte == ESC {
+            self.escape.start();
+        } else if let Some(key) = Key::from_byte(byte) {
             flush(forward, out);
-            out.push(InputEvent::Command(byte));
+            out.push(InputEvent::Command(key));
         }
     }
 
