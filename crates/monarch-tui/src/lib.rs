@@ -10,10 +10,10 @@ mod input;
 mod widgets;
 
 pub use client::{
-    Applied, AttachApp, AttachOptions, AttachOutcome, AttachState, ClientEvent, PaneReplica,
-    ServerLink, SharedFocus,
+    Applied, AttachApp, AttachOptions, AttachOutcome, AttachState, AttachView, ClientEvent,
+    PaneReplica, ServerLink, SharedFocus, WindowTitle,
 };
 pub use error::TuiError;
 pub use host::{HostModeMirror, HostProbe, HostReply};
 pub use input::{HostFocus, HostInputFilter, InputEvent, PrefixParser};
-pub use widgets::{PaneView, StyleConverter};
+pub use widgets::{PaneView, StatusLine, StyleConverter};

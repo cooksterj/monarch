@@ -11,13 +11,12 @@ use monarch_proto::{ClientMsg, HostInfo, ModeFlags, ScreenSize};
 use ratatui::DefaultTerminal;
 use ratatui::crossterm::terminal::{BeginSynchronizedUpdate, EndSynchronizedUpdate};
 use ratatui::crossterm::{execute, queue};
-use ratatui::layout::Rect;
 
 use super::{
-    Applied, AttachOptions, AttachOutcome, AttachState, ClientEvent, InputParams, InputThread,
-    PROBE_TIMEOUT, ServerLink, SharedFocus,
+    Applied, AttachOptions, AttachOutcome, AttachState, AttachView, ClientEvent, InputParams,
+    InputThread, PROBE_TIMEOUT, ServerLink, SharedFocus, WindowTitle,
 };
-use crate::{HostModeMirror, HostProbe, PaneView, TuiError};
+use crate::{HostModeMirror, HostProbe, StatusLine, TuiError};
 
 /// Minimum time between frames drawn to the host.
 const FRAME: Duration = Duration::from_millis(16);
@@ -34,6 +33,8 @@ pub struct AttachApp {
     mirror: HostModeMirror,
     host: HostInfo,
     focus: Arc<SharedFocus>,
+    opts: AttachOptions,
+    prefix_pending: bool,
     out: Vec<u8>,
     size: ScreenSize,
     dirty: bool,
@@ -48,7 +49,7 @@ impl AttachApp {
     pub fn attach(opts: &AttachOptions) -> Result<AttachOutcome, TuiError> {
         let (link, reader) = ServerLink::connect(&opts.socket)?;
         let ui = ratatui::init();
-        let result = Self::start(ui, link, reader, opts.prefix).and_then(|mut app| {
+        let result = Self::start(ui, link, reader, opts).and_then(|mut app| {
             let outcome = app.run();
             app.finish()?;
             outcome
@@ -61,7 +62,7 @@ impl AttachApp {
         mut ui: DefaultTerminal,
         link: ServerLink,
         reader: UnixStream,
-        prefix: u8,
+        opts: &AttachOptions,
     ) -> Result<Self, TuiError> {
         let (tx, events) = mpsc::channel();
         ServerLink::spawn_reader(reader, tx.clone());
@@ -69,7 +70,7 @@ impl AttachApp {
         let focus = Arc::new(SharedFocus::default());
         InputThread::spawn(InputParams {
             link: link.clone(),
-            prefix,
+            prefix: opts.prefix,
             focus: Arc::clone(&focus),
             events: tx,
         });
@@ -79,7 +80,7 @@ impl AttachApp {
             .map_err(|e| TuiError::io("reading terminal size", e))?;
         let size = ScreenSize::new(area.width, area.height);
         link.send(&ClientMsg::HostInfo(host))?;
-        link.send(&ClientMsg::Resize(size))?;
+        link.send(&ClientMsg::Resize(AttachView::pane_area(size)))?;
         let mut mirror = HostModeMirror::new(&host);
         let mut out = Vec::new();
         mirror.enter(&mut out);
@@ -94,6 +95,8 @@ impl AttachApp {
             mirror,
             host,
             focus,
+            opts: opts.clone(),
+            prefix_pending: false,
             out,
             size,
             dirty: true,
@@ -135,6 +138,10 @@ impl AttachApp {
                 return Some(AttachOutcome::Detached);
             }
             ClientEvent::InputClosed => return Some(AttachOutcome::Detached),
+            ClientEvent::Prefix(pending) => {
+                self.prefix_pending = pending;
+                self.dirty = true;
+            }
             ClientEvent::Command(_) | ClientEvent::Host(_) => {}
         }
         None
@@ -164,7 +171,8 @@ impl AttachApp {
             self.ui
                 .autoresize()
                 .map_err(|e| TuiError::io("resizing", e))?;
-            self.link.send(&ClientMsg::Resize(size))?;
+            self.link
+                .send(&ClientMsg::Resize(AttachView::pane_area(size)))?;
             self.dirty = true;
         }
         Ok(())
@@ -178,16 +186,29 @@ impl AttachApp {
             self.mirror
                 .sync(&screen.modes, &screen.cursor, &mut self.out);
         }
-        self.mirror
-            .sync_title(self.state.focused_title(), &mut self.out);
+        let title = WindowTitle::format(
+            &self.opts.window_title,
+            &self.opts.session,
+            focus,
+            self.state.focused_title(),
+        );
+        self.mirror.sync_title(Some(&title), &mut self.out);
         let io = |e| TuiError::io("drawing", e);
         if self.host.sync_output {
             queue!(self.ui.backend_mut(), BeginSynchronizedUpdate).map_err(io)?;
         }
         self.ui.backend_mut().write_all(&self.out).map_err(io)?;
         self.out.clear();
-        let state = &self.state;
-        self.ui.draw(|frame| render(state, frame)).map_err(io)?;
+        let view = AttachView {
+            state: &self.state,
+            status: StatusLine {
+                session: &self.opts.session,
+                title: self.state.focused_title(),
+                prefix: &self.opts.prefix_label,
+                pending: self.prefix_pending,
+            },
+        };
+        self.ui.draw(|frame| view.draw(frame)).map_err(io)?;
         if self.host.sync_output {
             execute!(self.ui.backend_mut(), EndSynchronizedUpdate).map_err(io)?;
         }
@@ -200,26 +221,6 @@ impl AttachApp {
         self.mirror.leave(&mut self.out);
         let out = std::mem::take(&mut self.out);
         write_host(&mut self.ui, &out)
-    }
-}
-
-fn render(state: &AttachState, frame: &mut ratatui::Frame<'_>) {
-    let Some(layout) = state.layout() else {
-        return;
-    };
-    for pane in &layout.panes {
-        let Some(screen) = state.screen(pane.pane) else {
-            continue;
-        };
-        let area =
-            Rect::new(pane.x, pane.y, pane.size.cols, pane.size.rows).intersection(frame.area());
-        let view = PaneView::new(screen);
-        if Some(pane.pane) == layout.focus
-            && let Some(pos) = view.cursor_position(area)
-        {
-            frame.set_cursor_position(pos);
-        }
-        frame.render_widget(view, area);
     }
 }
 
@@ -250,8 +251,6 @@ mod tests {
     use std::sync::mpsc;
 
     use monarch_proto::ServerMsg;
-    use ratatui::Terminal;
-    use ratatui::backend::TestBackend;
 
     use super::*;
 
@@ -279,13 +278,5 @@ mod tests {
         let (host, backlog) = wait_for_host(&rx);
         assert_eq!(host, HostInfo::default());
         assert!(backlog.is_empty());
-    }
-
-    #[test]
-    fn nothing_is_drawn_before_a_layout_arrives() {
-        let mut term = Terminal::new(TestBackend::new(10, 3)).expect("terminal");
-        let state = AttachState::new();
-        term.draw(|frame| render(&state, frame)).expect("draw");
-        term.backend().assert_buffer_lines(["          "; 3]);
     }
 }
