@@ -3,7 +3,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use monarch_core::{PaneId, Rect};
-use monarch_proto::{LayoutMsg, ModeFlags, Screen, ServerMsg, StyleCache};
+use monarch_proto::{LayoutMsg, ModeFlags, PaneSummary, Screen, ServerMsg, StyleCache};
 
 use super::{Applied, FocusView, PaneReplica};
 
@@ -19,6 +19,7 @@ pub struct AttachState {
     layout: Option<LayoutMsg>,
     panes: BTreeMap<PaneId, PaneReplica>,
     titles: BTreeMap<PaneId, String>,
+    commands: BTreeMap<PaneId, String>,
     resyncing: BTreeSet<PaneId>,
 }
 
@@ -56,6 +57,10 @@ impl AttachState {
             ServerMsg::ResetStyles => self.styles.clear(),
             ServerMsg::Title { pane, title } => {
                 self.titles.insert(pane, title.unwrap_or_default());
+                out.redraw = true;
+            }
+            ServerMsg::Command { pane, command } => {
+                self.commands.insert(pane, command.unwrap_or_default());
                 out.redraw = true;
             }
             ServerMsg::HostWrite(bytes) => out.host_write.extend(bytes),
@@ -97,8 +102,8 @@ impl AttachState {
         self.layout.as_ref()?.focused()?.title.as_deref()
     }
 
-    /// One label per tab (`1 vim`, `2 zsh [Z]`) and the shown tab's index.
-    /// Titles follow the latest `Title` message for each tab's focused pane.
+    /// One label per tab (`1 vim`, `2 zsh [Z]`) and the shown tab's index,
+    /// named after each tab's focused pane (see [`Self::all_panes`]).
     #[must_use]
     pub fn tab_labels(&self) -> (Vec<String>, usize) {
         let Some(layout) = self.layout.as_ref() else {
@@ -109,13 +114,8 @@ impl AttachState {
             .iter()
             .enumerate()
             .map(|(i, tab)| {
-                let title = self
-                    .titles
-                    .get(&tab.focus)
-                    .map(String::as_str)
-                    .or(tab.title())
-                    .unwrap_or_default();
-                let mut label = format!("{} {}", i + 1, shorten(title.trim()));
+                let name = tab.focused().map_or("", |p| self.name(p));
+                let mut label = format!("{} {}", i + 1, shorten(name.trim()));
                 if tab.zoomed {
                     label.push_str(" [Z]");
                 }
@@ -126,7 +126,9 @@ impl AttachState {
     }
 
     /// Every pane in every tab, in tab then reading order, as
-    /// `(tab index, pane, title)`; titles follow the latest `Title` message.
+    /// `(tab index, pane, name)`. A pane is named by its title, or by its
+    /// foreground program when the title is blank, following the latest
+    /// `Title` and `Command` messages.
     #[must_use]
     pub fn all_panes(&self) -> Vec<(usize, PaneId, &str)> {
         let Some(layout) = self.layout.as_ref() else {
@@ -134,12 +136,19 @@ impl AttachState {
         };
         let mut out = Vec::new();
         for (i, tab) in layout.tabs.iter().enumerate() {
-            for (pane, sent) in &tab.panes {
-                let title = self.titles.get(pane).map(String::as_str);
-                out.push((i, *pane, title.or(sent.as_deref()).unwrap_or_default()));
+            for pane in &tab.panes {
+                out.push((i, pane.pane, self.name(pane)));
             }
         }
         out
+    }
+
+    /// A pane's name from what the layout said and later messages.
+    fn name<'a>(&'a self, sent: &'a PaneSummary) -> &'a str {
+        let latest = |map: &'a BTreeMap<PaneId, String>| map.get(&sent.pane).map(String::as_str);
+        let title = latest(&self.titles).or(sent.title.as_deref());
+        let command = latest(&self.commands).or(sent.command.as_deref());
+        PaneSummary::pick(title, command).unwrap_or_default()
     }
 
     /// Every visible pane and its place on the host.

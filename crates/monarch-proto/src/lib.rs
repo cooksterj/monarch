@@ -12,8 +12,9 @@ mod hello_ack;
 mod screen;
 
 pub use attach::{
-    ClientMsg, Delta, FrameCodec, HostInfo, LayoutMsg, PaneLayout, PaneState, RowCodec, RowDelta,
-    Run, ServerMsg, Snapshot, StyleCache, StyleDef, StyleId, StyleTable, TabSummary,
+    ClientMsg, Delta, FrameCodec, HostInfo, LayoutMsg, PaneLayout, PaneState, PaneSummary,
+    RowCodec, RowDelta, Run, ServerMsg, Snapshot, StyleCache, StyleDef, StyleId, StyleTable,
+    TabSummary,
 };
 pub use error::ProtoError;
 pub use hello::Hello;

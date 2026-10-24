@@ -273,8 +273,15 @@ mod tabs_and_splits {
         s.insert_pane_at(c, fake(), Placement::Tab { activate: true });
         s.set_title(A, Some("vim".into()));
         let tabs = s.layout().tabs;
-        assert_eq!(tabs[0].panes, [(A, Some("vim".into())), (B, None)]);
-        assert_eq!(tabs[1].panes, [(c, None)]);
+        let names = |i: usize| -> Vec<_> {
+            tabs[i]
+                .panes
+                .iter()
+                .map(|p| (p.pane, p.title.clone()))
+                .collect()
+        };
+        assert_eq!(names(0), [(A, Some("vim".into())), (B, None)]);
+        assert_eq!(names(1), [(c, None)]);
         s.apply_action(Action::FocusPane(A));
         assert_eq!((s.active_tab(), s.focus()), (0, Some(A)));
         s.apply_action(Action::FocusPane(PaneId(99)));

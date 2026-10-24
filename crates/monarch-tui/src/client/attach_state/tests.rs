@@ -1,11 +1,19 @@
 //! Tests for [`AttachState`].
 
 use monarch_proto::{
-    CellAttrs, CellStyle, Delta, PaneLayout, PaneState, RowDelta, Run, ScreenSize, Snapshot,
-    StyleDef, StyleId, TabSummary,
+    CellAttrs, CellStyle, Delta, PaneLayout, PaneState, PaneSummary, RowDelta, Run, ScreenSize,
+    Snapshot, StyleDef, StyleId, TabSummary,
 };
 
 use super::*;
+
+fn pane(id: u32, title: Option<&str>) -> PaneSummary {
+    PaneSummary {
+        pane: PaneId(id),
+        title: title.map(Into::into),
+        command: None,
+    }
+}
 
 const SIZE: ScreenSize = ScreenSize { cols: 10, rows: 2 };
 
@@ -24,7 +32,7 @@ fn layout(generation: u32) -> ServerMsg {
         tabs: vec![TabSummary {
             focus: PaneId(1),
             zoomed: false,
-            panes: vec![(PaneId(1), Some("sh".into()))],
+            panes: vec![pane(1, Some("sh"))],
         }],
         active_tab: 0,
     })
@@ -183,15 +191,12 @@ fn tab_labels_follow_titles_zoom_and_length() {
     msg.tabs.push(TabSummary {
         focus: PaneId(2),
         zoomed: true,
-        panes: vec![(
-            PaneId(2),
-            Some("a very long title that will not fit".into()),
-        )],
+        panes: vec![pane(2, Some("a very long title that will not fit"))],
     });
     msg.tabs.push(TabSummary {
         focus: PaneId(3),
         zoomed: false,
-        panes: vec![(PaneId(3), None)],
+        panes: vec![pane(3, None)],
     });
     msg.active_tab = 1;
     apply_all(&mut state, vec![ServerMsg::Layout(msg)]);
@@ -213,6 +218,41 @@ fn tab_labels_follow_titles_zoom_and_length() {
 }
 
 #[test]
+fn panes_without_a_title_are_named_after_their_program() {
+    let mut state = AttachState::new();
+    let ServerMsg::Layout(mut msg) = layout(1) else {
+        unreachable!("layout() builds a layout");
+    };
+    msg.tabs.push(TabSummary {
+        focus: PaneId(2),
+        zoomed: false,
+        panes: vec![pane(2, Some("htop"))],
+    });
+    msg.tabs.push(TabSummary {
+        focus: PaneId(3),
+        zoomed: false,
+        panes: vec![pane(3, Some(" "))],
+    });
+    apply_all(
+        &mut state,
+        vec![
+            ServerMsg::Layout(msg),
+            ServerMsg::Command {
+                pane: PaneId(3),
+                command: Some("zsh".into()),
+            },
+            ServerMsg::Command {
+                pane: PaneId(2),
+                command: Some("vim".into()),
+            },
+        ],
+    );
+    let labels = state.tab_labels().0;
+    assert_eq!(labels[2], "3 zsh", "no title: named after the program");
+    assert_eq!(labels[1], "2 htop", "a title wins");
+}
+
+#[test]
 fn all_panes_lists_every_tab_with_live_titles() {
     let mut state = AttachState::new();
     assert!(state.all_panes().is_empty());
@@ -222,7 +262,7 @@ fn all_panes_lists_every_tab_with_live_titles() {
     msg.tabs.push(TabSummary {
         focus: PaneId(3),
         zoomed: false,
-        panes: vec![(PaneId(2), Some("vim".into())), (PaneId(3), None)],
+        panes: vec![pane(2, Some("vim")), pane(3, None)],
     });
     apply_all(
         &mut state,

@@ -3,7 +3,9 @@
 use monarch_core::PaneId;
 use serde::{Deserialize, Serialize};
 
-/// A tab: every pane in it with its title, the focused one (whose title
+use super::PaneSummary;
+
+/// A tab: every pane in it with its names, the focused one (whose name
 /// names the tab), and whether that pane is zoomed.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TabSummary {
@@ -11,19 +13,15 @@ pub struct TabSummary {
     pub focus: PaneId,
     /// The focused pane fills the tab, hiding the others.
     pub zoomed: bool,
-    /// Every pane in reading order, with its title when the layout was
-    /// sent; later changes arrive as `ServerMsg::Title`.
-    pub panes: Vec<(PaneId, Option<String>)>,
+    /// Every pane in reading order.
+    pub panes: Vec<PaneSummary>,
 }
 
 impl TabSummary {
-    /// The focused pane's title when the layout was sent.
+    /// The focused pane's entry.
     #[must_use]
-    pub fn title(&self) -> Option<&str> {
-        self.panes
-            .iter()
-            .find(|(id, _)| *id == self.focus)
-            .and_then(|(_, title)| title.as_deref())
+    pub fn focused(&self) -> Option<&PaneSummary> {
+        self.panes.iter().find(|p| p.pane == self.focus)
     }
 }
 
@@ -31,11 +29,19 @@ impl TabSummary {
 mod tests {
     use super::*;
 
+    fn summary(id: u32, title: Option<&str>) -> PaneSummary {
+        PaneSummary {
+            pane: PaneId(id),
+            title: title.map(Into::into),
+            command: None,
+        }
+    }
+
     fn tab() -> TabSummary {
         TabSummary {
             focus: PaneId(3),
             zoomed: true,
-            panes: vec![(PaneId(2), None), (PaneId(3), Some("vim".into()))],
+            panes: vec![summary(2, None), summary(3, Some("vim"))],
         }
     }
 
@@ -46,17 +52,12 @@ mod tests {
     }
 
     #[test]
-    fn the_title_is_the_focused_panes() {
-        assert_eq!(tab().title(), Some("vim"));
-        let other = TabSummary {
-            focus: PaneId(2),
-            ..tab()
-        };
-        assert_eq!(other.title(), None);
+    fn finds_the_focused_pane() {
+        assert_eq!(tab().focused().and_then(PaneSummary::name), Some("vim"));
         let missing = TabSummary {
             focus: PaneId(9),
             ..tab()
         };
-        assert_eq!(missing.title(), None);
+        assert_eq!(missing.focused(), None);
     }
 }

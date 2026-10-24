@@ -93,6 +93,13 @@ impl PaneIo for PaneRuntime {
         self.pid
     }
 
+    fn foreground_process(&self) -> Option<u32> {
+        self.master
+            .process_group_leader()
+            .and_then(|pid| u32::try_from(pid).ok())
+            .or(self.pid)
+    }
+
     fn close(&self) {
         let _ = self
             .killer

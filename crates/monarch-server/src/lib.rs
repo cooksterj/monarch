@@ -8,6 +8,7 @@
 
 mod attach_connection;
 mod client_handle;
+mod command_watcher;
 mod daemon;
 mod error;
 mod event_loop;
@@ -38,6 +39,7 @@ mod test_support;
 
 pub use attach_connection::AttachConnection;
 pub use client_handle::{ClientHandle, RENDER_LANE};
+pub use command_watcher::{COMMAND_INTERVAL, CommandWatcher};
 pub use daemon::Daemon;
 pub use error::{BoxedError, ServerError};
 pub use event_loop::{EventLoop, MAX_CLIPBOARD};

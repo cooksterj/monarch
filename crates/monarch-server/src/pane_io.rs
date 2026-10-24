@@ -29,6 +29,12 @@ pub trait PaneIo: Send {
     fn process_id(&self) -> Option<u32> {
         None
     }
+
+    /// The process in the terminal's foreground (`vim` started from the
+    /// shell); by default the program itself.
+    fn foreground_process(&self) -> Option<u32> {
+        self.process_id()
+    }
 }
 
 #[cfg(test)]
@@ -64,5 +70,6 @@ mod tests {
         fake.send(b"x".to_vec());
         assert_eq!(*fake.sent.lock().expect("lock"), b"x");
         assert_eq!(fake.process_id(), None, "no process by default");
+        assert_eq!(fake.foreground_process(), None);
     }
 }
