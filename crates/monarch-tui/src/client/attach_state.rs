@@ -2,7 +2,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use monarch_core::PaneId;
+use monarch_core::{PaneId, Rect};
 use monarch_proto::{LayoutMsg, ModeFlags, Screen, ServerMsg, StyleCache};
 
 use super::{Applied, FocusView, PaneReplica};
@@ -92,6 +92,18 @@ impl AttachState {
             return Some(title.as_str());
         }
         self.layout.as_ref()?.focused()?.title.as_deref()
+    }
+
+    /// Every visible pane and its place on the host.
+    #[must_use]
+    pub fn pane_rects(&self) -> Vec<(PaneId, Rect)> {
+        self.layout.as_ref().map_or_else(Vec::new, |layout| {
+            layout
+                .panes
+                .iter()
+                .map(|p| (p.pane, Rect::new(p.x, p.y, p.size.cols, p.size.rows)))
+                .collect()
+        })
     }
 
     /// The focused pane as the input thread needs it.

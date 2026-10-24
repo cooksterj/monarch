@@ -5,7 +5,7 @@ use ratatui::Frame;
 use ratatui::layout::Rect;
 
 use super::AttachState;
-use crate::{PaneView, SelectionSpan, StatusLine};
+use crate::{PaneBorders, PaneView, SelectionSpan, StatusLine};
 
 /// Rows the client keeps for itself at the bottom of the host terminal.
 const STATUS_ROWS: u16 = 1;
@@ -44,6 +44,16 @@ impl AttachView<'_> {
         let Some(layout) = self.state.layout() else {
             return;
         };
+        let rect_of = |p: &monarch_proto::PaneLayout| {
+            Rect::new(p.x, p.y, p.size.cols, p.size.rows).intersection(pane_rect)
+        };
+        let rects: Vec<Rect> = layout.panes.iter().map(rect_of).collect();
+        let window = Rect::new(area.x, area.y, layout.size.cols, layout.size.rows);
+        let borders = PaneBorders {
+            panes: &rects,
+            focused: layout.focused().map(rect_of),
+        };
+        frame.render_widget(borders, window.intersection(pane_rect));
         for pane in &layout.panes {
             let Some(screen) = self.state.screen(pane.pane) else {
                 continue;
@@ -106,5 +116,38 @@ mod tests {
         assert_eq!(rows[0].trim(), "");
         assert_eq!(rows[1].trim(), "");
         assert_eq!(rows[2], " monarch │ s            ctrl+b d detach ");
+    }
+
+    #[test]
+    fn split_panes_are_divided_by_a_line() {
+        use monarch_core::PaneId;
+        use monarch_proto::{LayoutMsg, PaneLayout, ServerMsg};
+
+        let pane = |id, x| PaneLayout {
+            pane: PaneId(id),
+            x,
+            y: 0,
+            size: ScreenSize::new(4, 2),
+            title: None,
+        };
+        let mut state = AttachState::new();
+        let layout = LayoutMsg {
+            generation: 1,
+            size: ScreenSize::new(9, 2),
+            focus: Some(PaneId(1)),
+            panes: vec![pane(1, 0), pane(2, 5)],
+        };
+        state.apply(ServerMsg::Layout(layout), &mut crate::Applied::default());
+        let mut term = Terminal::new(TestBackend::new(9, 3)).expect("terminal");
+        let view = AttachView {
+            state: &state,
+            status: status(),
+            selection: None,
+        };
+        term.draw(|f| view.draw(f)).expect("draw");
+        let buf = term.backend().buffer();
+        assert_eq!(buf[(4, 0)].symbol(), "│");
+        assert_eq!(buf[(4, 1)].symbol(), "│");
+        assert_eq!(buf[(3, 0)].symbol(), " ", "pane cells are not borders");
     }
 }
