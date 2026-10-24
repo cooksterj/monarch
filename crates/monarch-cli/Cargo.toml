@@ -1,0 +1,23 @@
+[package]
+name = "monarch-cli"
+description = "Monarch command-line interface"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+
+[dependencies]
+monarch-core.workspace = true
+monarch-server.workspace = true
+monarch-tui.workspace = true
+anyhow.workspace = true
+clap.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+
+[lints]
+workspace = true

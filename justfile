@@ -1,0 +1,28 @@
+# Developer recipes. `just check` is what CI runs.
+
+default: check
+
+# Run the test suite (nextest if installed, else cargo test).
+test:
+    if command -v cargo-nextest >/dev/null; then cargo nextest run --workspace; else cargo test --workspace; fi
+
+# Formatting, lints, file-size rule and tests: run before every commit.
+check: fmt-check clippy lint-size test
+
+fmt-check:
+    cargo fmt --all -- --check
+
+clippy:
+    cargo clippy --workspace --all-targets -- -D warnings
+
+# Enforce the 300-line limit on non-test source.
+lint-size:
+    bash scripts/lint-size.sh
+
+# Licenses and advisories (needs cargo-deny).
+deny:
+    cargo deny check
+
+# Install the local build onto PATH.
+install:
+    cargo install --path . --locked

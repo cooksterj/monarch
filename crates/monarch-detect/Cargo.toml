@@ -1,0 +1,18 @@
+[package]
+name = "monarch-detect"
+description = "Monarch agent-state detection from screen manifests"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+
+[dependencies]
+monarch-core.workspace = true
+
+[dev-dependencies]
+
+[lints]
+workspace = true

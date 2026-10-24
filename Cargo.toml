@@ -1,0 +1,79 @@
+[workspace]
+members = ["crates/*"]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.86"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/cooksterj/monarch"
+homepage = "https://github.com/cooksterj/monarch"
+authors = ["Jonathan Cook <jon.a.cook7@gmail.com>"]
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+unwrap_used = "warn"
+dbg_macro = "warn"
+todo = "warn"
+redundant_clone = "warn"
+needless_pass_by_value = "warn"
+semicolon_if_nothing_returned = "warn"
+uninlined_format_args = "warn"
+too_many_arguments = "deny"
+too_many_lines = "warn"
+
+[workspace.dependencies]
+monarch-core = { path = "crates/monarch-core", version = "0.1.0" }
+monarch-proto = { path = "crates/monarch-proto", version = "0.1.0" }
+monarch-term = { path = "crates/monarch-term", version = "0.1.0" }
+monarch-detect = { path = "crates/monarch-detect", version = "0.1.0" }
+monarch-server = { path = "crates/monarch-server", version = "0.1.0" }
+monarch-tui = { path = "crates/monarch-tui", version = "0.1.0" }
+monarch-cli = { path = "crates/monarch-cli", version = "0.1.0" }
+
+anyhow = "1"
+clap = { version = "4.6", features = ["derive"] }
+serde = { version = "1", features = ["derive"] }
+serde_ignored = "0.1"
+serde_json = "1"
+thiserror = "2"
+toml = "0.9"
+tempfile = "3"
+
+[package]
+name = "monarch-mux"
+description = "An attention-first terminal multiplexer for AI coding agents"
+readme = "README.md"
+keywords = ["terminal", "tui", "multiplexer", "agents", "ai"]
+categories = ["command-line-utilities"]
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "monarch"
+path = "src/main.rs"
+
+[dependencies]
+monarch-cli.workspace = true
+
+[lints]
+workspace = true
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+
+# The profile that 'dist' will build with
+[profile.dist]
+inherits = "release"

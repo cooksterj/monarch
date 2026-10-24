@@ -1,0 +1,21 @@
+[package]
+name = "monarch-server"
+description = "Monarch session server: PTYs, emulators, agent state, API"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+
+[dependencies]
+monarch-core.workspace = true
+monarch-proto.workspace = true
+monarch-term.workspace = true
+monarch-detect.workspace = true
+
+[dev-dependencies]
+
+[lints]
+workspace = true
