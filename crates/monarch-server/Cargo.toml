@@ -17,8 +17,16 @@ monarch-core.workspace = true
 monarch-proto.workspace = true
 monarch-term.workspace = true
 monarch-detect.workspace = true
+futures-util.workspace = true
+portable-pty.workspace = true
+rustix.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-util.workspace = true
 
 [dev-dependencies]
+tempfile.workspace = true
 
 [lints]
 workspace = true

@@ -1,3 +1,47 @@
-//! Monarch session server: owns PTYs, emulators, agent state, persistence and the API.
+//! Monarch session server: owns PTYs, emulators and attached clients.
 //!
-//! Populated in M1; see `docs/plan.md` §7 for the file map.
+//! [`Server`] listens on the session socket. Each pane is a
+//! [`PaneRuntime`] (PTY reader and writer threads around a shared
+//! emulator); [`SessionState`] holds panes, clients and layout behind one
+//! mutex; the [`FrameCoalescer`] task renders visible dirty panes into
+//! per-client snapshots and deltas at most once per frame budget.
+
+mod attach_connection;
+mod client_handle;
+mod error;
+mod event_loop;
+mod frame_coalescer;
+mod frame_encoder;
+mod frame_header;
+mod pane_env;
+mod pane_event;
+mod pane_io;
+mod pane_runtime;
+mod pane_shared;
+mod pane_spec;
+mod server;
+mod server_config;
+mod server_context;
+mod session_state;
+mod socket_path;
+#[cfg(test)]
+mod test_support;
+
+pub use attach_connection::AttachConnection;
+pub use client_handle::{ClientHandle, RENDER_LANE};
+pub use error::{BoxedError, ServerError};
+pub use event_loop::EventLoop;
+pub use frame_coalescer::{FRAME_BUDGET, FrameCoalescer};
+pub use frame_encoder::FrameEncoder;
+pub use frame_header::FrameHeader;
+pub use pane_env::PaneEnv;
+pub use pane_event::PaneEvent;
+pub use pane_io::PaneIo;
+pub use pane_runtime::{PaneRuntime, SpawnParams};
+pub use pane_shared::PaneShared;
+pub use pane_spec::PaneSpec;
+pub use server::Server;
+pub use server_config::ServerConfig;
+pub use server_context::ServerContext;
+pub use session_state::{DEFAULT_SIZE, SessionState};
+pub use socket_path::SocketPath;
