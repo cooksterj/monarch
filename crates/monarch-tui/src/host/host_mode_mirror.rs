@@ -56,6 +56,12 @@ impl HostModeMirror {
         self
     }
 
+    /// Changes the capture policy at runtime (`prefix m`); the next
+    /// [`Self::sync`] writes the difference.
+    pub fn set_mouse(&mut self, policy: MouseMode) {
+        self.mouse = Some(policy);
+    }
+
     /// Modes Monarch itself needs on the host: bracketed paste and focus
     /// reporting stay on (input is filtered per pane), the title is saved,
     /// and one kitty keyboard level is pushed.

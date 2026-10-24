@@ -24,6 +24,8 @@ mod select;
 const FRAME: Duration = Duration::from_millis(16);
 /// Detach key pressed after the prefix.
 const DETACH: u8 = b'd';
+/// Mouse passthrough toggle pressed after the prefix.
+const MOUSE_TOGGLE: u8 = b'm';
 
 /// A running attach session.
 pub struct AttachApp {
@@ -38,6 +40,7 @@ pub struct AttachApp {
     opts: AttachOptions,
     prefix_pending: bool,
     selection: Option<Selection>,
+    passthrough: bool,
     notice: Option<(String, Instant)>,
     out: Vec<u8>,
     size: ScreenSize,
@@ -79,12 +82,7 @@ impl AttachApp {
             events: tx,
         });
         let (host, backlog) = wait_for_host(&events);
-        let area = ui
-            .size()
-            .map_err(|e| TuiError::io("reading terminal size", e))?;
-        let size = ScreenSize::new(area.width, area.height);
-        link.send(&ClientMsg::HostInfo(host))?;
-        link.send(&ClientMsg::Resize(AttachView::pane_area(size)))?;
+        let size = introduce(&ui, &link, host)?;
         let mut mirror = HostModeMirror::new(&host).with_mouse(opts.mouse);
         let mut out = Vec::new();
         mirror.enter(&mut out);
@@ -102,6 +100,7 @@ impl AttachApp {
             opts: opts.clone(),
             prefix_pending: false,
             selection: None,
+            passthrough: false,
             notice: None,
             out,
             size,
@@ -149,6 +148,7 @@ impl AttachApp {
                 self.prefix_pending = pending;
                 self.dirty = true;
             }
+            ClientEvent::Command(MOUSE_TOGGLE) => self.toggle_mouse(),
             ClientEvent::Select(gesture) => self.on_select(gesture),
             ClientEvent::Typed => self.on_typed(),
             ClientEvent::Command(_) | ClientEvent::Host(_) => {}
@@ -161,6 +161,9 @@ impl AttachApp {
             let _ = self.link.send(&ClientMsg::Resync(pane));
         }
         self.out.extend(applied.host_write);
+        for text in applied.clipboard {
+            self.copy(text);
+        }
         self.dirty |= applied.redraw;
         self.focus.set(&self.state.focus_view());
     }
@@ -229,6 +232,21 @@ impl AttachApp {
         let out = std::mem::take(&mut self.out);
         write_host(&mut self.ui, &out)
     }
+}
+
+/// Tells the server what the host can do and how big it is.
+fn introduce(
+    ui: &DefaultTerminal,
+    link: &ServerLink,
+    host: HostInfo,
+) -> Result<ScreenSize, TuiError> {
+    let area = ui
+        .size()
+        .map_err(|e| TuiError::io("reading terminal size", e))?;
+    let size = ScreenSize::new(area.width, area.height);
+    link.send(&ClientMsg::HostInfo(host))?;
+    link.send(&ClientMsg::Resize(AttachView::pane_area(size)))?;
+    Ok(size)
 }
 
 /// Waits for the host probe, keeping every other event for later.

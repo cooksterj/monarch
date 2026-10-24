@@ -81,8 +81,8 @@ fn route(p: &ReaderParams, event: EngineEvent) {
         }
         EngineEvent::Title(title) => PaneEvent::Title { pane, title },
         EngineEvent::Bell => PaneEvent::Bell(pane),
-        // Clipboard (spike 5) and captured OSCs (agent detection, M3) are
-        // not routed yet.
+        EngineEvent::ClipboardStore(text) => PaneEvent::Clipboard { pane, text },
+        // Captured OSCs (agent detection, M3) are not routed yet.
         _ => return,
     };
     let _ = p.events.send(event);

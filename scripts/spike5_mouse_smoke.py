@@ -8,7 +8,9 @@ Plays the host terminal for `monarch attach` and checks that:
 * a pane that enabled SGR tracking gets SGR reports with pane coordinates;
 * a pane that enabled X10 tracking gets X10 bytes (re-encoded from SGR);
 * on the alternate screen without tracking, the wheel becomes arrow keys;
-* drag and double-click select text and copy it to the host with OSC 52.
+* drag and double-click select text and copy it to the host with OSC 52;
+* a program's own OSC 52 copy (vim, nvim, tmux) reaches the host;
+* `prefix m` hands the mouse to the host terminal and takes it back.
 
 Usage: python3 scripts/spike5_mouse_smoke.py target/debug/monarch
 """
@@ -131,6 +133,23 @@ def selection_copies(host):
     print("  selection: double-click copies a word, drag copies a range (OSC 52), notice shown")
 
 
+def pane_copy_reaches_host(host):
+    host.type(b"printf '\\033]52;c;%s\\007' $(printf from-vim | base64)\r")
+    host.wait_for(osc52("from-vim"), "pane OSC 52 forwarded")
+    print("  pane copy: a program's OSC 52 reaches the host clipboard")
+
+
+def passthrough_toggles(host):
+    mark = len(host.seen)
+    host.type(b"\x02m")
+    host.wait_for(b"to restore)", "passthrough notice")  # diffed draws skip unchanged cells
+    assert b"\x1b[?1002l" in host.seen[mark:], "host mouse not released"
+    mark = len(host.seen)
+    host.type(b"\x02m")
+    host.wait_for(b"\x1b[?1002h", "mouse recaptured")
+    print("  prefix m: mouse handed to the host terminal and taken back")
+
+
 def recorder(host, run, name, setup):
     dump = os.path.join(run, name)
     open(dump, "wb").close()
@@ -167,6 +186,8 @@ def main():
         host = Host(binary, run, "shell")
         wheel_scrolls_history(host)
         selection_copies(host)
+        pane_copy_reaches_host(host)
+        passthrough_toggles(host)
         host.end()
 
         tracking_pane(binary, run, "sgr", b"\x1b[?1000h\x1b[?1006h",

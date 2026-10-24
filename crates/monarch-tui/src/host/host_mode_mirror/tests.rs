@@ -167,3 +167,16 @@ fn pane_and_off_policies() {
         assert!(!off.contains(&format!("\x1b[?{mode}h")), "{off:?}");
     }
 }
+
+#[test]
+fn set_mouse_switches_capture_on_the_next_sync() {
+    let mut mirror = HostModeMirror::new(&HostInfo::default()).with_mouse(MouseMode::Auto);
+    let plain = modes(ModeFlags::empty(), 0);
+    assert!(sync(&mut mirror, &plain, &Cursor::default()).contains("\x1b[?1002h"));
+    mirror.set_mouse(MouseMode::Off);
+    let off = sync(&mut mirror, &plain, &Cursor::default());
+    assert!(
+        off.contains("\x1b[?1002l") && off.contains("\x1b[?1006l"),
+        "{off:?}"
+    );
+}

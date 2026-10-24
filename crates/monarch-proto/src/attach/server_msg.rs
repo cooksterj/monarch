@@ -26,8 +26,11 @@ pub enum ServerMsg {
         /// The new title.
         title: Option<String>,
     },
-    /// Bytes for the host terminal itself (OSC 52 copy, bell).
+    /// Bytes for the host terminal itself (bell).
     HostWrite(Vec<u8>),
+    /// A visible pane's program copied text (OSC 52); the client puts it
+    /// on the user's clipboard. Reading the clipboard is never offered.
+    Clipboard(String),
     /// A pane's program exited.
     PaneExited {
         /// The pane.
@@ -45,5 +48,9 @@ mod tests {
     fn variants_compare_by_content() {
         assert_eq!(ServerMsg::Pong(3), ServerMsg::Pong(3));
         assert_ne!(ServerMsg::ResetStyles, ServerMsg::HostWrite(vec![7]));
+        assert_ne!(
+            ServerMsg::Clipboard("a".into()),
+            ServerMsg::Clipboard("b".into())
+        );
     }
 }
