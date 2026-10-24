@@ -2,7 +2,7 @@
 
 use std::time::Instant;
 
-use monarch_proto::{Screen, ScreenSize, TerminalModes};
+use monarch_proto::{Cell, PaneState, Screen, ScreenSize, TerminalModes};
 
 use crate::{Damage, EngineEvent, HostProfile, ScrollRequest};
 
@@ -23,6 +23,33 @@ pub trait Engine: Send {
 
     /// The visible viewport.
     fn screen(&self) -> Screen;
+
+    /// Copies the given viewport rows (each `size().cols` cells wide) into
+    /// `out`, in order. Rows past the bottom come back blank. Engines should
+    /// override this: the coalescer calls it under the pane lock with only
+    /// the damaged rows, so it must not build the whole screen.
+    fn rows(&self, lines: &[u16], out: &mut Vec<Vec<Cell>>) {
+        let screen = self.screen();
+        let blank = vec![Cell::default(); usize::from(screen.size.cols)];
+        out.extend(lines.iter().map(|&l| {
+            screen
+                .rows
+                .get(usize::from(l))
+                .cloned()
+                .unwrap_or_else(|| blank.clone())
+        }));
+    }
+
+    /// Cursor, modes and scroll position, without the cells.
+    fn pane_state(&self) -> PaneState {
+        let screen = self.screen();
+        PaneState {
+            cursor: screen.cursor,
+            modes: screen.modes,
+            display_offset: screen.display_offset,
+            history: screen.history,
+        }
+    }
 
     /// Viewport rows changed since the last call, then clears the record.
     fn take_damage(&mut self) -> Damage;
