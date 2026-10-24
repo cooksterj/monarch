@@ -1007,8 +1007,10 @@ dependencies = [
  "anyhow",
  "clap",
  "monarch-mux-core",
+ "monarch-mux-proto",
  "monarch-mux-server",
  "monarch-mux-tui",
+ "ratatui",
  "tempfile",
 ]
 
