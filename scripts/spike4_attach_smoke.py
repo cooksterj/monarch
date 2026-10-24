@@ -102,7 +102,8 @@ def run_all(binary):
         first.wait_for(f"`{SESSION}`;".encode(), "nested attach refused")  # spaces are cursor moves
         first.wait_for(b"monarch \xe2\x94\x82 " + SESSION.encode(), "status line")
         first.wait_for(b"\x1b]2;monarch:" + SESSION.encode(), "window title")
-        first.wait_for_bar(b" 1 sh ", "the tab named after the shell")
+        # Only changed cells are redrawn, so look for the name, not the label.
+        first.wait_for_bar(b"sh ", "the tab named after the shell")
         first.seen = b""
         os.write(first.fd, b"cat\r")
         first.wait_for_bar(b"cat", "the tab named after the program in front")
