@@ -35,9 +35,12 @@ Releases are automatic and decoupled from merging features:
 
 - After every merge, release-plz updates an open **`chore: release vX.Y.Z`** PR
   containing the version bump and the generated `CHANGELOG.md` entry.
-- **Merging that PR is the release.** It publishes the crates to crates.io and
-  pushes the `vX.Y.Z` tag; cargo-dist then builds the binaries, the shell
-  installer and the Homebrew formula and attaches them to a GitHub Release.
+- **Merging that PR is the release.** It pushes the `vX.Y.Z` tag; cargo-dist
+  then builds the binaries, the shell installer and the Homebrew formula and
+  attaches them to a GitHub Release.
+- **crates.io publishing is off** until Monarch is mature (`git_only = true`
+  in `release-plz.toml`); versions come from the git tags. Install from the
+  Homebrew tap, the installer script or `cargo install --git`.
 - Polish changelog wording by editing the release PR before merging.
 
 ## Code conventions
