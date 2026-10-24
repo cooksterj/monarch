@@ -18,6 +18,8 @@ pub enum ClientEvent {
     Prefix(bool),
     /// The user pressed the prefix, then this key.
     Command(Key),
+    /// Host input while a pop-up is open, for it to decode.
+    OverlayInput(Vec<u8>),
     /// A mouse selection gesture.
     Select(SelectEvent),
     /// Keys were sent to the focused pane (a selection ends).

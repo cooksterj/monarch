@@ -131,10 +131,10 @@ mod tests {
         ┌ ctrl+b ─────────────────────────────────────────────────────────────────────┐
         │ " -        split down     {          swap prev      n          next tab     │
         │ % |        split right    }          swap next      p          prev tab     │
-        │ x          close pane     =          equalize       m          toggle mouse │
-        │ z          zoom           HJKL       resize         d          detach       │
-        │ hjkl ←↓↑→  focus          1-9        go to tab                              │
-        │ o          focus next     c          new tab                                │
+        │ x          close pane     =          equalize       :          palette      │
+        │ z          zoom           HJKL       resize         g w        go to pane   │
+        │ hjkl ←↓↑→  focus          1-9        go to tab      m          toggle mouse │
+        │ o          focus next     c          new tab        d          detach       │
         └─────────────────────────────────────────────────────────────────────────────┘
         "#);
     }

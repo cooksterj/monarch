@@ -15,9 +15,10 @@ use super::{
     Applied, AttachOptions, AttachOutcome, AttachState, AttachView, ClientEvent, InputParams,
     InputThread, PROBE_TIMEOUT, Selection, ServerLink, SharedFocus,
 };
-use crate::{HostModeMirror, HostProbe, TuiError, WhichKeyEntry};
+use crate::{HostModeMirror, HostProbe, Picker, TuiError, WhichKeyEntry};
 
 mod draw;
+mod picker;
 mod select;
 mod which_key;
 
@@ -43,6 +44,8 @@ pub struct AttachApp {
     /// The key popup is up.
     popup: bool,
     which_key: Vec<WhichKeyEntry>,
+    /// The open palette or go-to picker, which takes the keys.
+    picker: Option<Picker>,
     selection: Option<Selection>,
     passthrough: bool,
     notice: Option<(String, Instant)>,
@@ -103,6 +106,7 @@ impl AttachApp {
             prefix_at: None,
             popup: false,
             which_key: WhichKeyEntry::from_keymap(&opts.keymap),
+            picker: None,
             selection: None,
             passthrough: false,
             notice,
@@ -145,6 +149,7 @@ impl AttachApp {
             }
             ClientEvent::ServerClosed => return Some(AttachOutcome::ServerExited),
             ClientEvent::Command(key) => return self.on_command(key),
+            ClientEvent::OverlayInput(bytes) => return self.on_overlay_input(&bytes),
             ClientEvent::InputClosed => return Some(AttachOutcome::Detached),
             ClientEvent::Prefix(pending) => self.on_prefix(pending),
             ClientEvent::Select(gesture) => self.on_select(gesture),
@@ -154,20 +159,10 @@ impl AttachApp {
         None
     }
 
-    /// Runs what `key` is bound to: client actions here, the rest on the
-    /// server.
+    /// Runs what `key` is bound to.
     fn on_command(&mut self, key: Key) -> Option<AttachOutcome> {
-        match self.opts.keymap.action(key)? {
-            Action::Detach => {
-                let _ = self.link.send(&ClientMsg::Detach);
-                return Some(AttachOutcome::Detached);
-            }
-            Action::ToggleMouse => self.toggle_mouse(),
-            action => {
-                let _ = self.link.send(&ClientMsg::Action(action));
-            }
-        }
-        None
+        let action = self.opts.keymap.action(key)?;
+        self.run_action(action)
     }
 
     fn after_apply(&mut self, applied: Applied) {
@@ -222,6 +217,12 @@ fn spawn_input(
         prefix: opts.prefix,
         repeat: opts.keymap.repeatable_keys().collect(),
         repeat_window: opts.repeat,
+        overlay_keys: opts
+            .keymap
+            .bindings()
+            .filter(|(_, a)| matches!(a, Action::CommandPalette | Action::GoToPane))
+            .map(|(k, _)| k)
+            .collect(),
         focus,
         events,
     });

@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 mod names;
 
-use crate::{Direction, SplitAxis};
+use crate::{Direction, PaneId, SplitAxis};
 
 /// Cells a single resize step moves a divider.
 pub const RESIZE_STEP: u16 = 2;
@@ -50,13 +50,23 @@ pub enum Action {
     Detach,
     /// Hand the mouse to the host terminal, or take it back.
     ToggleMouse,
+    /// Open the command palette: every action, searched by name.
+    CommandPalette,
+    /// Open the go-to picker: every pane in every tab, searched by title.
+    GoToPane,
+    /// Focus this pane, showing its tab (what the go-to picker runs; not
+    /// bindable).
+    FocusPane(PaneId),
 }
 
 impl Action {
     /// Whether the client handles this itself instead of the server.
     #[must_use]
     pub fn is_local(self) -> bool {
-        matches!(self, Self::Detach | Self::ToggleMouse)
+        matches!(
+            self,
+            Self::Detach | Self::ToggleMouse | Self::CommandPalette | Self::GoToPane
+        )
     }
 
     /// Whether pressing its key again soon repeats it without the prefix.
@@ -78,6 +88,8 @@ mod tests {
     #[test]
     fn only_client_actions_are_local() {
         assert!(Action::Detach.is_local() && Action::ToggleMouse.is_local());
+        assert!(Action::CommandPalette.is_local() && Action::GoToPane.is_local());
+        assert!(!Action::FocusPane(PaneId(1)).is_local());
         assert!(!Action::Split(SplitAxis::Rows).is_local());
         assert!(!Action::SelectTab(1).is_local());
     }

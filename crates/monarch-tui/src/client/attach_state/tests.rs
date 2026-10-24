@@ -23,8 +23,8 @@ fn layout(generation: u32) -> ServerMsg {
         }],
         tabs: vec![TabSummary {
             focus: PaneId(1),
-            title: Some("sh".into()),
             zoomed: false,
+            panes: vec![(PaneId(1), Some("sh".into()))],
         }],
         active_tab: 0,
     })
@@ -182,13 +182,16 @@ fn tab_labels_follow_titles_zoom_and_length() {
     };
     msg.tabs.push(TabSummary {
         focus: PaneId(2),
-        title: Some("a very long title that will not fit".into()),
         zoomed: true,
+        panes: vec![(
+            PaneId(2),
+            Some("a very long title that will not fit".into()),
+        )],
     });
     msg.tabs.push(TabSummary {
         focus: PaneId(3),
-        title: None,
         zoomed: false,
+        panes: vec![(PaneId(3), None)],
     });
     msg.active_tab = 1;
     apply_all(&mut state, vec![ServerMsg::Layout(msg)]);
@@ -206,5 +209,37 @@ fn tab_labels_follow_titles_zoom_and_length() {
         state.tab_labels().0[1],
         "2 htop [Z]",
         "hidden tabs follow titles"
+    );
+}
+
+#[test]
+fn all_panes_lists_every_tab_with_live_titles() {
+    let mut state = AttachState::new();
+    assert!(state.all_panes().is_empty());
+    let ServerMsg::Layout(mut msg) = layout(1) else {
+        unreachable!("layout() builds a layout");
+    };
+    msg.tabs.push(TabSummary {
+        focus: PaneId(3),
+        zoomed: false,
+        panes: vec![(PaneId(2), Some("vim".into())), (PaneId(3), None)],
+    });
+    apply_all(
+        &mut state,
+        vec![
+            ServerMsg::Layout(msg),
+            ServerMsg::Title {
+                pane: PaneId(3),
+                title: Some("htop".into()),
+            },
+        ],
+    );
+    assert_eq!(
+        state.all_panes(),
+        [
+            (0, PaneId(1), "sh"),
+            (1, PaneId(2), "vim"),
+            (1, PaneId(3), "htop")
+        ]
     );
 }

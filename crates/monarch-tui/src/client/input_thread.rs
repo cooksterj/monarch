@@ -34,6 +34,9 @@ pub struct InputParams {
     pub repeat: Vec<Key>,
     /// How long after its last use a repeatable key keeps working.
     pub repeat_window: Duration,
+    /// Keys that open a pop-up: what follows them goes to the main loop
+    /// even before it has drawn the pop-up.
+    pub overlay_keys: Vec<Key>,
     /// Which pane has focus and its modes.
     pub focus: Arc<SharedFocus>,
     /// Commands, probe results and end of input go to the main loop.
@@ -84,6 +87,12 @@ fn run(p: &InputParams, mut stdin: impl Read) {
         } else if !probe.is_done() && Instant::now() > deadline {
             probe.abandon(&mut input);
         }
+        if p.focus.overlay() {
+            if !input.is_empty() {
+                let _ = p.events.send(ClientEvent::OverlayInput(input.clone()));
+            }
+            continue;
+        }
         parser.feed(&input, &mut events);
         for event in events.drain(..) {
             dispatch(p, &mut pipeline, event);
@@ -98,6 +107,9 @@ fn run(p: &InputParams, mut stdin: impl Read) {
 
 fn dispatch(p: &InputParams, pipe: &mut Pipeline, event: InputEvent) {
     match event {
+        InputEvent::Forward(raw) if p.focus.overlay() => {
+            let _ = p.events.send(ClientEvent::OverlayInput(raw));
+        }
         InputEvent::Forward(raw) => {
             pipe.mice.split(&raw, &mut pipe.pieces);
             for piece in std::mem::take(&mut pipe.pieces) {
@@ -108,6 +120,9 @@ fn dispatch(p: &InputParams, pipe: &mut Pipeline, event: InputEvent) {
             }
         }
         InputEvent::Command(key) => {
+            if p.overlay_keys.contains(&key) {
+                p.focus.set_overlay(true);
+            }
             let _ = p.events.send(ClientEvent::Command(key));
         }
     }
@@ -200,6 +215,7 @@ mod tests {
             prefix: 0x02,
             repeat: Vec::new(),
             repeat_window: Duration::ZERO,
+            overlay_keys: vec![Key::Char(':')],
             focus: shared,
             events,
         };
@@ -305,6 +321,7 @@ mod tests {
             prefix: 0x02,
             repeat: Vec::new(),
             repeat_window: Duration::ZERO,
+            overlay_keys: vec![Key::Char(':')],
             focus,
             events,
         };
@@ -334,6 +351,40 @@ mod tests {
     }
 
     #[test]
+    fn keys_after_a_pop_up_key_go_to_the_main_loop() {
+        let (ours, mut theirs) = UnixStream::pair().expect("pair");
+        let (events, rx) = mpsc::channel();
+        let focus = Arc::new(SharedFocus::default());
+        focus.set(&FocusView {
+            pane: Some(PaneId(1)),
+            ..FocusView::default()
+        });
+        let params = InputParams {
+            link: ServerLink::from_stream(ours),
+            prefix: 0x02,
+            repeat: Vec::new(),
+            repeat_window: Duration::ZERO,
+            overlay_keys: vec![Key::Char(':')],
+            focus: Arc::clone(&focus),
+            events,
+        };
+        run(&params, &b"\x1b[?62;22c\x02:spl"[..]);
+        drop(params);
+        let got: Vec<ClientEvent> = rx.try_iter().skip(1).collect();
+        assert_eq!(
+            got[..2],
+            [
+                ClientEvent::Command(Key::Char(':')),
+                ClientEvent::OverlayInput(b"spl".to_vec())
+            ]
+        );
+        assert!(focus.overlay());
+        let mut wire = Vec::new();
+        theirs.read_to_end(&mut wire).expect("read");
+        assert!(wire.is_empty(), "nothing reached the pane");
+    }
+
+    #[test]
     fn input_without_a_focused_pane_is_dropped() {
         let (ours, mut theirs) = UnixStream::pair().expect("pair");
         let (events, rx) = mpsc::channel();
@@ -343,6 +394,7 @@ mod tests {
             prefix: 0x02,
             repeat: Vec::new(),
             repeat_window: Duration::ZERO,
+            overlay_keys: vec![Key::Char(':')],
             focus,
             events,
         };

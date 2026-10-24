@@ -5,7 +5,7 @@ use ratatui::Frame;
 use ratatui::layout::Rect;
 
 use super::AttachState;
-use crate::{PaneBorders, PaneView, SelectionSpan, StatusLine, WhichKey};
+use crate::{PaneBorders, PaneView, PickerView, SelectionSpan, StatusLine, WhichKey};
 
 /// Rows the client keeps for itself at the bottom of the host terminal.
 const STATUS_ROWS: u16 = 1;
@@ -20,6 +20,9 @@ pub struct AttachView<'a> {
     pub selection: Option<SelectionSpan>,
     /// The key popup, drawn over the panes while it is up.
     pub which_key: Option<WhichKey<'a>>,
+    /// The palette or go-to picker, drawn over everything; the cursor
+    /// sits in its query.
+    pub picker: Option<PickerView<'a>>,
 }
 
 impl AttachView<'_> {
@@ -46,6 +49,10 @@ impl AttachView<'_> {
         self.draw_panes(frame, pane_rect);
         if let Some(popup) = self.which_key {
             frame.render_widget(popup, pane_rect);
+        }
+        if let Some(picker) = self.picker {
+            frame.render_widget(picker, pane_rect);
+            frame.set_cursor_position(picker.cursor(pane_rect));
         }
     }
 
@@ -120,6 +127,7 @@ mod tests {
             status: status(),
             selection: None,
             which_key: None,
+            picker: None,
         };
         term.draw(|f| view.draw(f)).expect("draw");
         let buf = term.backend().buffer();
@@ -159,6 +167,7 @@ mod tests {
             status: status(),
             selection: None,
             which_key: None,
+            picker: None,
         };
         term.draw(|f| view.draw(f)).expect("draw");
         let buf = term.backend().buffer();

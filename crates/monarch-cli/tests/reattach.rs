@@ -115,6 +115,7 @@ impl Client {
             },
             selection: None,
             which_key: None,
+            picker: None,
         };
         term.draw(|frame| view.draw(frame)).expect("draw");
         term.backend().buffer().clone()

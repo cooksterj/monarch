@@ -267,6 +267,21 @@ mod tabs_and_splits {
     }
 
     #[test]
+    fn focusing_a_pane_in_another_tab_shows_that_tab() {
+        let mut s = split();
+        let c = s.allocate_pane_id();
+        s.insert_pane_at(c, fake(), Placement::Tab { activate: true });
+        s.set_title(A, Some("vim".into()));
+        let tabs = s.layout().tabs;
+        assert_eq!(tabs[0].panes, [(A, Some("vim".into())), (B, None)]);
+        assert_eq!(tabs[1].panes, [(c, None)]);
+        s.apply_action(Action::FocusPane(A));
+        assert_eq!((s.active_tab(), s.focus()), (0, Some(A)));
+        s.apply_action(Action::FocusPane(PaneId(99)));
+        assert_eq!(s.focus(), Some(A), "unknown panes are ignored");
+    }
+
+    #[test]
     fn closing_a_tab_shows_a_neighbour() {
         let mut s = session_with_panes(1);
         s.insert_pane_at(B, fake(), Placement::Tab { activate: true });

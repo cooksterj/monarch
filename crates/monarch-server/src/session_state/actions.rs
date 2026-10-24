@@ -15,12 +15,20 @@ pub enum ActionEffect {
 }
 
 impl SessionState {
-    /// Applies `action` to the shown tab.
+    /// Applies `action` to the session.
     pub fn apply_action(&mut self, action: Action) -> ActionEffect {
-        if action == Action::ClosePane {
-            self.close_focused();
-            return ActionEffect::Done;
+        match action {
+            Action::ClosePane => self.close_focused(),
+            Action::FocusPane(id) => {
+                self.set_focus(id);
+            }
+            _ => return self.apply_to_tab(action),
         }
+        ActionEffect::Done
+    }
+
+    /// Applies `action` to the shown tab.
+    fn apply_to_tab(&mut self, action: Action) -> ActionEffect {
         let before = self.visible_panes();
         let area = self.area();
         let tabs = self.tabs.len();
