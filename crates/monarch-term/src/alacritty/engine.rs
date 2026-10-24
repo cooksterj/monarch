@@ -6,10 +6,11 @@ use std::time::Instant;
 
 use alacritty_terminal::event::Event;
 use alacritty_terminal::grid::{Dimensions, Scroll};
+use alacritty_terminal::index::{Column, Line};
 use alacritty_terminal::term::test::TermSize;
 use alacritty_terminal::term::{Config, Osc52, Term, TermDamage};
 use alacritty_terminal::vte::ansi::{CursorShape as AlacShape, Processor};
-use monarch_proto::{Cursor, CursorShape, Screen, ScreenSize, TerminalModes};
+use monarch_proto::{Cell, Cursor, CursorShape, PaneState, Screen, ScreenSize, TerminalModes};
 
 use super::cell_convert::CellConverter;
 use super::event_translator::{EventTranslator, TranslateContext};
@@ -118,12 +119,41 @@ impl Engine for AlacrittyEngine {
                 *cell = CellConverter::cell(indexed.cell);
             }
         }
-        screen.cursor = self.cursor(offset, size.rows);
-        screen.modes = self.modes();
-        screen.display_offset =
-            u32::try_from(self.term.grid().display_offset()).unwrap_or(u32::MAX);
-        screen.history = u32::try_from(self.term.grid().history_size()).unwrap_or(u32::MAX);
+        let state = self.pane_state();
+        screen.cursor = state.cursor;
+        screen.modes = state.modes;
+        screen.display_offset = state.display_offset;
+        screen.history = state.history;
         screen
+    }
+
+    fn rows(&self, lines: &[u16], out: &mut Vec<Vec<Cell>>) {
+        let grid = self.term.grid();
+        let offset = i32::try_from(grid.display_offset()).unwrap_or(i32::MAX);
+        let (cols, screen_lines) = (grid.columns(), grid.screen_lines());
+        for &line in lines {
+            if usize::from(line) >= screen_lines {
+                out.push(vec![Cell::default(); cols]);
+                continue;
+            }
+            let row = &grid[Line(i32::from(line) - offset)];
+            out.push(
+                (0..cols)
+                    .map(|c| CellConverter::cell(&row[Column(c)]))
+                    .collect(),
+            );
+        }
+    }
+
+    fn pane_state(&self) -> PaneState {
+        let grid = self.term.grid();
+        let offset = i32::try_from(grid.display_offset()).unwrap_or(i32::MAX);
+        PaneState {
+            cursor: self.cursor(offset, self.size().rows),
+            modes: self.modes(),
+            display_offset: u32::try_from(grid.display_offset()).unwrap_or(u32::MAX),
+            history: u32::try_from(grid.history_size()).unwrap_or(u32::MAX),
+        }
     }
 
     fn take_damage(&mut self) -> Damage {

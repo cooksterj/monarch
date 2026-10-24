@@ -4,7 +4,9 @@ use std::time::Instant;
 
 use monarch_proto::{Screen, ScreenSize, TerminalModes};
 
-use crate::{AlacrittyEngine, Damage, Engine, EngineEvent, HostProfile, OscTap, ScrollRequest};
+use crate::{
+    AlacrittyEngine, Damage, Engine, EngineEvent, FrameCapture, HostProfile, OscTap, ScrollRequest,
+};
 
 /// What the server holds for each pane. Owns the emulator and the OSC tap
 /// and feeds both from the same bytes, so captured OSCs and engine events
@@ -60,6 +62,29 @@ impl Terminal {
     /// See [`Engine::take_damage`].
     pub fn take_damage(&mut self) -> Damage {
         self.engine.take_damage()
+    }
+
+    /// Copies the damaged rows (all rows if `full`) and the pane state,
+    /// clearing the damage. Call with the pane lock held; diff the result
+    /// with [`crate::ShadowGrid::apply`] after releasing it.
+    pub fn capture(&mut self, full: bool) -> FrameCapture {
+        let size = self.engine.size();
+        let damage = self.engine.take_damage();
+        let (full, lines): (bool, Vec<u16>) = match (full, damage) {
+            (false, Damage::Rows(rows)) => {
+                (false, rows.into_iter().filter(|&l| l < size.rows).collect())
+            }
+            _ => (true, (0..size.rows).collect()),
+        };
+        let mut rows = Vec::with_capacity(lines.len());
+        self.engine.rows(&lines, &mut rows);
+        FrameCapture {
+            size,
+            full,
+            lines,
+            rows,
+            state: self.engine.pane_state(),
+        }
     }
 
     /// See [`Engine::modes`].
