@@ -35,6 +35,7 @@ smoke:
     cargo build --bin monarch
     python3 scripts/spike4_attach_smoke.py target/debug/monarch
     python3 scripts/spike5_mouse_smoke.py target/debug/monarch
+    python3 scripts/spike6_restore_smoke.py target/debug/monarch
 
 # M1 spike 4: latency/load bench (release build; prints a table, non-zero on failure)
 bench-spike4 *ARGS:

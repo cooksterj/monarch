@@ -16,6 +16,8 @@ pub struct SpawnParams<'a> {
     pub id: PaneId,
     /// What to run.
     pub spec: &'a PaneSpec,
+    /// Text drawn before the program's first output (a restore notice).
+    pub banner: Option<&'a str>,
     /// Session environment.
     pub env: &'a PaneEnv,
     /// Initial size.

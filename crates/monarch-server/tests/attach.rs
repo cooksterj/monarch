@@ -68,6 +68,7 @@ fn config(socket: &Path, pane: PaneSpec) -> ServerConfig {
         socket: Some(socket.into()),
         panes: vec![pane],
         scrollback: 100,
+        ..ServerConfig::default()
     }
 }
 

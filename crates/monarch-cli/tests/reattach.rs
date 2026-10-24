@@ -129,6 +129,7 @@ fn a_reattached_client_sees_exactly_what_an_attached_one_sees() {
             cwd: None,
         }],
         scrollback: 100,
+        ..ServerConfig::default()
     };
     thread::spawn(move || Server::run(config));
 

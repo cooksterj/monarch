@@ -56,6 +56,7 @@ impl EventLoop {
                     state.broadcast(&ServerMsg::PaneExited { pane });
                     state.remove_pane(pane)
                 };
+                ctx.forget_pane(pane);
                 ctx.wake();
                 if empty {
                     ctx.shutdown.notify_one();

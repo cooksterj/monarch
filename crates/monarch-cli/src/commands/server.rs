@@ -3,7 +3,7 @@
 use std::process::ExitCode;
 
 use monarch_core::Config;
-use monarch_server::{Daemon, PaneSpec, Server, ServerConfig};
+use monarch_server::{Daemon, PaneSpec, Server, ServerConfig, StateFile};
 
 use crate::ServerArgs;
 
@@ -29,11 +29,16 @@ fn server_config(args: &ServerArgs, config: &Config) -> ServerConfig {
             .map(|cmd| PaneSpec::shell_command(cmd))
             .collect()
     };
+    let session = args
+        .session
+        .clone()
+        .unwrap_or_else(|| config.session.default_name.clone());
     ServerConfig {
-        session: args
-            .session
-            .clone()
-            .unwrap_or_else(|| config.session.default_name.clone()),
+        state: StateFile::for_session(&session).ok(),
+        // Panes named on the command line start a new session; otherwise
+        // a session that was killed comes back as it was.
+        restore: args.panes.is_empty(),
+        session,
         socket: None,
         panes,
         scrollback: config.terminal.scrollback,
@@ -52,6 +57,7 @@ mod tests {
         assert_eq!(server.session, "main");
         assert_eq!(server.scrollback, 42);
         assert_eq!(server.panes, [PaneSpec::default()]);
+        assert!(server.restore);
     }
 
     #[test]
@@ -64,5 +70,11 @@ mod tests {
         let server = server_config(&args, &Config::default());
         assert_eq!(server.session, "w");
         assert_eq!(server.panes, [PaneSpec::shell_command("htop")]);
+        assert!(!server.restore, "explicit panes start fresh");
+        assert!(
+            server
+                .state
+                .is_some_and(|s| s.path().ends_with("w/state.json"))
+        );
     }
 }

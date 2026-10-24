@@ -74,7 +74,7 @@ def main():
 
 def run_all(binary):
     with tempfile.TemporaryDirectory(prefix="monarch-spike4-") as run:
-        env = dict(os.environ, XDG_RUNTIME_DIR=run, SHELL="/bin/sh", PS1="$ ",
+        env = dict(os.environ, XDG_RUNTIME_DIR=run, XDG_STATE_HOME=run, SHELL="/bin/sh", PS1="$ ",
                    MONARCH_CONFIG=os.path.join(run, "none.toml"))
         env.pop("TMUX", None)
 
