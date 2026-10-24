@@ -25,7 +25,11 @@ const PLAIN: [(&str, Action); 13] = [
 
 /// Client actions without a parameter, by name (kept apart so `PLAIN`
 /// stays the session's list).
-const LOCAL: [(&str, Action); 1] = [("toggle-mouse", Action::ToggleMouse)];
+const LOCAL: [(&str, Action); 3] = [
+    ("toggle-mouse", Action::ToggleMouse),
+    ("command-palette", Action::CommandPalette),
+    ("go-to-pane", Action::GoToPane),
+];
 
 impl fmt::Display for Action {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -37,6 +41,7 @@ impl fmt::Display for Action {
             Self::Swap(d) => write!(f, "swap-{}", d.name()),
             Self::Resize(d) => write!(f, "resize-{}", d.name()),
             Self::SelectTab(n) => write!(f, "tab-{n}"),
+            Self::FocusPane(pane) => write!(f, "focus-pane-{}", pane.0),
             other => write!(f, "{other:?}"),
         }
     }
@@ -53,6 +58,19 @@ impl FromStr for Action {
         directional(&text)
             .or_else(|| tab(&text))
             .ok_or(CoreError::UnknownAction(text))
+    }
+}
+
+impl Action {
+    /// Every bindable action except tab numbers, in a stable order: what
+    /// the command palette lists.
+    #[must_use]
+    pub fn catalogue() -> Vec<Self> {
+        let mut all: Vec<Self> = PLAIN.iter().chain(&LOCAL).map(|(_, a)| *a).collect();
+        for make in [Self::Focus, Self::Swap, Self::Resize] {
+            all.extend(Direction::ALL.into_iter().map(make));
+        }
+        all
     }
 }
 
@@ -80,15 +98,27 @@ mod tests {
 
     #[test]
     fn every_action_round_trips_through_its_name() {
-        let mut all: Vec<Action> = PLAIN.iter().chain(&LOCAL).map(|(_, a)| *a).collect();
-        for d in Direction::ALL {
-            all.extend([Action::Focus(d), Action::Swap(d), Action::Resize(d)]);
-        }
+        let mut all = Action::catalogue();
         all.extend([Action::SelectTab(1), Action::SelectTab(42)]);
         for action in all {
             let name = action.to_string();
             assert_eq!(name.parse::<Action>().expect(&name), action, "{name}");
         }
+    }
+
+    #[test]
+    fn the_catalogue_lists_each_action_once_and_no_pane_ids() {
+        let all = Action::catalogue();
+        let unique: std::collections::BTreeSet<String> =
+            all.iter().map(ToString::to_string).collect();
+        assert_eq!(unique.len(), all.len());
+        assert!(all.contains(&Action::GoToPane));
+        assert!(!all.iter().any(|a| matches!(a, Action::FocusPane(_))));
+        assert_eq!(
+            Action::FocusPane(crate::PaneId(3)).to_string(),
+            "focus-pane-3"
+        );
+        assert!("focus-pane-3".parse::<Action>().is_err(), "not bindable");
     }
 
     #[test]

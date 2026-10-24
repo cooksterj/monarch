@@ -1,5 +1,5 @@
 //! Drawing one frame: host modes and title, then panes, status line and
-//! the key popup inside a synchronized update.
+//! the pop-ups inside a synchronized update.
 
 use std::io::Write;
 use std::time::Instant;
@@ -10,7 +10,7 @@ use ratatui::crossterm::{execute, queue};
 
 use super::AttachApp;
 use crate::client::{AttachView, WindowTitle};
-use crate::{StatusLine, TuiError, WhichKey};
+use crate::{PickerView, StatusLine, TuiError, WhichKey};
 
 impl AttachApp {
     /// Mirrors the focused pane onto the host, then draws every visible
@@ -58,7 +58,8 @@ impl AttachApp {
                 message: self.notice.as_ref().map(|(text, _)| text.as_str()),
             },
             selection: self.selection_span(),
-            which_key: self.popup.then_some(WhichKey {
+            picker: self.picker.as_ref().map(|picker| PickerView { picker }),
+            which_key: (self.popup && self.picker.is_none()).then_some(WhichKey {
                 entries: &self.which_key,
                 title: &self.opts.prefix_label,
             }),

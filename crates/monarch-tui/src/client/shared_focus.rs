@@ -18,6 +18,8 @@ pub struct SharedFocus {
     modes: AtomicU32,
     rect: AtomicU64,
     scrolled: AtomicBool,
+    /// A pop-up (palette, picker) is open and takes the keys.
+    overlay: AtomicBool,
     /// Every visible pane's place, read only on mouse presses.
     panes: Mutex<Vec<(PaneId, Rect)>>,
 }
@@ -80,6 +82,18 @@ impl SharedFocus {
         self.scrolled.store(false, Ordering::Release);
     }
 
+    /// Whether a pop-up is open; its keys go to the main loop instead of
+    /// the pane.
+    #[must_use]
+    pub fn overlay(&self) -> bool {
+        self.overlay.load(Ordering::Acquire)
+    }
+
+    /// Opens or closes the pop-up's claim on the keys.
+    pub fn set_overlay(&self, open: bool) {
+        self.overlay.store(open, Ordering::Release);
+    }
+
     /// Publishes where every visible pane is, for clicks.
     pub fn set_panes(&self, panes: Vec<(PaneId, Rect)>) {
         *self.lock_panes() = panes;
@@ -140,6 +154,9 @@ mod tests {
         assert_eq!(focus.pane(), Some(PaneId(3)));
         focus.clear_scrolled();
         assert!(!focus.scrolled());
+        assert!(!focus.overlay());
+        focus.set_overlay(true);
+        assert!(focus.overlay());
     }
 
     #[test]

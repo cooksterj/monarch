@@ -8,6 +8,7 @@ mod kitty_key;
 mod mouse_encoder;
 mod mouse_event;
 mod mouse_extractor;
+mod overlay_key;
 mod prefix_parser;
 
 pub use host_focus::HostFocus;
@@ -18,4 +19,5 @@ pub use kitty_key::KittyKey;
 pub use mouse_encoder::MouseEncoder;
 pub use mouse_event::{MOD_BITS, MouseButton, MouseEvent, MouseKind, WheelDirection};
 pub use mouse_extractor::MouseExtractor;
+pub use overlay_key::OverlayKey;
 pub use prefix_parser::PrefixParser;

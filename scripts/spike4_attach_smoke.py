@@ -46,6 +46,13 @@ class Client:
             except OSError:
                 pass
 
+    def idle(self, seconds):
+        """Waits while reading output, as a real terminal would; a client
+        whose output is not read blocks and falls behind."""
+        deadline = time.time() + seconds
+        while time.time() < deadline:
+            self.pump(0.05)
+
     def wait_for(self, needle, what, seconds=10):
         deadline = time.time() + seconds
         while needle not in self.seen:
@@ -87,11 +94,11 @@ def run_all(binary):
         first.wait_for(b"monarch \xe2\x94\x82 " + SESSION.encode(), "status line")
         first.wait_for(b"\x1b]2;monarch:" + SESSION.encode(), "window title")
         os.write(first.fd, b"\x02%")
-        time.sleep(0.5)
+        first.idle(0.5)
         os.write(first.fd, b"echo split-$((1+1))\r")
         first.wait_for(b"split-2", "output in the new split pane")
         os.write(first.fd, b"\x02\x1b[D")  # prefix, then the left arrow
-        time.sleep(0.3)
+        first.idle(0.3)
         os.write(first.fd, b"echo left-$((2+3))\r")
         first.wait_for(b"left-5", "output after focusing left")
         assert b"[Decho" not in first.seen, "the arrow leaked into the pane"
@@ -99,13 +106,26 @@ def run_all(binary):
         os.write(first.fd, b"\x02")
         first.wait_for(b"equalize", "which-key popup after the prefix")
         os.write(first.fd, b"c")
-        time.sleep(0.5)
+        first.idle(0.5)
         os.write(first.fd, b"echo tab-$((1+1))\r")
         first.wait_for(b"tab-2", "output in a new tab")
         first.seen = b""
         os.write(first.fd, b"\x021")
         first.wait_for(b"left-5", "first tab shown again")
         print("  tabs: the key popup listed bindings, prefix c opened a tab, prefix 1 went back")
+        os.write(first.fd, b"\x02:")
+        first.wait_for(b"command palette", "the command palette")
+        os.write(first.fd, b"spl dow\r")
+        first.idle(0.5)
+        os.write(first.fd, b"echo palette-$((3+4))\r")
+        first.wait_for(b"palette-7", "output in the pane the palette split off")
+        first.seen = b""
+        # Typed at once: what follows the picker key must reach the picker.
+        os.write(first.fd, b"\x02g^2\r")
+        first.wait_for(b"tab-2", "the go-to picker showed the second tab")
+        os.write(first.fd, b"\x021")
+        first.wait_for(b"left-5", "first tab shown again")
+        print("  pickers: the palette ran split down, the go-to picker jumped to tab 2")
         os.write(first.fd, b"\x02")
         first.wait_for(b"PREFIX", "prefix indicator")
         os.write(first.fd, b"d")
@@ -115,9 +135,9 @@ def run_all(binary):
 
         second = Client(binary, env)
         second.wait_for(b"left-5", "restored screen on reattach")
-        for _ in range(3):  # two split panes, then the second tab's shell
+        for _ in range(4):  # three split panes, then the second tab's shell
             os.write(second.fd, b"exit\r")
-            time.sleep(0.5)
+            second.idle(0.5)
         second.wait_for(f"[session {SESSION} ended]".encode(), "session end message")
         second.finish()
         assert not os.path.exists(os.path.join(run, "monarch", f"{SESSION}.sock")), "socket left behind"

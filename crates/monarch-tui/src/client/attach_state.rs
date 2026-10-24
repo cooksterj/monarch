@@ -113,7 +113,7 @@ impl AttachState {
                     .titles
                     .get(&tab.focus)
                     .map(String::as_str)
-                    .or(tab.title.as_deref())
+                    .or(tab.title())
                     .unwrap_or_default();
                 let mut label = format!("{} {}", i + 1, shorten(title.trim()));
                 if tab.zoomed {
@@ -123,6 +123,23 @@ impl AttachState {
             })
             .collect();
         (labels, layout.active_tab)
+    }
+
+    /// Every pane in every tab, in tab then reading order, as
+    /// `(tab index, pane, title)`; titles follow the latest `Title` message.
+    #[must_use]
+    pub fn all_panes(&self) -> Vec<(usize, PaneId, &str)> {
+        let Some(layout) = self.layout.as_ref() else {
+            return Vec::new();
+        };
+        let mut out = Vec::new();
+        for (i, tab) in layout.tabs.iter().enumerate() {
+            for (pane, sent) in &tab.panes {
+                let title = self.titles.get(pane).map(String::as_str);
+                out.push((i, *pane, title.or(sent.as_deref()).unwrap_or_default()));
+            }
+        }
+        out
     }
 
     /// Every visible pane and its place on the host.

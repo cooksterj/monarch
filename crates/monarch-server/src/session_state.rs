@@ -243,8 +243,13 @@ impl SessionState {
             .iter()
             .map(|tab| TabSummary {
                 focus: tab.focus,
-                title: self.panes.get(&tab.focus).and_then(|e| e.title.clone()),
                 zoomed: tab.zoomed,
+                panes: tab
+                    .tree
+                    .panes()
+                    .into_iter()
+                    .map(|id| (id, self.panes.get(&id).and_then(|e| e.title.clone())))
+                    .collect(),
             })
             .collect();
         LayoutMsg {
