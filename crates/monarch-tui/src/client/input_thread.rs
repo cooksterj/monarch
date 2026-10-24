@@ -10,6 +10,7 @@ use std::sync::mpsc::Sender;
 use std::thread;
 use std::time::{Duration, Instant};
 
+use monarch_core::Key;
 use monarch_proto::ClientMsg;
 
 use super::{ClientEvent, MouseAction, MouseRouter, ServerLink, SharedFocus};
@@ -29,6 +30,10 @@ pub struct InputParams {
     pub link: ServerLink,
     /// The prefix control byte.
     pub prefix: u8,
+    /// Keys that repeat without the prefix.
+    pub repeat: Vec<Key>,
+    /// How long after its last use a repeatable key keeps working.
+    pub repeat_window: Duration,
     /// Which pane has focus and its modes.
     pub focus: Arc<SharedFocus>,
     /// Commands, probe results and end of input go to the main loop.
@@ -66,7 +71,8 @@ fn run(p: &InputParams, mut stdin: impl Read) {
     let mut buf = [0u8; 4096];
     let mut probe = HostProbe::new();
     let deadline = Instant::now() + PROBE_TIMEOUT;
-    let mut parser = PrefixParser::new(p.prefix);
+    let mut parser =
+        PrefixParser::new(p.prefix).with_repeat(p.repeat.iter().copied(), p.repeat_window);
     let mut pipeline = Pipeline::default();
     let (mut input, mut events) = (Vec::new(), Vec::new());
     let mut pending = false;
@@ -192,6 +198,8 @@ mod tests {
         let params = InputParams {
             link: ServerLink::from_stream(ours),
             prefix: 0x02,
+            repeat: Vec::new(),
+            repeat_window: Duration::ZERO,
             focus: shared,
             events,
         };
@@ -295,6 +303,8 @@ mod tests {
         let params = InputParams {
             link: ServerLink::from_stream(ours),
             prefix: 0x02,
+            repeat: Vec::new(),
+            repeat_window: Duration::ZERO,
             focus,
             events,
         };
@@ -331,6 +341,8 @@ mod tests {
         let params = InputParams {
             link: ServerLink::from_stream(ours),
             prefix: 0x02,
+            repeat: Vec::new(),
+            repeat_window: Duration::ZERO,
             focus,
             events,
         };

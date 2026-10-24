@@ -2,6 +2,8 @@
 
 use proptest::prelude::*;
 
+use std::time::{Duration, Instant};
+
 use monarch_core::Direction;
 
 use super::*;
@@ -161,6 +163,67 @@ fn other_kitty_keys_pass_through() {
 fn kitty_prefix_inside_paste_belongs_to_the_pane() {
     let paste = b"\x1b[200~\x1b[98;5uq\x1b[201~";
     assert_eq!(parse(&[paste]), [fwd(paste)]);
+}
+
+fn repeating() -> PrefixParser {
+    let keys = [Key::Char('H'), Key::Arrow(Direction::Up)];
+    PrefixParser::new(P).with_repeat(keys, Duration::from_millis(500))
+}
+
+fn feed(parser: &mut PrefixParser, bytes: &[u8], at: Instant) -> Vec<InputEvent> {
+    let mut out = Vec::new();
+    parser.feed_at(bytes, at, &mut out);
+    out
+}
+
+#[test]
+fn repeatable_keys_repeat_without_the_prefix_inside_the_window() {
+    let t = Instant::now();
+    let ms = Duration::from_millis;
+    let mut parser = repeating();
+    assert_eq!(feed(&mut parser, b"\x02H", t), [cmd('H')]);
+    assert_eq!(feed(&mut parser, b"H", t + ms(300)), [cmd('H')]);
+    assert_eq!(
+        feed(&mut parser, b"HH", t + ms(700)),
+        [cmd('H'), cmd('H')],
+        "each use extends it"
+    );
+    assert_eq!(
+        feed(&mut parser, b"H", t + ms(1300)),
+        [fwd(b"H")],
+        "window closed"
+    );
+}
+
+#[test]
+fn other_input_closes_the_window_and_reaches_the_pane() {
+    let t = Instant::now();
+    let mut parser = repeating();
+    feed(&mut parser, b"\x02H", t);
+    assert_eq!(feed(&mut parser, b"xH", t), [fwd(b"xH")]);
+}
+
+#[test]
+fn non_repeatable_commands_open_no_window() {
+    let t = Instant::now();
+    let mut parser = repeating();
+    feed(&mut parser, b"\x02h", t);
+    assert_eq!(feed(&mut parser, b"H", t), [fwd(b"H")]);
+}
+
+#[test]
+fn arrows_and_kitty_keys_repeat_and_the_prefix_still_works() {
+    let t = Instant::now();
+    let mut parser = repeating();
+    feed(&mut parser, b"\x02\x1b[A", t);
+    assert_eq!(feed(&mut parser, b"\x1b[A", t), [arrow(Direction::Up)]);
+    feed(&mut parser, b"\x02H", t);
+    assert_eq!(
+        feed(&mut parser, b"\x1b[104:72;2u\x1b[104:72;2:3u", t),
+        [cmd('H')],
+        "release swallowed"
+    );
+    assert_eq!(feed(&mut parser, b"\x02d", t), [cmd('d')]);
 }
 
 proptest! {

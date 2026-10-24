@@ -2,7 +2,7 @@
 
 use monarch_proto::{
     CellAttrs, CellStyle, Delta, PaneLayout, PaneState, RowDelta, Run, ScreenSize, Snapshot,
-    StyleDef, StyleId,
+    StyleDef, StyleId, TabSummary,
 };
 
 use super::*;
@@ -21,6 +21,12 @@ fn layout(generation: u32) -> ServerMsg {
             size: SIZE,
             title: Some("sh".into()),
         }],
+        tabs: vec![TabSummary {
+            focus: PaneId(1),
+            title: Some("sh".into()),
+            zoomed: false,
+        }],
+        active_tab: 0,
     })
 }
 
@@ -161,4 +167,44 @@ fn focus_view_reports_rect_modes_and_scrollback() {
     assert_eq!((view.pane, view.cols, view.rows), (Some(PaneId(1)), 10, 2));
     assert!(view.scrolled);
     assert!(view.modes.contains(ModeFlags::ALT_SCREEN));
+}
+
+#[test]
+fn tab_labels_follow_titles_zoom_and_length() {
+    let mut state = AttachState::new();
+    assert_eq!(
+        state.tab_labels(),
+        (Vec::new(), 0),
+        "nothing before a layout"
+    );
+    let ServerMsg::Layout(mut msg) = layout(1) else {
+        unreachable!("layout() builds a layout");
+    };
+    msg.tabs.push(TabSummary {
+        focus: PaneId(2),
+        title: Some("a very long title that will not fit".into()),
+        zoomed: true,
+    });
+    msg.tabs.push(TabSummary {
+        focus: PaneId(3),
+        title: None,
+        zoomed: false,
+    });
+    msg.active_tab = 1;
+    apply_all(&mut state, vec![ServerMsg::Layout(msg)]);
+    let (labels, active) = state.tab_labels();
+    assert_eq!(labels, ["1 sh", "2 a very long title t… [Z]", "3"]);
+    assert_eq!(active, 1);
+    apply_all(
+        &mut state,
+        vec![ServerMsg::Title {
+            pane: PaneId(2),
+            title: Some("htop".into()),
+        }],
+    );
+    assert_eq!(
+        state.tab_labels().0[1],
+        "2 htop [Z]",
+        "hidden tabs follow titles"
+    );
 }

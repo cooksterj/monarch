@@ -15,13 +15,21 @@
 //! An escape sequence as the command key is read as an arrow (CSI or SS3,
 //! any modifiers) or, alone at the end of a read, as Esc; other sequences
 //! are swallowed rather than typed into the pane.
+//!
+//! After a repeatable command (resize, swap), its key pressed again within
+//! the repeat window runs it again without the prefix; any other input
+//! closes the window and reaches the pane as usual.
 
 mod command_escape;
+mod repeat_window;
+
+use std::time::{Duration, Instant};
 
 use memchr::{memchr, memchr2};
 use monarch_core::Key;
 
 use self::command_escape::{CommandEscape, EscapeStep};
+use self::repeat_window::RepeatWindow;
 use super::{InputEvent, KittyKey};
 
 const ESC: u8 = 0x1b;
@@ -40,6 +48,9 @@ pub struct PrefixParser {
     marker_progress: usize,
     swallow: Vec<u32>,
     escape: CommandEscape,
+    repeat: RepeatWindow,
+    /// When the chunk being parsed arrived.
+    now: Instant,
 }
 
 impl PrefixParser {
@@ -53,7 +64,16 @@ impl PrefixParser {
             marker_progress: 0,
             swallow: Vec::new(),
             escape: CommandEscape::default(),
+            repeat: RepeatWindow::default(),
+            now: Instant::now(),
         }
+    }
+
+    /// Lets `keys` repeat without the prefix for `window` after each use.
+    #[must_use]
+    pub fn with_repeat(mut self, keys: impl IntoIterator<Item = Key>, window: Duration) -> Self {
+        self.repeat = RepeatWindow::new(keys, window);
+        self
     }
 
     /// Whether the prefix was pressed and Monarch is waiting for the key.
@@ -64,6 +84,12 @@ impl PrefixParser {
 
     /// Parses one chunk of host input, appending events to `out`.
     pub fn feed(&mut self, bytes: &[u8], out: &mut Vec<InputEvent>) {
+        self.feed_at(bytes, Instant::now(), out);
+    }
+
+    /// [`feed`](Self::feed) for input that arrived at `now`.
+    pub fn feed_at(&mut self, bytes: &[u8], now: Instant, out: &mut Vec<InputEvent>) {
+        self.now = now;
         let mut forward = Vec::with_capacity(bytes.len());
         let mut i = 0;
         while i < bytes.len() {
@@ -72,18 +98,13 @@ impl PrefixParser {
                 i += 1;
                 continue;
             }
-            if self.marker_progress == 0 && !self.pending_prefix {
-                let rest = &bytes[i..];
-                match self.next_interesting(rest) {
-                    Some(off) => {
-                        forward.extend_from_slice(&rest[..off]);
-                        i += off;
-                    }
-                    None => {
-                        forward.extend_from_slice(rest);
-                        break;
-                    }
-                }
+            if let Some(len) = self.try_repeat(&bytes[i..], &mut forward, out) {
+                i += len;
+                continue;
+            }
+            match self.skip_plain(&bytes[i..], &mut forward) {
+                Some(skipped) => i += skipped,
+                None => break,
             }
             if let Some((key, len)) = self.kitty_key_at(&bytes[i..]) {
                 self.on_kitty_key(key, &bytes[i..i + len], &mut forward, out);
@@ -99,24 +120,65 @@ impl PrefixParser {
             i += 1;
         }
         if let Some(key) = self.escape.end_of_read() {
-            flush(&mut forward, out);
-            out.push(InputEvent::Command(key));
+            self.command(key, &mut forward, out);
         }
         flush(&mut forward, out);
+    }
+
+    /// Emits a command key, opening the repeat window if it repeats.
+    fn command(&mut self, key: Key, forward: &mut Vec<u8>, out: &mut Vec<InputEvent>) {
+        flush(forward, out);
+        out.push(InputEvent::Command(key));
+        self.repeat.after(key, self.now);
+    }
+
+    /// While the repeat window is open, a repeatable key at the start of
+    /// `rest` is a command; anything else closes the window. Returns the
+    /// bytes consumed.
+    fn try_repeat(
+        &mut self,
+        rest: &[u8],
+        forward: &mut Vec<u8>,
+        out: &mut Vec<InputEvent>,
+    ) -> Option<usize> {
+        let idle = !self.pending_prefix && !self.in_paste && self.marker_progress == 0;
+        if !idle || !self.repeat.is_open(self.now) {
+            return None;
+        }
+        let Some(found) = self.repeat.key_at(rest) else {
+            self.repeat.close();
+            return None;
+        };
+        if let Some(code) = found.kitty {
+            self.remember_release(code);
+        }
+        self.command(found.key, forward, out);
+        Some(found.len)
     }
 
     fn on_escape_byte(&mut self, byte: u8, forward: &mut Vec<u8>, out: &mut Vec<InputEvent>) {
         match self.escape.push(byte) {
             EscapeStep::More | EscapeStep::Unbound => {}
-            EscapeStep::Key(key) => {
-                flush(forward, out);
-                out.push(InputEvent::Command(key));
-            }
+            EscapeStep::Key(key) => self.command(key, forward, out),
             EscapeStep::Mouse(report) => {
                 forward.extend_from_slice(&report);
                 self.pending_prefix = true;
             }
         }
+    }
+
+    /// Forwards plain bytes up to the next one that could matter; `None`
+    /// when the rest of the chunk was plain.
+    fn skip_plain(&self, rest: &[u8], forward: &mut Vec<u8>) -> Option<usize> {
+        if self.marker_progress != 0 || self.pending_prefix {
+            return Some(0);
+        }
+        let Some(off) = self.next_interesting(rest) else {
+            forward.extend_from_slice(rest);
+            return None;
+        };
+        forward.extend_from_slice(&rest[..off]);
+        Some(off)
     }
 
     /// Offset of the next byte that could start a prefix or paste marker.
@@ -154,8 +216,7 @@ impl PrefixParser {
             if key.is_ctrl_byte(self.prefix) {
                 forward.extend_from_slice(raw);
             } else if let Some(command) = key.ascii().and_then(Key::from_byte) {
-                flush(forward, out);
-                out.push(InputEvent::Command(command));
+                self.command(command, forward, out);
                 self.remember_release(key.code);
             }
         } else if key.is_ctrl_byte(self.prefix) {
@@ -191,8 +252,7 @@ impl PrefixParser {
         } else if byte == ESC {
             self.escape.start();
         } else if let Some(key) = Key::from_byte(byte) {
-            flush(forward, out);
-            out.push(InputEvent::Command(key));
+            self.command(key, forward, out);
         }
     }
 

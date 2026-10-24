@@ -3,7 +3,7 @@
 use monarch_core::PaneId;
 use serde::{Deserialize, Serialize};
 
-use super::PaneLayout;
+use super::{PaneLayout, TabSummary};
 use crate::ScreenSize;
 
 /// Which panes are visible, where, and which has focus. Each new layout
@@ -18,6 +18,10 @@ pub struct LayoutMsg {
     pub focus: Option<PaneId>,
     /// Visible panes.
     pub panes: Vec<PaneLayout>,
+    /// Every tab, in order.
+    pub tabs: Vec<TabSummary>,
+    /// Index of the shown tab in `tabs`.
+    pub active_tab: usize,
 }
 
 impl LayoutMsg {
@@ -47,6 +51,8 @@ mod tests {
             size: ScreenSize::new(10, 10),
             focus: Some(PaneId(2)),
             panes: vec![pane(1), pane(2)],
+            tabs: Vec::new(),
+            active_tab: 0,
         };
         assert_eq!(layout.focused().map(|p| p.pane), Some(PaneId(2)));
         layout.focus = Some(PaneId(9));

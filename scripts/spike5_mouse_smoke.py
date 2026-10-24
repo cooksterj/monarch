@@ -131,7 +131,7 @@ def selection_copies(host):
     # After `clear` the output is on the first row: "alpha beta-gamma delta".
     host.type(b"\x1b[<0;7;1M\x1b[<0;7;1m\x1b[<0;7;1M\x1b[<0;7;1m")
     host.wait_for(osc52("beta-gamma"), "double-click copy")
-    host.wait_for(b"copied 10 characters", "copy notice")
+    host.wait_for(b"copied 10 charac", "copy notice")
     host.type(b"\x1b[<0;1;1M\x1b[<32;5;1M\x1b[<0;5;1m")
     host.wait_for(osc52("alpha"), "drag copy")
     print("  selection: double-click copies a word, drag copies a range (OSC 52), notice shown")

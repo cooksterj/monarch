@@ -80,6 +80,14 @@ impl Keymap {
         self.bindings().find(|(_, a)| *a == action).map(|(k, _)| k)
     }
 
+    /// Keys whose action repeats without the prefix (see
+    /// [`Action::is_repeatable`]).
+    pub fn repeatable_keys(&self) -> impl Iterator<Item = Key> + '_ {
+        self.bindings()
+            .filter(|(_, a)| a.is_repeatable())
+            .map(|(k, _)| k)
+    }
+
     /// Every binding, ordered by key.
     pub fn bindings(&self) -> impl Iterator<Item = (Key, Action)> + '_ {
         self.bindings.iter().map(|(k, a)| (*k, *a))
@@ -128,6 +136,13 @@ mod tests {
         assert_eq!(warnings.len(), 3, "{warnings:?}");
         assert!(warnings[0].contains("using monarch"));
         assert_eq!(map, Keymap::default());
+    }
+
+    #[test]
+    fn repeatable_keys_follow_the_preset() {
+        let monarch: Vec<Key> = Keymap::default().repeatable_keys().collect();
+        assert!(monarch.contains(&Key::Char('H')) && monarch.contains(&Key::Char('}')));
+        assert!(!monarch.contains(&Key::Char('h')), "focus does not repeat");
     }
 
     #[test]
