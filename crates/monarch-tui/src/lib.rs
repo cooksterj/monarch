@@ -7,17 +7,19 @@ mod client;
 mod error;
 mod host;
 mod input;
+mod platform;
 mod widgets;
 
 pub use client::{
-    Applied, AttachApp, AttachOptions, AttachOutcome, AttachState, AttachView, ClientEvent,
-    FocusView, MouseAction, MouseRouter, PaneReplica, ServerLink, SharedFocus, WHEEL_LINES,
-    WindowTitle,
+    Applied, AttachApp, AttachOptions, AttachOutcome, AttachState, AttachView, ClickCounter,
+    ClientEvent, FocusView, GridPoint, MULTI_CLICK, MouseAction, MouseRouter, PaneReplica,
+    SelectEvent, SelectUnit, Selection, ServerLink, SharedFocus, WHEEL_LINES, WindowTitle,
 };
 pub use error::TuiError;
-pub use host::{HostModeMirror, HostProbe, HostReply};
+pub use host::{HostClipboard, HostModeMirror, HostProbe, HostReply};
 pub use input::{
     HostFocus, HostInput, HostInputFilter, InputEvent, MOD_BITS, MouseButton, MouseEncoder,
     MouseEvent, MouseExtractor, MouseKind, PrefixParser, WheelDirection,
 };
-pub use widgets::{PaneView, StatusLine, StyleConverter};
+pub use platform::{LocalClipboard, SystemClipboard};
+pub use widgets::{PaneView, SelectionSpan, StatusLine, StyleConverter};

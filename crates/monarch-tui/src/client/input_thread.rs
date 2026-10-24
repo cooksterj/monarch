@@ -93,7 +93,7 @@ fn dispatch(p: &InputParams, pipe: &mut Pipeline, event: InputEvent) {
                 match piece {
                     HostInput::Keys(keys) => send_keys(p, &mut pipe.filter, &keys),
                     HostInput::Mouse(event) => {
-                        let action = pipe.router.route(&event, &p.focus.view());
+                        let action = pipe.router.route(&event, &p.focus.view(), Instant::now());
                         send_mouse(p, action);
                     }
                 }
@@ -124,6 +124,7 @@ fn send_keys(p: &InputParams, filter: &mut HostInputFilter, raw: &[u8]) {
         });
     }
     let _ = p.link.send(&ClientMsg::Input { pane, bytes });
+    let _ = p.events.send(ClientEvent::Typed);
 }
 
 fn send_mouse(p: &InputParams, action: MouseAction) {
@@ -133,6 +134,10 @@ fn send_mouse(p: &InputParams, action: MouseAction) {
     let msg = match action {
         MouseAction::Forward(bytes) => ClientMsg::Input { pane, bytes },
         MouseAction::Scroll(lines) => ClientMsg::Scroll { pane, lines },
+        MouseAction::Select(gesture) => {
+            let _ = p.events.send(ClientEvent::Select(gesture));
+            return;
+        }
         MouseAction::Ignore => return,
     };
     let _ = p.link.send(&msg);
@@ -236,6 +241,7 @@ mod tests {
         drop(params);
 
         assert!(matches!(rx.recv(), Ok(ClientEvent::Host(_))));
+        assert_eq!(rx.recv().ok(), Some(ClientEvent::Typed), "after `hi`");
         assert_eq!(rx.recv().ok(), Some(ClientEvent::Command(b'd')));
         assert_eq!(rx.recv().ok(), Some(ClientEvent::InputClosed));
         let mut wire = Vec::new();

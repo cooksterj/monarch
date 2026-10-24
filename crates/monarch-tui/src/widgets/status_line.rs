@@ -17,11 +17,14 @@ pub struct StatusLine<'a> {
     pub prefix: &'a str,
     /// The prefix was pressed and Monarch waits for a command key.
     pub pending: bool,
+    /// A short notice (e.g. "copied 12 characters") shown instead of the
+    /// title for a moment.
+    pub message: Option<&'a str>,
 }
 
 impl StatusLine<'_> {
     fn left(&self) -> String {
-        match self.title.filter(|t| !t.is_empty()) {
+        match self.message.or(self.title).filter(|t| !t.is_empty()) {
             Some(title) => format!(" monarch │ {} │ {title} ", self.session),
             None => format!(" monarch │ {} ", self.session),
         }
@@ -94,6 +97,7 @@ mod tests {
             title,
             prefix: "ctrl+b",
             pending,
+            message: None,
         }
     }
 
@@ -110,6 +114,15 @@ mod tests {
     #[test]
     fn narrow_terminals_keep_the_hint() {
         insta::assert_snapshot!(draw(line(Some("long title"), false), 20), @" mo ctrl+b d detach ");
+    }
+
+    #[test]
+    fn a_message_replaces_the_title() {
+        let with = StatusLine {
+            message: Some("copied 5 characters"),
+            ..line(Some("vim"), false)
+        };
+        insta::assert_snapshot!(draw(with, 60), @" monarch │ main │ copied 5 characters       ctrl+b d detach ");
     }
 
     #[test]

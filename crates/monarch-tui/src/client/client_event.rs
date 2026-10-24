@@ -2,6 +2,8 @@
 
 use monarch_proto::{HostInfo, ServerMsg};
 
+use super::SelectEvent;
+
 /// One event for the main loop.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ClientEvent {
@@ -15,6 +17,10 @@ pub enum ClientEvent {
     Prefix(bool),
     /// The user pressed the prefix, then this key.
     Command(u8),
+    /// A mouse selection gesture.
+    Select(SelectEvent),
+    /// Keys were sent to the focused pane (a selection ends).
+    Typed,
     /// The terminal's input closed.
     InputClosed,
 }
