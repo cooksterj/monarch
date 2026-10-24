@@ -2,11 +2,21 @@
 #
 # On every push to main, release-plz keeps a "chore: release vX.Y.Z" PR up to
 # date with version bumps and a CHANGELOG generated from conventional commit
-# messages. Merging that PR publishes every crate to crates.io and pushes the
-# `vX.Y.Z` tag, which triggers cargo-dist (.github/workflows/release.yml) to
-# build binaries, the shell installer and the Homebrew formula.
+# messages. Merging that PR pushes the `vX.Y.Z` tag, which triggers
+# cargo-dist (.github/workflows/release.yml) to build binaries, the shell
+# installer and the Homebrew formula.
+#
+# Pre-release: nothing is published to crates.io yet. `git_only` takes the
+# previous version from the `vX.Y.Z` tags instead of the registry and never
+# runs `cargo publish`. To start publishing, delete `git_only` (keep
+# `git_tag_name`, or drop it too if tags should go back to the default).
 
 [workspace]
+# Version from git tags, no `cargo publish` (see header).
+git_only = true
+# Every crate looks up its previous release at the shared `vX.Y.Z` tag that
+# only `monarch-mux` creates; the version group keeps them in step.
+git_tag_name = "v{{ version }}"
 # Release only when the release PR is merged, not on every push.
 release_always = false
 # cargo-dist creates the GitHub Release (with binaries) from the tag.
@@ -22,7 +32,6 @@ pr_labels = ["release"]
 name = "monarch-mux"
 version_group = "monarch"
 git_tag_enable = true
-git_tag_name = "v{{ version }}"
 changelog_update = true
 changelog_path = "CHANGELOG.md"
 changelog_include = [

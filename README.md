@@ -30,9 +30,10 @@ curl -fsSL https://github.com/cooksterj/monarch/releases/latest/download/monarch
 From source (requires a stable Rust toolchain, nothing else):
 
 ```sh
-cargo install monarch-mux                                   # from crates.io
 cargo install --git https://github.com/cooksterj/monarch   # latest main
 ```
+
+Monarch is not on crates.io yet; it will be published there once it matures.
 
 Prebuilt binaries and installers are published from the first tagged release.
 
