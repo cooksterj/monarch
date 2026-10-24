@@ -7,6 +7,9 @@ use monarch_proto::{LayoutMsg, ModeFlags, Screen, ServerMsg, StyleCache};
 
 use super::{Applied, FocusView, PaneReplica};
 
+/// Longest pane title shown in a tab label, in characters.
+const TAB_TITLE: usize = 20;
+
 /// Layout, decoded pane screens, titles and the connection's style cache.
 /// Pure data: applying a message never does I/O, it reports what to do in
 /// an [`Applied`].
@@ -94,6 +97,34 @@ impl AttachState {
         self.layout.as_ref()?.focused()?.title.as_deref()
     }
 
+    /// One label per tab (`1 vim`, `2 zsh [Z]`) and the shown tab's index.
+    /// Titles follow the latest `Title` message for each tab's focused pane.
+    #[must_use]
+    pub fn tab_labels(&self) -> (Vec<String>, usize) {
+        let Some(layout) = self.layout.as_ref() else {
+            return (Vec::new(), 0);
+        };
+        let labels = layout
+            .tabs
+            .iter()
+            .enumerate()
+            .map(|(i, tab)| {
+                let title = self
+                    .titles
+                    .get(&tab.focus)
+                    .map(String::as_str)
+                    .or(tab.title.as_deref())
+                    .unwrap_or_default();
+                let mut label = format!("{} {}", i + 1, shorten(title.trim()));
+                if tab.zoomed {
+                    label.push_str(" [Z]");
+                }
+                label.trim_end().to_owned()
+            })
+            .collect();
+        (labels, layout.active_tab)
+    }
+
     /// Every visible pane and its place on the host.
     #[must_use]
     pub fn pane_rects(&self) -> Vec<(PaneId, Rect)> {
@@ -123,6 +154,16 @@ impl AttachState {
             scrolled: screen.is_some_and(|s| s.display_offset > 0),
         }
     }
+}
+
+/// `title`, cut to [`TAB_TITLE`] characters with an ellipsis.
+fn shorten(title: &str) -> String {
+    if title.chars().count() <= TAB_TITLE {
+        return title.to_owned();
+    }
+    let mut short: String = title.chars().take(TAB_TITLE - 1).collect();
+    short.push('…');
+    short
 }
 
 #[cfg(test)]

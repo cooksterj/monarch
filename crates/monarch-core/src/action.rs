@@ -58,6 +58,17 @@ impl Action {
     pub fn is_local(self) -> bool {
         matches!(self, Self::Detach | Self::ToggleMouse)
     }
+
+    /// Whether pressing its key again soon repeats it without the prefix.
+    /// Only resizes and swaps: repeating focus moves would swallow the
+    /// first keys typed into the pane just focused.
+    #[must_use]
+    pub fn is_repeatable(self) -> bool {
+        matches!(
+            self,
+            Self::Resize(_) | Self::Swap(_) | Self::SwapNext | Self::SwapPrev
+        )
+    }
 }
 
 #[cfg(test)]
@@ -69,6 +80,14 @@ mod tests {
         assert!(Action::Detach.is_local() && Action::ToggleMouse.is_local());
         assert!(!Action::Split(SplitAxis::Rows).is_local());
         assert!(!Action::SelectTab(1).is_local());
+    }
+
+    #[test]
+    fn resizes_and_swaps_repeat_but_focus_does_not() {
+        assert!(Action::Resize(Direction::Left).is_repeatable());
+        assert!(Action::SwapNext.is_repeatable());
+        assert!(!Action::Focus(Direction::Left).is_repeatable());
+        assert!(!Action::ClosePane.is_repeatable());
     }
 
     #[test]

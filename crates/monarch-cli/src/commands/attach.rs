@@ -2,6 +2,7 @@
 
 use std::io::Write;
 use std::process::ExitCode;
+use std::time::Duration;
 
 use anyhow::Context;
 use monarch_core::{Action, Config, Keymap};
@@ -41,6 +42,8 @@ pub(crate) fn run(
         window_title: config.ui.window_title.clone(),
         mouse: config.ui.mouse,
         keymap,
+        which_key_delay: Duration::from_millis(config.keys.which_key_delay_ms),
+        repeat: Duration::from_millis(config.keys.repeat_ms),
         warnings,
     })?;
     writeln!(out, "{}", farewell(&session, outcome))?;

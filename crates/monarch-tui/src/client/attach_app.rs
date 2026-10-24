@@ -10,16 +10,16 @@ use std::time::{Duration, Instant};
 use monarch_core::{Action, Key};
 use monarch_proto::{ClientMsg, HostInfo, ScreenSize};
 use ratatui::DefaultTerminal;
-use ratatui::crossterm::terminal::{BeginSynchronizedUpdate, EndSynchronizedUpdate};
-use ratatui::crossterm::{execute, queue};
 
 use super::{
     Applied, AttachOptions, AttachOutcome, AttachState, AttachView, ClientEvent, InputParams,
-    InputThread, PROBE_TIMEOUT, Selection, ServerLink, SharedFocus, WindowTitle,
+    InputThread, PROBE_TIMEOUT, Selection, ServerLink, SharedFocus,
 };
-use crate::{HostModeMirror, HostProbe, StatusLine, TuiError};
+use crate::{HostModeMirror, HostProbe, TuiError, WhichKeyEntry};
 
+mod draw;
 mod select;
+mod which_key;
 
 /// Minimum time between frames drawn to the host.
 const FRAME: Duration = Duration::from_millis(16);
@@ -38,6 +38,11 @@ pub struct AttachApp {
     focus: Arc<SharedFocus>,
     opts: AttachOptions,
     prefix_pending: bool,
+    /// When the prefix was pressed, while it waits for a key.
+    prefix_at: Option<Instant>,
+    /// The key popup is up.
+    popup: bool,
+    which_key: Vec<WhichKeyEntry>,
     selection: Option<Selection>,
     passthrough: bool,
     notice: Option<(String, Instant)>,
@@ -74,12 +79,7 @@ impl AttachApp {
         ServerLink::spawn_reader(reader, tx.clone());
         write_host(&mut ui, HostProbe::QUERY)?;
         let focus = Arc::new(SharedFocus::default());
-        InputThread::spawn(InputParams {
-            link: link.clone(),
-            prefix: opts.prefix,
-            focus: Arc::clone(&focus),
-            events: tx,
-        });
+        spawn_input(&link, opts, Arc::clone(&focus), tx);
         let (host, backlog) = wait_for_host(&events);
         let size = introduce(&ui, &link, host)?;
         let mut mirror = HostModeMirror::new(&host).with_mouse(opts.mouse);
@@ -100,6 +100,9 @@ impl AttachApp {
             focus,
             opts: opts.clone(),
             prefix_pending: false,
+            prefix_at: None,
+            popup: false,
+            which_key: WhichKeyEntry::from_keymap(&opts.keymap),
             selection: None,
             passthrough: false,
             notice,
@@ -125,6 +128,7 @@ impl AttachApp {
             }
             self.check_resize()?;
             self.expire_notice();
+            self.show_which_key();
             if self.dirty && self.last_draw.elapsed() >= FRAME {
                 self.draw()?;
             }
@@ -142,10 +146,7 @@ impl AttachApp {
             ClientEvent::ServerClosed => return Some(AttachOutcome::ServerExited),
             ClientEvent::Command(key) => return self.on_command(key),
             ClientEvent::InputClosed => return Some(AttachOutcome::Detached),
-            ClientEvent::Prefix(pending) => {
-                self.prefix_pending = pending;
-                self.dirty = true;
-            }
+            ClientEvent::Prefix(pending) => self.on_prefix(pending),
             ClientEvent::Select(gesture) => self.on_select(gesture),
             ClientEvent::Typed => self.on_typed(),
             ClientEvent::Host(_) => {}
@@ -202,53 +203,28 @@ impl AttachApp {
         Ok(())
     }
 
-    /// Mirrors the focused pane onto the host, then draws every visible
-    /// pane, inside one synchronized update when the host supports it.
-    fn draw(&mut self) -> Result<(), TuiError> {
-        let focus = self.state.focus();
-        if let Some(screen) = focus.and_then(|p| self.state.screen(p)) {
-            self.mirror
-                .sync(&screen.modes, &screen.cursor, &mut self.out);
-        }
-        let title = WindowTitle::format(
-            &self.opts.window_title,
-            &self.opts.session,
-            focus,
-            self.state.focused_title(),
-        );
-        self.mirror.sync_title(Some(&title), &mut self.out);
-        let io = |e| TuiError::io("drawing", e);
-        if self.host.sync_output {
-            queue!(self.ui.backend_mut(), BeginSynchronizedUpdate).map_err(io)?;
-        }
-        self.ui.backend_mut().write_all(&self.out).map_err(io)?;
-        self.out.clear();
-        let view = AttachView {
-            state: &self.state,
-            status: StatusLine {
-                session: &self.opts.session,
-                title: self.state.focused_title(),
-                prefix: &self.opts.prefix_label,
-                detach: self.opts.keymap.key_for(Action::Detach),
-                pending: self.prefix_pending,
-                message: self.notice.as_ref().map(|(text, _)| text.as_str()),
-            },
-            selection: self.selection_span(),
-        };
-        self.ui.draw(|frame| view.draw(frame)).map_err(io)?;
-        if self.host.sync_output {
-            execute!(self.ui.backend_mut(), EndSynchronizedUpdate).map_err(io)?;
-        }
-        self.dirty = false;
-        self.last_draw = Instant::now();
-        Ok(())
-    }
-
     fn finish(&mut self) -> Result<(), TuiError> {
         self.mirror.leave(&mut self.out);
         let out = std::mem::take(&mut self.out);
         write_host(&mut self.ui, &out)
     }
+}
+
+/// Starts the thread that reads the host terminal.
+fn spawn_input(
+    link: &ServerLink,
+    opts: &AttachOptions,
+    focus: Arc<SharedFocus>,
+    events: mpsc::Sender<ClientEvent>,
+) {
+    InputThread::spawn(InputParams {
+        link: link.clone(),
+        prefix: opts.prefix,
+        repeat: opts.keymap.repeatable_keys().collect(),
+        repeat_window: opts.repeat,
+        focus,
+        events,
+    });
 }
 
 /// Tells the server what the host can do and how big it is.

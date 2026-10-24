@@ -12,7 +12,7 @@ mod render;
 use std::collections::BTreeMap;
 
 use monarch_core::{ClientId, PaneId, Rect, Tab};
-use monarch_proto::{HostInfo, LayoutMsg, PaneLayout, ScreenSize, ServerMsg};
+use monarch_proto::{HostInfo, LayoutMsg, PaneLayout, ScreenSize, ServerMsg, TabSummary};
 use monarch_term::{HostProfile, ShadowGrid};
 use tokio::sync::mpsc::Sender;
 
@@ -238,11 +238,22 @@ impl SessionState {
                 })
             })
             .collect();
+        let tabs = self
+            .tabs
+            .iter()
+            .map(|tab| TabSummary {
+                focus: tab.focus,
+                title: self.panes.get(&tab.focus).and_then(|e| e.title.clone()),
+                zoomed: tab.zoomed,
+            })
+            .collect();
         LayoutMsg {
             generation: self.generation,
             size: self.size,
             focus: self.focus(),
             panes,
+            tabs,
+            active_tab: self.active,
         }
     }
 

@@ -97,6 +97,16 @@ def run_all(binary):
         assert b"[Decho" not in first.seen, "the arrow leaked into the pane"
         print("  keys: prefix % split the window, prefix left focused the first pane")
         os.write(first.fd, b"\x02")
+        first.wait_for(b"equalize", "which-key popup after the prefix")
+        os.write(first.fd, b"c")
+        time.sleep(0.5)
+        os.write(first.fd, b"echo tab-$((1+1))\r")
+        first.wait_for(b"tab-2", "output in a new tab")
+        first.seen = b""
+        os.write(first.fd, b"\x021")
+        first.wait_for(b"left-5", "first tab shown again")
+        print("  tabs: the key popup listed bindings, prefix c opened a tab, prefix 1 went back")
+        os.write(first.fd, b"\x02")
         first.wait_for(b"PREFIX", "prefix indicator")
         os.write(first.fd, b"d")
         first.wait_for(f"[detached from session {SESSION}]".encode(), "detach message")
@@ -105,13 +115,13 @@ def run_all(binary):
 
         second = Client(binary, env)
         second.wait_for(b"left-5", "restored screen on reattach")
-        os.write(second.fd, b"exit\r")  # one pane per split
-        time.sleep(0.5)
-        os.write(second.fd, b"exit\r")
+        for _ in range(3):  # two split panes, then the second tab's shell
+            os.write(second.fd, b"exit\r")
+            time.sleep(0.5)
         second.wait_for(f"[session {SESSION} ended]".encode(), "session end message")
         second.finish()
         assert not os.path.exists(os.path.join(run, "monarch", f"{SESSION}.sock")), "socket left behind"
-        print("  reattach: screen restored; exiting both shells ends the session")
+        print("  reattach: screen restored; exiting every shell ends the session")
     print("spike4 attach smoke: ok")
 
 

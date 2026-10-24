@@ -5,7 +5,7 @@ use ratatui::Frame;
 use ratatui::layout::Rect;
 
 use super::AttachState;
-use crate::{PaneBorders, PaneView, SelectionSpan, StatusLine};
+use crate::{PaneBorders, PaneView, SelectionSpan, StatusLine, WhichKey};
 
 /// Rows the client keeps for itself at the bottom of the host terminal.
 const STATUS_ROWS: u16 = 1;
@@ -18,6 +18,8 @@ pub struct AttachView<'a> {
     pub status: StatusLine<'a>,
     /// The focused pane's selection, in its viewport coordinates.
     pub selection: Option<SelectionSpan>,
+    /// The key popup, drawn over the panes while it is up.
+    pub which_key: Option<WhichKey<'a>>,
 }
 
 impl AttachView<'_> {
@@ -41,6 +43,14 @@ impl AttachView<'_> {
             let status = Rect::new(area.x, area.y + panes.rows, area.width, STATUS_ROWS);
             frame.render_widget(self.status, status);
         }
+        self.draw_panes(frame, pane_rect);
+        if let Some(popup) = self.which_key {
+            frame.render_widget(popup, pane_rect);
+        }
+    }
+
+    fn draw_panes(&self, frame: &mut Frame<'_>, pane_rect: Rect) {
+        let area = frame.area();
         let Some(layout) = self.state.layout() else {
             return;
         };
@@ -80,7 +90,8 @@ mod tests {
     fn status() -> StatusLine<'static> {
         StatusLine {
             session: "s",
-            title: None,
+            tabs: &[],
+            active_tab: 0,
             prefix: "ctrl+b",
             detach: Some(monarch_core::Key::Char('d')),
             pending: false,
@@ -108,6 +119,7 @@ mod tests {
             state: &state,
             status: status(),
             selection: None,
+            which_key: None,
         };
         term.draw(|f| view.draw(f)).expect("draw");
         let buf = term.backend().buffer();
@@ -116,7 +128,7 @@ mod tests {
             .collect();
         assert_eq!(rows[0].trim(), "");
         assert_eq!(rows[1].trim(), "");
-        assert_eq!(rows[2], " monarch │ s            ctrl+b d detach ");
+        assert_eq!(rows[2], " monarch │ s │          ctrl+b d detach ");
     }
 
     #[test]
@@ -137,6 +149,8 @@ mod tests {
             size: ScreenSize::new(9, 2),
             focus: Some(PaneId(1)),
             panes: vec![pane(1, 0), pane(2, 5)],
+            tabs: Vec::new(),
+            active_tab: 0,
         };
         state.apply(ServerMsg::Layout(layout), &mut crate::Applied::default());
         let mut term = Terminal::new(TestBackend::new(9, 3)).expect("terminal");
@@ -144,6 +158,7 @@ mod tests {
             state: &state,
             status: status(),
             selection: None,
+            which_key: None,
         };
         term.draw(|f| view.draw(f)).expect("draw");
         let buf = term.backend().buffer();

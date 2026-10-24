@@ -1,6 +1,7 @@
 //! What `monarch attach` needs to know.
 
 use std::path::PathBuf;
+use std::time::Duration;
 
 use monarch_core::{Keymap, MouseMode};
 
@@ -21,6 +22,10 @@ pub struct AttachOptions {
     pub mouse: MouseMode,
     /// What each key after the prefix does.
     pub keymap: Keymap,
+    /// How long the prefix waits before the key popup appears.
+    pub which_key_delay: Duration,
+    /// How long a repeatable key keeps working without the prefix.
+    pub repeat: Duration,
     /// Problems with the config, shown once the client is up.
     pub warnings: Vec<String>,
 }
@@ -39,6 +44,8 @@ mod tests {
             window_title: "{title}".into(),
             mouse: MouseMode::Auto,
             keymap: Keymap::default(),
+            which_key_delay: Duration::from_millis(300),
+            repeat: Duration::from_millis(500),
             warnings: Vec::new(),
         };
         assert_eq!(opts.prefix, 0x02);

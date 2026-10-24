@@ -22,4 +22,6 @@ pub use input::{
     MouseEvent, MouseExtractor, MouseKind, PrefixParser, WheelDirection,
 };
 pub use platform::{LocalClipboard, SystemClipboard};
-pub use widgets::{PaneBorders, PaneView, SelectionSpan, StatusLine, StyleConverter};
+pub use widgets::{
+    PaneBorders, PaneView, SelectionSpan, StatusLine, StyleConverter, WhichKey, WhichKeyEntry,
+};

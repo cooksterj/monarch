@@ -23,6 +23,7 @@ mod style_cache;
 mod style_def;
 mod style_id;
 mod style_table;
+mod tab_summary;
 
 pub use client_msg::ClientMsg;
 pub use delta::Delta;
@@ -40,3 +41,4 @@ pub use style_cache::StyleCache;
 pub use style_def::StyleDef;
 pub use style_id::StyleId;
 pub use style_table::StyleTable;
+pub use tab_summary::TabSummary;

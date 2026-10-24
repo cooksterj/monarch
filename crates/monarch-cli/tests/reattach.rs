@@ -101,17 +101,20 @@ impl Client {
     /// The frame this client would draw.
     fn frame(&self) -> Buffer {
         let mut term = Terminal::new(TestBackend::new(HOST.cols, HOST.rows)).expect("terminal");
+        let (tabs, active_tab) = self.state.tab_labels();
         let view = AttachView {
             state: &self.state,
             status: StatusLine {
                 session: "reattach",
-                title: self.state.focused_title(),
+                tabs: &tabs,
+                active_tab,
                 prefix: "ctrl+b",
                 detach: None,
                 pending: false,
                 message: None,
             },
             selection: None,
+            which_key: None,
         };
         term.draw(|frame| view.draw(frame)).expect("draw");
         term.backend().buffer().clone()
