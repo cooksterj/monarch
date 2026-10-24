@@ -12,8 +12,15 @@ authors.workspace = true
 [dependencies]
 monarch-core.workspace = true
 monarch-proto.workspace = true
+ratatui.workspace = true
+crossterm.workspace = true
+memchr.workspace = true
 
 [dev-dependencies]
+monarch-term.workspace = true
+portable-pty.workspace = true
+insta.workspace = true
+proptest.workspace = true
 
 [lints]
 workspace = true

@@ -289,13 +289,15 @@ Explicitly out of v1: Windows, remote SSH machine management, plugins, image pro
 **Progress** (maintained in `docs/plan.md` from M0 on)
 - [x] M0 scaffold & installability (2026-10-23): workspace + 7 crates, config system + `monarch config path|default|check`, welcome screen, CLAUDE.md conventions, CI (fmt/clippy/lint-size/nextest/msrv/deny), cargo-dist release (shell + Homebrew `cooksterj/homebrew-monarch`, formula `monarch`), licenses
 - [ ] M1 spikes: 1 engine · 2 OSC tap · 3 input matrix · 4 latency/load · 5 mouse/selection · 6 detach/restore
+  - [~] Spike 1 engine: `AlacrittyEngine` + `Terminal` + proto `Screen` + `PaneView` + `PrefixParser` done; prototype `cargo run -p monarch-tui --example single_pane [-- cmd]` passes the automated smoke (`python3 scripts/spike1_smoke.py target/debug/examples/single_pane`). **Remaining: manual parity check by the user** in a real terminal with vim, htop, less, claude, codex (resize/reflow, scrollback, wide chars), and the kill-mid-frame sync-timeout path (reader thread doesn't yet poll `sync_deadline`).
+  - [~] Spike 2 OSC tap: `OscTap` matches `vte::Parser` in a property test over random chunkings. Remaining: replay recorded Claude/Codex transcripts; 200 MB `cat` overhead benchmark.
 - [ ] M2 multiplexing & navigation
 - [ ] M3 agent awareness
 - [ ] M4 projects & worktrees
 - [ ] M5 persistence & restore
 - [ ] M6 polish & 0.1 release
-- Next up: M1 spike 1 — headless engine (`monarch-term`: `Engine` trait, `AlacrittyEngine`, `PaneListener`; single-process portable-pty → Term → ratatui prototype)
-- Known gaps: Codex resume-by-id (spike 6); Claude Code OSC 7501 probe behaviour (spike 2); `cargo publish` of non-core crates only works once their deps are published (publish in dependency order); the Homebrew tap repo `cooksterj/homebrew-monarch` and a `HOMEBREW_TAP_TOKEN` secret must exist before the first release; installer artifact is `monarch-mux-installer.sh`
+- Next up: user runs the spike-1 manual check; meanwhile spike 3 — `HostModeMirror` (kitty flags via `CSI = bits;1u`, bracketed paste, focus, mouse modes, DECSCUSR, title) + `HostProbe` (OSC 10/11, `CSI ? u`, DECRQM 2026) wired into the prototype, then the `cat -v` input matrix
+- Known gaps: Codex resume-by-id (spike 6); Claude Code OSC 7501 probe behaviour (spike 2); `cargo publish` of non-core crates only works once their deps are published (publish in dependency order); the Homebrew tap repo `cooksterj/homebrew-monarch` and a `HOMEBREW_TAP_TOKEN` secret must exist before the first release; installer artifact is `monarch-mux-installer.sh`; ratatui has one underline modifier, so undercurl/dotted/dashed/double underlines currently render as plain underline (fix needs a custom backend writer — a G-contract gap); macOS blocks a process exiting until its tty output is drained, so PTY test harnesses must keep reading
 
 ## 6. Risks & mitigations
 
