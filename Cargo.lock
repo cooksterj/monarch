@@ -1080,6 +1080,7 @@ dependencies = [
 name = "monarch-mux-tui"
 version = "0.1.0"
 dependencies = [
+ "bytes",
  "crossterm",
  "insta",
  "memchr",
@@ -1089,6 +1090,9 @@ dependencies = [
  "portable-pty",
  "proptest",
  "ratatui",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
 ]
 
 [[package]]

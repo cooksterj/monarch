@@ -18,8 +18,12 @@ monarch-proto.workspace = true
 ratatui.workspace = true
 crossterm.workspace = true
 memchr.workspace = true
+bytes.workspace = true
+thiserror.workspace = true
+serde_json.workspace = true
 
 [dev-dependencies]
+tempfile.workspace = true
 monarch-term.workspace = true
 portable-pty.workspace = true
 insta.workspace = true

@@ -8,6 +8,7 @@
 
 mod attach_connection;
 mod client_handle;
+mod daemon;
 mod error;
 mod event_loop;
 mod frame_coalescer;
@@ -29,6 +30,7 @@ mod test_support;
 
 pub use attach_connection::AttachConnection;
 pub use client_handle::{ClientHandle, RENDER_LANE};
+pub use daemon::Daemon;
 pub use error::{BoxedError, ServerError};
 pub use event_loop::EventLoop;
 pub use frame_coalescer::{FRAME_BUDGET, FrameCoalescer};
