@@ -25,6 +25,9 @@ pub enum CoreError {
     /// No home directory could be determined to locate the config file.
     #[error("cannot locate a home directory; set MONARCH_CONFIG or HOME")]
     NoHome,
+    /// An agent name Monarch does not know.
+    #[error("unknown agent {0:?}; expected one of: {choices}", choices = crate::AgentKind::choices())]
+    UnknownAgent(String),
 }
 
 #[cfg(test)]

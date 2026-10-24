@@ -31,7 +31,7 @@ pub(crate) fn run(
         .prefix_byte()
         .with_context(|| format!("prefix `{}` is not a ctrl+key chord", config.keys.prefix))?;
     let socket = SocketPath::for_session(&session)?;
-    ensure_server(&session, &socket)?;
+    ensure_server(&session, &socket, &args.agents)?;
     let outcome = AttachApp::attach(&AttachOptions {
         socket,
         session: session.clone(),

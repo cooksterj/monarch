@@ -2,10 +2,10 @@
 
 use std::path::PathBuf;
 
-use monarch_core::PaneId;
+use monarch_core::{AgentKind, PaneId};
 use portable_pty::CommandBuilder;
 
-use crate::PaneEnv;
+use crate::{PaneAgent, PaneEnv};
 
 /// Variables from enclosing multiplexers that would mislead programs.
 const FOREIGN_VARS: [&str; 5] = ["TMUX", "TMUX_PANE", "STY", "ZELLIJ", "ZELLIJ_SESSION_NAME"];
@@ -17,6 +17,8 @@ pub struct PaneSpec {
     pub argv: Vec<String>,
     /// Working directory; the server's when `None`.
     pub cwd: Option<PathBuf>,
+    /// The agent this pane runs, when Monarch launched it as one.
+    pub agent: Option<PaneAgent>,
 }
 
 impl PaneSpec {
@@ -25,7 +27,19 @@ impl PaneSpec {
     pub fn shell_command(command: &str) -> Self {
         Self {
             argv: vec![user_shell(), "-c".into(), command.into()],
+            ..Self::default()
+        }
+    }
+
+    /// A new session of agent `kind` (Claude Code gets a chosen session id
+    /// so it can be resumed after a restart).
+    #[must_use]
+    pub fn agent(kind: AgentKind) -> Self {
+        let agent = PaneAgent::new_session(kind);
+        Self {
+            argv: agent.launch_argv(),
             cwd: None,
+            agent: Some(agent),
         }
     }
 
@@ -89,7 +103,7 @@ mod tests {
     fn argv_is_used_verbatim() {
         let spec = PaneSpec {
             argv: vec!["printf".into(), "%s".into(), "a b".into()],
-            cwd: None,
+            ..PaneSpec::default()
         };
         let argv = spec.command(PaneId(1), &env()).get_argv().clone();
         assert_eq!(argv, ["printf", "%s", "a b"]);
@@ -99,5 +113,13 @@ mod tests {
     fn shell_command_wraps_text_in_the_shell() {
         let spec = PaneSpec::shell_command("yes | head");
         assert_eq!(spec.argv[1..], ["-c".to_string(), "yes | head".into()]);
+    }
+
+    #[test]
+    fn agent_panes_run_the_agent_and_remember_it() {
+        let spec = PaneSpec::agent(AgentKind::Claude);
+        let agent = spec.agent.clone().expect("agent");
+        assert_eq!(spec.argv, agent.launch_argv());
+        assert_eq!(spec.argv[0], "claude");
     }
 }

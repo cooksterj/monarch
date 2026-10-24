@@ -8,7 +8,10 @@ Plays the host terminal for `monarch attach` and checks that:
   shell comes back in the directory it had `cd`'d to, under a notice;
 * a pane that ran a command comes back as a shell there, never re-running
   the command, and the notice names it;
-* ending the session on purpose deletes the state file.
+* ending the session on purpose deletes the state file;
+* a Claude Code pane starts with `--session-id <uuid>` and comes back with
+  `--resume <uuid>`; a Codex pane comes back through `codex resume` (stand-in
+  agent scripts record their arguments).
 
 Usage: python3 scripts/spike6_restore_smoke.py target/debug/monarch
 """
@@ -35,10 +38,10 @@ NOTICE = b"restored after the server stopped"
 class Client:
     """One `monarch attach` run in a pseudo-terminal."""
 
-    def __init__(self, binary, env, session):
+    def __init__(self, binary, env, session, extra=()):
         self.pid, self.fd = pty.fork()
         if self.pid == 0:
-            os.execve(binary, [binary, "attach", "-s", session], env)
+            os.execve(binary, [binary, "attach", "-s", session, *extra], env)
         fcntl.ioctl(self.fd, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 100, 0, 0))
         self.seen = b""
         self.wait_for(b"\x1b[c", "probe query")
@@ -144,6 +147,57 @@ def command_comes_back_as_a_shell(binary, env, run):
     print("  command: comes back as a shell, not re-run; the notice names it")
 
 
+FAKE_AGENT = """#!/bin/sh
+echo "$*" >> "{log}"
+echo "fake {name} $*"
+exec sleep 300
+"""
+
+
+def lines(path, count, what, seconds=10):
+    deadline = time.time() + seconds
+    while True:
+        try:
+            got = open(path).read().splitlines()
+            if len(got) >= count:
+                return got
+        except OSError:
+            pass
+        assert time.time() < deadline, f"{what} never ran"
+        time.sleep(0.05)
+
+
+def agents_resume_their_sessions(binary, env, run):
+    bin_dir = os.path.join(run, "bin")
+    os.mkdir(bin_dir)
+    logs = {}
+    for name in ("claude", "codex"):
+        logs[name] = os.path.join(run, f"{name}.log")
+        path = os.path.join(bin_dir, name)
+        open(path, "w").write(FAKE_AGENT.format(log=logs[name], name=name))
+        os.chmod(path, 0o755)
+    env = dict(env, PATH=bin_dir + ":" + env["PATH"])
+    session = TAG + "ag"
+    state = os.path.join(run, "monarch", session, "state.json")
+    client = Client(binary, env, session, ["--agent", "claude", "--agent", "codex"])
+    saved = wait_for_state(state, lambda s: len(s["panes"]) == 2, "both agent panes")
+    uuid = saved["panes"][0]["agent"]["session_id"]
+    assert lines(logs["claude"], 1, "claude") == [f"--session-id {uuid}"], "claude launch argv"
+    assert lines(logs["codex"], 1, "codex") == [""], "codex launches bare"
+    assert saved["panes"][1]["agent"] == {"kind": "codex", "session_id": None}
+    print("  agents: claude starts with --session-id <uuid>, saved with the pane")
+
+    kill_server(session)
+    client.gone()
+    client = Client(binary, env, session)
+    client.wait_for(b"resuming Claude Code session", "claude resume notice")  # the id wraps
+    assert lines(logs["claude"], 2, "claude resume")[1] == f"--resume {uuid}"
+    assert lines(logs["codex"], 2, "codex resume")[1] == "resume", "picker, never --last"
+    print("  kill -9: claude resumes the same session; codex reopens its picker")
+    os.kill(client.pid, signal.SIGKILL)
+    os.waitpid(client.pid, 0)
+
+
 def main():
     try:
         run_all(os.path.abspath(sys.argv[1]))
@@ -160,6 +214,7 @@ def run_all(binary):
             env.pop(var, None)
         shell_comes_back_in_its_directory(binary, env, run)
         command_comes_back_as_a_shell(binary, env, run)
+        agents_resume_their_sessions(binary, env, run)
     print("spike 6 restore smoke: ok")
 
 

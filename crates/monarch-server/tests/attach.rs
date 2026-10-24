@@ -87,7 +87,7 @@ async fn attach_type_echo_ping_and_exit() {
     let socket = dir.path().join("t.sock");
     let cat = PaneSpec {
         argv: vec!["cat".into()],
-        cwd: None,
+        ..PaneSpec::default()
     };
     let server = tokio::spawn(Server::serve(config(&socket, cat)));
     let (mut rx, mut tx) = connect(&socket).await;

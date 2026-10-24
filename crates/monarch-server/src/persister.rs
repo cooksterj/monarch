@@ -130,6 +130,7 @@ mod tests {
         let spec = PaneSpec {
             argv: Vec::new(),
             cwd: Some("/start".into()),
+            agent: None,
         };
         ctx.insert_for_test(spec, FakePane::shell());
         let session = persister.capture(&ctx);

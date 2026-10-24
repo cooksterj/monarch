@@ -19,16 +19,18 @@ pub(crate) fn run(args: &ServerArgs, config: &Config) -> anyhow::Result<ExitCode
 fn server_config(args: &ServerArgs, config: &Config) -> ServerConfig {
     let shell = PaneSpec {
         argv: config.terminal.shell.iter().cloned().collect(),
-        cwd: None,
+        ..PaneSpec::default()
     };
-    let panes = if args.panes.is_empty() {
-        vec![shell]
-    } else {
-        args.panes
-            .iter()
-            .map(|cmd| PaneSpec::shell_command(cmd))
-            .collect()
-    };
+    let mut panes: Vec<_> = args
+        .panes
+        .iter()
+        .map(|cmd| PaneSpec::shell_command(cmd))
+        .chain(args.agents.iter().map(|kind| PaneSpec::agent(*kind)))
+        .collect();
+    let fresh = !panes.is_empty();
+    if !fresh {
+        panes.push(shell);
+    }
     let session = args
         .session
         .clone()
@@ -37,7 +39,7 @@ fn server_config(args: &ServerArgs, config: &Config) -> ServerConfig {
         state: StateFile::for_session(&session).ok(),
         // Panes named on the command line start a new session; otherwise
         // a session that was killed comes back as it was.
-        restore: args.panes.is_empty(),
+        restore: !fresh,
         session,
         socket: None,
         panes,
@@ -47,6 +49,8 @@ fn server_config(args: &ServerArgs, config: &Config) -> ServerConfig {
 
 #[cfg(test)]
 mod tests {
+    use monarch_core::AgentKind;
+
     use super::*;
 
     #[test]
@@ -65,7 +69,7 @@ mod tests {
         let args = ServerArgs {
             session: Some("w".into()),
             panes: vec!["htop".into()],
-            daemon: false,
+            ..ServerArgs::default()
         };
         let server = server_config(&args, &Config::default());
         assert_eq!(server.session, "w");
@@ -76,5 +80,18 @@ mod tests {
                 .state
                 .is_some_and(|s| s.path().ends_with("w/state.json"))
         );
+    }
+
+    #[test]
+    fn agents_start_a_fresh_session_after_any_commands() {
+        let args = ServerArgs {
+            panes: vec!["htop".into()],
+            agents: vec![AgentKind::Claude],
+            ..ServerArgs::default()
+        };
+        let server = server_config(&args, &Config::default());
+        assert!(!server.restore);
+        assert_eq!(server.panes.len(), 2);
+        assert_eq!(server.panes[1].argv[..2], ["claude", "--session-id"]);
     }
 }
