@@ -34,3 +34,9 @@ smoke:
     python3 scripts/spike3_input_matrix.py target/debug/examples/single_pane
     cargo build --bin monarch
     python3 scripts/spike4_attach_smoke.py target/debug/monarch
+
+# M1 spike 4: latency/load bench (release build; prints a table, non-zero on failure)
+bench-spike4 *ARGS:
+    cargo build --release --bin monarch
+    cargo build --release -p monarch-mux-tui --example spike4_bench
+    target/release/examples/spike4_bench target/release/monarch {{ARGS}}
