@@ -3,20 +3,33 @@
 use monarch_proto::Screen;
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Position, Rect};
+use ratatui::style::Modifier;
 use ratatui::widgets::Widget;
 
-use super::StyleConverter;
+use super::{SelectionSpan, StyleConverter};
 
-/// Renders a screen at the top-left of the area, clipped to it.
+/// Renders a screen at the top-left of the area, clipped to it, with an
+/// optional selection drawn in reverse video.
 pub struct PaneView<'a> {
     screen: &'a Screen,
+    selection: Option<SelectionSpan>,
 }
 
 impl<'a> PaneView<'a> {
     /// A view of `screen`.
     #[must_use]
     pub fn new(screen: &'a Screen) -> Self {
-        Self { screen }
+        Self {
+            screen,
+            selection: None,
+        }
+    }
+
+    /// Highlights `selection` (viewport coordinates).
+    #[must_use]
+    pub fn with_selection(mut self, selection: Option<SelectionSpan>) -> Self {
+        self.selection = selection;
+        self
     }
 
     /// Where the host cursor should be placed for this pane, if visible.
@@ -30,14 +43,14 @@ impl<'a> PaneView<'a> {
 
 impl Widget for PaneView<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        for (y, row) in self
+        for (y_index, row) in self
             .screen
             .rows
             .iter()
             .take(usize::from(area.height))
             .enumerate()
         {
-            let y = area.y + y as u16;
+            let y = area.y + y_index as u16;
             for (x, cell) in row.iter().take(usize::from(area.width)).enumerate() {
                 let Some(target) = buf.cell_mut((area.x + x as u16, y)) else {
                     continue;
@@ -52,6 +65,12 @@ impl Widget for PaneView<'_> {
                     target.set_symbol(&cell.text());
                 }
                 target.set_style(StyleConverter::style(&cell.style));
+                if self
+                    .selection
+                    .is_some_and(|s| s.contains(y_index as i64, x as u16))
+                {
+                    target.modifier.toggle(Modifier::REVERSED);
+                }
             }
         }
     }
@@ -109,5 +128,23 @@ mod tests {
             Some(Position::new(7, 6))
         );
         assert_eq!(view.cursor_position(Rect::new(0, 0, 2, 2)), None);
+    }
+
+    #[test]
+    fn selection_is_drawn_in_reverse_video() {
+        let screen = screen();
+        let span = SelectionSpan {
+            start_row: 0,
+            start_col: 1,
+            end_row: 1,
+            end_col: 0,
+        };
+        let mut buf = Buffer::empty(Rect::new(0, 0, 4, 2));
+        PaneView::new(&screen)
+            .with_selection(Some(span))
+            .render(buf.area, &mut buf);
+        let reversed = |x, y| buf[(x, y)].modifier.contains(Modifier::REVERSED);
+        assert!(!reversed(0, 0) && reversed(1, 0) && reversed(3, 0));
+        assert!(reversed(0, 1) && !reversed(1, 1));
     }
 }

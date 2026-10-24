@@ -5,7 +5,7 @@ use ratatui::Frame;
 use ratatui::layout::Rect;
 
 use super::AttachState;
-use crate::{PaneView, StatusLine};
+use crate::{PaneView, SelectionSpan, StatusLine};
 
 /// Rows the client keeps for itself at the bottom of the host terminal.
 const STATUS_ROWS: u16 = 1;
@@ -16,6 +16,8 @@ pub struct AttachView<'a> {
     pub state: &'a AttachState,
     /// The bottom bar.
     pub status: StatusLine<'a>,
+    /// The focused pane's selection, in its viewport coordinates.
+    pub selection: Option<SelectionSpan>,
 }
 
 impl AttachView<'_> {
@@ -48,10 +50,9 @@ impl AttachView<'_> {
             };
             let rect =
                 Rect::new(pane.x, pane.y, pane.size.cols, pane.size.rows).intersection(pane_rect);
-            let view = PaneView::new(screen);
-            if Some(pane.pane) == layout.focus
-                && let Some(pos) = view.cursor_position(rect)
-            {
+            let focused = Some(pane.pane) == layout.focus;
+            let view = PaneView::new(screen).with_selection(self.selection.filter(|_| focused));
+            if focused && let Some(pos) = view.cursor_position(rect) {
                 frame.set_cursor_position(pos);
             }
             frame.render_widget(view, rect);
@@ -72,6 +73,7 @@ mod tests {
             title: None,
             prefix: "ctrl+b",
             pending: false,
+            message: None,
         }
     }
 
@@ -94,6 +96,7 @@ mod tests {
         let view = AttachView {
             state: &state,
             status: status(),
+            selection: None,
         };
         term.draw(|f| view.draw(f)).expect("draw");
         let buf = term.backend().buffer();

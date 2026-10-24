@@ -1,5 +1,7 @@
 //! What a mouse event turns into.
 
+use super::SelectEvent;
+
 /// The outcome of routing one mouse event.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MouseAction {
@@ -7,6 +9,8 @@ pub enum MouseAction {
     Forward(Vec<u8>),
     /// Scroll the focused pane's view: positive into history.
     Scroll(i32),
+    /// A selection gesture for the main loop.
+    Select(SelectEvent),
     /// Nothing to do.
     Ignore,
 }

@@ -37,6 +37,7 @@ monarch-tui = { package = "monarch-mux-tui", path = "crates/monarch-tui", versio
 monarch-cli = { package = "monarch-mux-cli", path = "crates/monarch-cli", version = "0.1.0" }
 
 anyhow = "1"
+base64 = "0.22"
 clap = { version = "4.6", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
 serde_ignored = "0.1"

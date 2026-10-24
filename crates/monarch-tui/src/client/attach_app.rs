@@ -14,9 +14,11 @@ use ratatui::crossterm::{execute, queue};
 
 use super::{
     Applied, AttachOptions, AttachOutcome, AttachState, AttachView, ClientEvent, InputParams,
-    InputThread, PROBE_TIMEOUT, ServerLink, SharedFocus, WindowTitle,
+    InputThread, PROBE_TIMEOUT, Selection, ServerLink, SharedFocus, WindowTitle,
 };
 use crate::{HostModeMirror, HostProbe, StatusLine, TuiError};
+
+mod select;
 
 /// Minimum time between frames drawn to the host.
 const FRAME: Duration = Duration::from_millis(16);
@@ -35,6 +37,8 @@ pub struct AttachApp {
     focus: Arc<SharedFocus>,
     opts: AttachOptions,
     prefix_pending: bool,
+    selection: Option<Selection>,
+    notice: Option<(String, Instant)>,
     out: Vec<u8>,
     size: ScreenSize,
     dirty: bool,
@@ -97,6 +101,8 @@ impl AttachApp {
             focus,
             opts: opts.clone(),
             prefix_pending: false,
+            selection: None,
+            notice: None,
             out,
             size,
             dirty: true,
@@ -118,6 +124,7 @@ impl AttachApp {
                 return Ok(outcome);
             }
             self.check_resize()?;
+            self.expire_notice();
             if self.dirty && self.last_draw.elapsed() >= FRAME {
                 self.draw()?;
             }
@@ -142,6 +149,8 @@ impl AttachApp {
                 self.prefix_pending = pending;
                 self.dirty = true;
             }
+            ClientEvent::Select(gesture) => self.on_select(gesture),
+            ClientEvent::Typed => self.on_typed(),
             ClientEvent::Command(_) | ClientEvent::Host(_) => {}
         }
         None
@@ -202,7 +211,9 @@ impl AttachApp {
                 title: self.state.focused_title(),
                 prefix: &self.opts.prefix_label,
                 pending: self.prefix_pending,
+                message: self.notice.as_ref().map(|(text, _)| text.as_str()),
             },
+            selection: self.selection_span(),
         };
         self.ui.draw(|frame| view.draw(frame)).map_err(io)?;
         if self.host.sync_output {

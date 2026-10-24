@@ -7,11 +7,13 @@ Plays the host terminal for `monarch attach` and checks that:
 * the wheel scrolls a shell's history, and typing returns to live output;
 * a pane that enabled SGR tracking gets SGR reports with pane coordinates;
 * a pane that enabled X10 tracking gets X10 bytes (re-encoded from SGR);
-* on the alternate screen without tracking, the wheel becomes arrow keys.
+* on the alternate screen without tracking, the wheel becomes arrow keys;
+* drag and double-click select text and copy it to the host with OSC 52.
 
 Usage: python3 scripts/spike5_mouse_smoke.py target/debug/monarch
 """
 
+import base64
 import fcntl
 import os
 import pty
@@ -48,8 +50,10 @@ class Host:
     """The host terminal around one `monarch attach`."""
 
     def __init__(self, binary, run, session):
+        # SSH_CONNECTION keeps copies on OSC 52 only: no pbcopy clobbering
+        # the clipboard of whoever runs the tests.
         env = dict(os.environ, XDG_RUNTIME_DIR=run, SHELL="/bin/sh", PS1="$ ",
-                   MONARCH_CONFIG=os.path.join(run, "none.toml"))
+                   MONARCH_CONFIG=os.path.join(run, "none.toml"), SSH_CONNECTION="smoke")
         for var in ("MONARCH_PANE", "MONARCH_SESSION", "TMUX"):
             env.pop(var, None)
         self.pid, self.fd = pty.fork()
@@ -110,6 +114,23 @@ def wheel_scrolls_history(host):
     print("  wheel: scrolls shell history 15 lines; a key returns to live output")
 
 
+def osc52(text):
+    return b"\x1b]52;c;" + base64.b64encode(text.encode()) + b"\x1b\\"
+
+
+def selection_copies(host):
+    host.type(b"clear; echo alpha beta-gamma delta\r")
+    host.wait_for(b"delta", "echo output")
+    host.pump(0.5)
+    # After `clear` the output is on the first row: "alpha beta-gamma delta".
+    host.type(b"\x1b[<0;7;1M\x1b[<0;7;1m\x1b[<0;7;1M\x1b[<0;7;1m")
+    host.wait_for(osc52("beta-gamma"), "double-click copy")
+    host.wait_for(b"copied 10 characters", "copy notice")
+    host.type(b"\x1b[<0;1;1M\x1b[<32;5;1M\x1b[<0;5;1m")
+    host.wait_for(osc52("alpha"), "drag copy")
+    print("  selection: double-click copies a word, drag copies a range (OSC 52), notice shown")
+
+
 def recorder(host, run, name, setup):
     dump = os.path.join(run, name)
     open(dump, "wb").close()
@@ -145,6 +166,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="monarch-spike5-") as run:
         host = Host(binary, run, "shell")
         wheel_scrolls_history(host)
+        selection_copies(host)
         host.end()
 
         tracking_pane(binary, run, "sgr", b"\x1b[?1000h\x1b[?1006h",
