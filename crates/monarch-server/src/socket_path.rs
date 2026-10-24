@@ -7,6 +7,10 @@ use std::path::{Path, PathBuf};
 
 use crate::ServerError;
 
+/// The longest socket path every supported OS accepts: macOS's `sun_path`
+/// holds 104 bytes including the terminating NUL (Linux allows 108).
+pub const MAX_SOCKET_PATH: usize = 103;
+
 /// Resolves and prepares `<runtime dir>/<session>.sock`: under
 /// `$XDG_RUNTIME_DIR/monarch/`, else `$TMPDIR/monarch-<uid>/`, else
 /// `/tmp/monarch-<uid>/`, in a directory only the user can enter.
@@ -17,7 +21,8 @@ impl SocketPath {
     /// The socket path for `session`, creating its private directory.
     ///
     /// # Errors
-    /// The session name is not file-safe or the directory cannot be made.
+    /// The session name is not file-safe, the path would be too long for a
+    /// Unix socket, or the directory cannot be made.
     pub fn for_session(session: &str) -> Result<PathBuf, ServerError> {
         Self::validate(session)?;
         let uid = rustix::process::getuid().as_raw();
@@ -26,8 +31,22 @@ impl SocketPath {
             std::env::var_os("TMPDIR"),
             uid,
         );
+        let path = Self::checked(dir.join(format!("{session}.sock")))?;
         Self::ensure_private_dir(&dir)?;
-        Ok(dir.join(format!("{session}.sock")))
+        Ok(path)
+    }
+
+    /// `path` if it fits in a Unix socket address.
+    fn checked(path: PathBuf) -> Result<PathBuf, ServerError> {
+        let len = path.as_os_str().len();
+        if len > MAX_SOCKET_PATH {
+            return Err(ServerError::SocketPathTooLong {
+                path,
+                len,
+                max: MAX_SOCKET_PATH,
+            });
+        }
+        Ok(path)
     }
 
     /// Session names are file names: letters, digits, `-`, `_`, `.`.
@@ -66,6 +85,15 @@ impl SocketPath {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn over_long_paths_are_refused_with_the_reason() {
+        let short = PathBuf::from("/tmp/monarch-501/main.sock");
+        assert_eq!(SocketPath::checked(short.clone()).ok(), Some(short));
+        let long = PathBuf::from(format!("/tmp/{}.sock", "s".repeat(100)));
+        let err = SocketPath::checked(long).expect_err("too long");
+        assert!(err.to_string().contains("shorter session name"), "{err}");
+    }
 
     #[test]
     fn prefers_xdg_runtime_dir_then_tmpdir_then_tmp() {

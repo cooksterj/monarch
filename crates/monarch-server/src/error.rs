@@ -34,6 +34,18 @@ pub enum ServerError {
     /// Session names become file names, so they are restricted.
     #[error("invalid session name {0:?}: use letters, digits, '-', '_' or '.'")]
     InvalidSession(String),
+    /// Unix socket paths are short (104 bytes on macOS, 108 on Linux).
+    #[error(
+        "socket path {path:?} is {len} bytes, over the {max}-byte limit; use a shorter session name"
+    )]
+    SocketPathTooLong {
+        /// The path that would be used.
+        path: std::path::PathBuf,
+        /// Its length in bytes.
+        len: usize,
+        /// The limit.
+        max: usize,
+    },
 }
 
 impl ServerError {
