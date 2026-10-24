@@ -10,6 +10,7 @@ mod agent_state;
 mod config;
 mod error;
 mod ids;
+mod keymap;
 mod layout;
 
 pub use action::{Action, RESIZE_STEP};
@@ -21,4 +22,5 @@ pub use config::{
 };
 pub use error::CoreError;
 pub use ids::{ClientId, PaneId, TabId};
+pub use keymap::{Key, Keymap, KeymapPreset};
 pub use layout::{Direction, Rect, SplitAxis, SplitTree, Tab};

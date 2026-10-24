@@ -86,6 +86,30 @@ impl Tab {
         next != at && self.focus(panes[next])
     }
 
+    /// Swaps the focused pane with its neighbour in `dir`; focus moves
+    /// with the pane. Returns whether anything moved.
+    pub fn swap_towards(&mut self, area: Rect, dir: Direction) -> bool {
+        self.tree
+            .neighbour(area, self.focus, dir)
+            .is_some_and(|other| self.tree.swap(self.focus, other))
+    }
+
+    /// Swaps the focused pane with the next (or previous) one in reading
+    /// order; focus moves with the pane.
+    pub fn swap_cycle(&mut self, forward: bool) -> bool {
+        let panes = self.tree.panes();
+        let Some(at) = panes.iter().position(|p| *p == self.focus) else {
+            return false;
+        };
+        let len = panes.len();
+        let other = if forward {
+            (at + 1) % len
+        } else {
+            (at + len - 1) % len
+        };
+        other != at && self.tree.swap(self.focus, panes[other])
+    }
+
     /// Removes `pane`. When it had focus, focus goes to the pane that took
     /// its space. Returns `true` when the tab is now empty.
     pub fn remove(&mut self, area: Rect, pane: PaneId) -> bool {
@@ -145,6 +169,18 @@ mod tests {
         assert!(tab.focus_cycle(true));
         assert_eq!(tab.focus, A, "wraps");
         assert!(!tab.focus(PaneId(9)));
+    }
+
+    #[test]
+    fn swaps_keep_focus_on_the_moved_pane() {
+        let mut tab = Tab::new(A);
+        tab.split(B, SplitAxis::Columns); // A | B, B focused
+        assert!(tab.swap_towards(AREA, Direction::Left));
+        assert_eq!((tab.tree.panes(), tab.focus), (vec![B, A], B));
+        assert!(!tab.swap_towards(AREA, Direction::Left), "edge");
+        assert!(tab.swap_cycle(true));
+        assert_eq!(tab.tree.panes(), [A, B]);
+        assert!(!Tab::new(A).swap_cycle(true), "alone");
     }
 
     #[test]

@@ -1,5 +1,6 @@
 //! The one-row bar that shows you are inside Monarch.
 
+use monarch_core::Key;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
@@ -15,6 +16,8 @@ pub struct StatusLine<'a> {
     pub title: Option<&'a str>,
     /// The prefix as configured, e.g. `ctrl+b`.
     pub prefix: &'a str,
+    /// The key bound to detach, if any, for the hint.
+    pub detach: Option<Key>,
     /// The prefix was pressed and Monarch waits for a command key.
     pub pending: bool,
     /// A short notice (e.g. "copied 12 characters") shown instead of the
@@ -31,10 +34,14 @@ impl StatusLine<'_> {
     }
 
     fn right(&self) -> String {
-        if self.pending {
-            " PREFIX │ d detach ".to_owned()
+        let lead = if self.pending {
+            "PREFIX │"
         } else {
-            format!(" {} d detach ", self.prefix)
+            self.prefix
+        };
+        match self.detach {
+            Some(key) => format!(" {lead} {key} detach "),
+            None => format!(" {lead} "),
         }
     }
 }
@@ -96,6 +103,7 @@ mod tests {
             session: "main",
             title,
             prefix: "ctrl+b",
+            detach: Some(Key::Char('d')),
             pending,
             message: None,
         }
@@ -109,6 +117,20 @@ mod tests {
     #[test]
     fn pending_prefix_is_announced() {
         insta::assert_snapshot!(draw(line(None, true), 40), @" monarch │ main       PREFIX │ d detach ");
+    }
+
+    #[test]
+    fn the_hint_follows_the_keymap() {
+        let herdr = StatusLine {
+            detach: Some(Key::Char('q')),
+            ..line(None, false)
+        };
+        insta::assert_snapshot!(draw(herdr, 40), @" monarch │ main         ctrl+b q detach ");
+        let unbound = StatusLine {
+            detach: None,
+            ..line(None, true)
+        };
+        insta::assert_snapshot!(draw(unbound, 30), @" monarch │ main      PREFIX │ ");
     }
 
     #[test]

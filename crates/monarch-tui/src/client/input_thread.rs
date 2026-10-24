@@ -303,7 +303,10 @@ mod tests {
 
         assert!(matches!(rx.recv(), Ok(ClientEvent::Host(_))));
         assert_eq!(rx.recv().ok(), Some(ClientEvent::Typed), "after `hi`");
-        assert_eq!(rx.recv().ok(), Some(ClientEvent::Command(b'd')));
+        assert_eq!(
+            rx.recv().ok(),
+            Some(ClientEvent::Command(monarch_core::Key::Char('d')))
+        );
         assert_eq!(rx.recv().ok(), Some(ClientEvent::InputClosed));
         let mut wire = Vec::new();
         theirs.read_to_end(&mut wire).expect("read");

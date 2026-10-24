@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use monarch_core::MouseMode;
+use monarch_core::{Keymap, MouseMode};
 
 /// Where the session is, which key is the prefix and how to title the host.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -19,6 +19,10 @@ pub struct AttachOptions {
     pub window_title: String,
     /// `[ui].mouse` capture policy.
     pub mouse: MouseMode,
+    /// What each key after the prefix does.
+    pub keymap: Keymap,
+    /// Problems with the config, shown once the client is up.
+    pub warnings: Vec<String>,
 }
 
 #[cfg(test)]
@@ -34,6 +38,8 @@ mod tests {
             prefix_label: "ctrl+b".into(),
             window_title: "{title}".into(),
             mouse: MouseMode::Auto,
+            keymap: Keymap::default(),
+            warnings: Vec::new(),
         };
         assert_eq!(opts.prefix, 0x02);
         assert!(opts.socket.ends_with("m.sock"));

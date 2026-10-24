@@ -4,7 +4,7 @@ use std::io::Write;
 use std::process::ExitCode;
 
 use anyhow::Context;
-use monarch_core::Config;
+use monarch_core::{Action, Config, Keymap};
 use monarch_server::SocketPath;
 use monarch_tui::{AttachApp, AttachOptions, AttachOutcome};
 
@@ -30,6 +30,7 @@ pub(crate) fn run(
         .keys
         .prefix_byte()
         .with_context(|| format!("prefix `{}` is not a ctrl+key chord", config.keys.prefix))?;
+    let (keymap, warnings) = Keymap::from_config(&config.keys);
     let socket = SocketPath::for_session(&session)?;
     ensure_server(&session, &socket, &args.agents)?;
     let outcome = AttachApp::attach(&AttachOptions {
@@ -39,6 +40,8 @@ pub(crate) fn run(
         prefix_label: config.keys.prefix.clone(),
         window_title: config.ui.window_title.clone(),
         mouse: config.ui.mouse,
+        keymap,
+        warnings,
     })?;
     writeln!(out, "{}", farewell(&session, outcome))?;
     Ok(ExitCode::SUCCESS)
@@ -56,10 +59,13 @@ fn refuse_nesting(
         return Ok(());
     }
     let session = session.unwrap_or("?");
+    let detach = match Keymap::from_config(&config.keys).0.key_for(Action::Detach) {
+        Some(key) => format!("press {} {key} to detach", config.keys.prefix),
+        None => "detach".to_owned(),
+    };
     anyhow::bail!(
-        "already inside monarch session `{session}`; press {} d to detach instead \
-         (to nest a session deliberately, run with MONARCH_PANE unset)",
-        config.keys.prefix
+        "already inside monarch session `{session}`; {detach} instead \
+         (to nest a session deliberately, run with MONARCH_PANE unset)"
     )
 }
 
@@ -95,6 +101,10 @@ mod tests {
         assert!(text.contains("inside monarch session `main`"), "{text}");
         assert!(text.contains("ctrl+b d"), "{text}");
         assert!(refuse_nesting(None, Some("main"), &config).is_ok());
+        let mut herdr = Config::default();
+        herdr.keys.preset = "herdr".into();
+        let err = refuse_nesting(Some("1"), None, &herdr).expect_err("refused");
+        assert!(err.to_string().contains("ctrl+b q"), "{err}");
     }
 
     #[test]

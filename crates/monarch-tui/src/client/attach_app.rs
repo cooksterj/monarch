@@ -7,6 +7,7 @@ use std::sync::Arc;
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
 use std::time::{Duration, Instant};
 
+use monarch_core::{Action, Key};
 use monarch_proto::{ClientMsg, HostInfo, ScreenSize};
 use ratatui::DefaultTerminal;
 use ratatui::crossterm::terminal::{BeginSynchronizedUpdate, EndSynchronizedUpdate};
@@ -22,10 +23,8 @@ mod select;
 
 /// Minimum time between frames drawn to the host.
 const FRAME: Duration = Duration::from_millis(16);
-/// Detach key pressed after the prefix.
-const DETACH: u8 = b'd';
-/// Mouse passthrough toggle pressed after the prefix.
-const MOUSE_TOGGLE: u8 = b'm';
+/// How long config warnings stay in the status line.
+const WARNING: Duration = Duration::from_secs(8);
 
 /// A running attach session.
 pub struct AttachApp {
@@ -88,6 +87,8 @@ impl AttachApp {
         mirror.enter(&mut out);
         let state = AttachState::new();
         let last_draw = Instant::now() - FRAME;
+        let notice = (!opts.warnings.is_empty())
+            .then(|| (opts.warnings.join("; "), Instant::now() + WARNING));
         Ok(Self {
             ui,
             link,
@@ -101,7 +102,7 @@ impl AttachApp {
             prefix_pending: false,
             selection: None,
             passthrough: false,
-            notice: None,
+            notice,
             out,
             size,
             dirty: true,
@@ -139,19 +140,31 @@ impl AttachApp {
                 self.after_apply(applied);
             }
             ClientEvent::ServerClosed => return Some(AttachOutcome::ServerExited),
-            ClientEvent::Command(DETACH) => {
-                let _ = self.link.send(&ClientMsg::Detach);
-                return Some(AttachOutcome::Detached);
-            }
+            ClientEvent::Command(key) => return self.on_command(key),
             ClientEvent::InputClosed => return Some(AttachOutcome::Detached),
             ClientEvent::Prefix(pending) => {
                 self.prefix_pending = pending;
                 self.dirty = true;
             }
-            ClientEvent::Command(MOUSE_TOGGLE) => self.toggle_mouse(),
             ClientEvent::Select(gesture) => self.on_select(gesture),
             ClientEvent::Typed => self.on_typed(),
-            ClientEvent::Command(_) | ClientEvent::Host(_) => {}
+            ClientEvent::Host(_) => {}
+        }
+        None
+    }
+
+    /// Runs what `key` is bound to: client actions here, the rest on the
+    /// server.
+    fn on_command(&mut self, key: Key) -> Option<AttachOutcome> {
+        match self.opts.keymap.action(key)? {
+            Action::Detach => {
+                let _ = self.link.send(&ClientMsg::Detach);
+                return Some(AttachOutcome::Detached);
+            }
+            Action::ToggleMouse => self.toggle_mouse(),
+            action => {
+                let _ = self.link.send(&ClientMsg::Action(action));
+            }
         }
         None
     }
@@ -216,6 +229,7 @@ impl AttachApp {
                 session: &self.opts.session,
                 title: self.state.focused_title(),
                 prefix: &self.opts.prefix_label,
+                detach: self.opts.keymap.key_for(Action::Detach),
                 pending: self.prefix_pending,
                 message: self.notice.as_ref().map(|(text, _)| text.as_str()),
             },
@@ -287,7 +301,7 @@ mod tests {
         let (tx, rx) = mpsc::channel();
         tx.send(ClientEvent::Server(ServerMsg::Pong(1)))
             .expect("send");
-        tx.send(ClientEvent::Command(b'x')).expect("send");
+        tx.send(ClientEvent::Command(Key::Char('x'))).expect("send");
         tx.send(ClientEvent::Host(HostInfo::default()))
             .expect("send");
         let (_, backlog) = wait_for_host(&rx);
@@ -295,7 +309,7 @@ mod tests {
             Vec::from(backlog),
             [
                 ClientEvent::Server(ServerMsg::Pong(1)),
-                ClientEvent::Command(b'x')
+                ClientEvent::Command(Key::Char('x'))
             ]
         );
     }

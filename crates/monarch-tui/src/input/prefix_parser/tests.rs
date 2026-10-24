@@ -2,6 +2,8 @@
 
 use proptest::prelude::*;
 
+use monarch_core::Direction;
+
 use super::*;
 
 const P: u8 = 0x02;
@@ -31,6 +33,57 @@ fn fwd(b: &[u8]) -> InputEvent {
     InputEvent::Forward(b.to_vec())
 }
 
+fn cmd(c: char) -> InputEvent {
+    InputEvent::Command(Key::Char(c))
+}
+
+fn arrow(d: Direction) -> InputEvent {
+    InputEvent::Command(Key::Arrow(d))
+}
+
+#[test]
+fn prefix_then_arrow_is_a_command_not_pane_input() {
+    assert_eq!(parse(&[b"\x02\x1b[D"]), [arrow(Direction::Left)]);
+    assert_eq!(parse(&[b"\x02\x1bOA"]), [arrow(Direction::Up)]);
+    assert_eq!(
+        parse(&[b"\x02\x1b[1;5C", b"x"]),
+        [arrow(Direction::Right), fwd(b"x")]
+    );
+    assert_eq!(parse(&[b"\x02\x1b[", b"B"]), [arrow(Direction::Down)]);
+}
+
+#[test]
+fn prefix_then_esc_alone_is_the_esc_key() {
+    assert_eq!(
+        parse(&[b"\x02\x1b", b"a"]),
+        [InputEvent::Command(Key::Esc), fwd(b"a")]
+    );
+    assert_eq!(
+        parse(&[b"\x02\x1b[98;1:1u"]).len(),
+        1,
+        "a kitty key is one command"
+    );
+    assert_eq!(parse(&[b"\x02\x1b[27u"]), [InputEvent::Command(Key::Esc)]);
+}
+
+#[test]
+fn unbound_sequences_after_the_prefix_are_swallowed() {
+    assert_eq!(parse(&[b"\x02\x1b[15~a"]), [fwd(b"a")], "F5");
+    assert_eq!(parse(&[b"\x02\x1bxa"]), [fwd(b"a")], "alt+x");
+    assert_eq!(parse(&[b"\x02\x01a"]), [fwd(b"a")], "ctrl+a");
+}
+
+#[test]
+fn a_mouse_report_after_the_prefix_reaches_the_pane_and_the_prefix_waits() {
+    let mut parser = PrefixParser::new(P);
+    let mut out = Vec::new();
+    parser.feed(b"\x02\x1b[<35;4;4M", &mut out);
+    assert_eq!(out, [fwd(b"\x1b[<35;4;4M")]);
+    assert!(parser.awaiting_command());
+    parser.feed(b"z", &mut out);
+    assert_eq!(out.last(), Some(&cmd('z')));
+}
+
 #[test]
 fn plain_input_passes_through_untouched() {
     let keys = b"ls -la\r\x1b[A\x1b[1;2A\x1b[13;2u\x1bx\x1b";
@@ -39,10 +92,7 @@ fn plain_input_passes_through_untouched() {
 
 #[test]
 fn prefix_and_command_in_one_read() {
-    assert_eq!(
-        parse(&[b"ab\x02qcd"]),
-        [fwd(b"ab"), InputEvent::Command(b'q'), fwd(b"cd")]
-    );
+    assert_eq!(parse(&[b"ab\x02qcd"]), [fwd(b"ab"), cmd('q'), fwd(b"cd")]);
 }
 
 #[test]
@@ -52,7 +102,7 @@ fn prefix_and_command_in_separate_reads() {
     parser.feed(b"\x02", &mut out);
     assert!(parser.awaiting_command());
     parser.feed(b"%", &mut out);
-    assert_eq!(out, [InputEvent::Command(b'%')]);
+    assert_eq!(out, [cmd('%')]);
 }
 
 #[test]
@@ -66,24 +116,18 @@ fn prefix_inside_bracketed_paste_belongs_to_the_pane() {
     assert_eq!(parse(&[paste]), [fwd(paste)]);
     // After the paste ends, the prefix works again.
     let after = parse(&[paste, b"\x02d"]);
-    assert_eq!(after.last(), Some(&InputEvent::Command(b'd')));
+    assert_eq!(after.last(), Some(&cmd('d')));
 }
 
 #[test]
 fn paste_markers_split_across_reads() {
     let out = normalise(parse(&[b"\x1b[20", b"0~x\x02", b"y\x1b[2", b"01~\x02z"]));
-    assert_eq!(
-        out,
-        [fwd(b"\x1b[200~x\x02y\x1b[201~"), InputEvent::Command(b'z')]
-    );
+    assert_eq!(out, [fwd(b"\x1b[200~x\x02y\x1b[201~"), cmd('z')]);
 }
 
 #[test]
 fn kitty_encoded_prefix_and_command() {
-    assert_eq!(
-        parse(&[b"a\x1b[98;5uqb"]),
-        [fwd(b"a"), InputEvent::Command(b'q'), fwd(b"b")]
-    );
+    assert_eq!(parse(&[b"a\x1b[98;5uqb"]), [fwd(b"a"), cmd('q'), fwd(b"b")]);
 }
 
 #[test]
@@ -96,10 +140,7 @@ fn kitty_command_key_and_releases_are_consumed() {
         b"\x1b[98;5:3u",
         b"\x1b[120u",
     ];
-    assert_eq!(
-        normalise(parse(keys)),
-        [InputEvent::Command(b'q'), fwd(b"\x1b[120u")]
-    );
+    assert_eq!(normalise(parse(keys)), [cmd('q'), fwd(b"\x1b[120u")]);
 }
 
 #[test]
@@ -133,7 +174,12 @@ proptest! {
         ], 0..64),
         cuts in prop::collection::vec(any::<prop::sample::Index>(), 0..5),
     ) {
-        let mut points: Vec<usize> = cuts.iter().map(|c| c.index(bytes.len() + 1)).collect();
+        // Hosts write each escape sequence whole, so no read ends on an ESC.
+        let mut points: Vec<usize> = cuts
+            .iter()
+            .map(|c| c.index(bytes.len() + 1))
+            .filter(|&p| p == 0 || bytes[p - 1] != 0x1b)
+            .collect();
         points.sort_unstable();
         let mut chunks = Vec::new();
         let mut start = 0;

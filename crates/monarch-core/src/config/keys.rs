@@ -1,5 +1,7 @@
 //! `[keys]`: the prefix chord and which binding preset to start from.
 
+use std::collections::BTreeMap;
+
 use serde::{Deserialize, Serialize};
 
 /// Keyboard configuration. Individual bindings are layered on top of the
@@ -16,6 +18,9 @@ pub struct KeysConfig {
     pub repeat_ms: u64,
     /// Milliseconds after the prefix before the which-key popup appears.
     pub which_key_delay_ms: u64,
+    /// Bindings layered on the preset: key → action name, or `"none"` to
+    /// remove one (`"v" = "split-right"`).
+    pub bind: BTreeMap<String, String>,
 }
 
 impl Default for KeysConfig {
@@ -25,6 +30,7 @@ impl Default for KeysConfig {
             preset: "monarch".into(),
             repeat_ms: 500,
             which_key_delay_ms: 300,
+            bind: BTreeMap::new(),
         }
     }
 }

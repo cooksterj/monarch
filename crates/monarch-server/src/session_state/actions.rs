@@ -17,6 +17,10 @@ pub enum ActionEffect {
 impl SessionState {
     /// Applies `action` to the shown tab.
     pub fn apply_action(&mut self, action: Action) -> ActionEffect {
+        if action == Action::ClosePane {
+            self.close_focused();
+            return ActionEffect::Done;
+        }
         let before = self.visible_panes();
         let area = self.area();
         let tabs = self.tabs.len();
@@ -26,16 +30,12 @@ impl SessionState {
         let changed = match action {
             Action::Split(axis) => return ActionEffect::Spawn(Placement::Split(axis)),
             Action::NewTab => return ActionEffect::Spawn(Placement::Tab { activate: true }),
-            Action::ClosePane => {
-                // The pane goes when its program exits, like any other.
-                if let Some(entry) = self.panes.get(&tab.focus) {
-                    entry.io.close();
-                }
-                false
-            }
             Action::Focus(dir) => tab.focus_towards(area, dir),
             Action::FocusNext => tab.focus_cycle(true),
             Action::FocusPrev => tab.focus_cycle(false),
+            Action::Swap(dir) => tab.swap_towards(area, dir),
+            Action::SwapNext => tab.swap_cycle(true),
+            Action::SwapPrev => tab.swap_cycle(false),
             Action::Resize(dir) => {
                 !tab.zoomed && tab.tree.resize(area, tab.focus, dir, RESIZE_STEP)
             }
@@ -57,6 +57,14 @@ impl SessionState {
             self.arrange(&before);
         }
         ActionEffect::Done
+    }
+
+    /// Ends the focused pane's program; the pane goes when it exits, like
+    /// any other.
+    fn close_focused(&self) {
+        if let Some(entry) = self.focus().and_then(|id| self.panes.get(&id)) {
+            entry.io.close();
+        }
     }
 
     /// Shows tab `index`; returns whether that changed anything.

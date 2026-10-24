@@ -107,6 +107,7 @@ impl Client {
                 session: "reattach",
                 title: self.state.focused_title(),
                 prefix: "ctrl+b",
+                detach: None,
                 pending: false,
                 message: None,
             },

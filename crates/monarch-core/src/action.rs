@@ -3,6 +3,8 @@
 
 use serde::{Deserialize, Serialize};
 
+mod names;
+
 use crate::{Direction, SplitAxis};
 
 /// Cells a single resize step moves a divider.
@@ -24,6 +26,12 @@ pub enum Action {
     FocusNext,
     /// Focus the previous pane in reading order.
     FocusPrev,
+    /// Swap the focused pane with its neighbour; focus moves with it.
+    Swap(Direction),
+    /// Swap the focused pane with the next pane in reading order.
+    SwapNext,
+    /// Swap the focused pane with the previous pane in reading order.
+    SwapPrev,
     /// Move the focused pane's divider [`RESIZE_STEP`] cells.
     Resize(Direction),
     /// Make the focused pane fill its tab, or restore the layout.

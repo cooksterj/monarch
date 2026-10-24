@@ -86,6 +86,16 @@ def run_all(binary):
         first.wait_for(f"`{SESSION}`;".encode(), "nested attach refused")  # spaces are cursor moves
         first.wait_for(b"monarch \xe2\x94\x82 " + SESSION.encode(), "status line")
         first.wait_for(b"\x1b]2;monarch:" + SESSION.encode(), "window title")
+        os.write(first.fd, b"\x02%")
+        time.sleep(0.5)
+        os.write(first.fd, b"echo split-$((1+1))\r")
+        first.wait_for(b"split-2", "output in the new split pane")
+        os.write(first.fd, b"\x02\x1b[D")  # prefix, then the left arrow
+        time.sleep(0.3)
+        os.write(first.fd, b"echo left-$((2+3))\r")
+        first.wait_for(b"left-5", "output after focusing left")
+        assert b"[Decho" not in first.seen, "the arrow leaked into the pane"
+        print("  keys: prefix % split the window, prefix left focused the first pane")
         os.write(first.fd, b"\x02")
         first.wait_for(b"PREFIX", "prefix indicator")
         os.write(first.fd, b"d")
@@ -94,12 +104,14 @@ def run_all(binary):
         print("  attach: auto-started server, nested attach refused, status line + title shown, typed, prefix shown, detached")
 
         second = Client(binary, env)
-        second.wait_for(b"monarch-42", "restored screen on reattach")
+        second.wait_for(b"left-5", "restored screen on reattach")
+        os.write(second.fd, b"exit\r")  # one pane per split
+        time.sleep(0.5)
         os.write(second.fd, b"exit\r")
         second.wait_for(f"[session {SESSION} ended]".encode(), "session end message")
         second.finish()
         assert not os.path.exists(os.path.join(run, "monarch", f"{SESSION}.sock")), "socket left behind"
-        print("  reattach: screen restored; exiting the shell ends the session")
+        print("  reattach: screen restored; exiting both shells ends the session")
     print("spike4 attach smoke: ok")
 
 
