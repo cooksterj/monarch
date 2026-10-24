@@ -1,5 +1,5 @@
 [package]
-name = "monarch-server"
+name = "monarch-mux-server"
 description = "Monarch session server: PTYs, emulators, agent state, API"
 version.workspace = true
 edition.workspace = true
@@ -8,6 +8,9 @@ license.workspace = true
 repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
+
+[lib]
+name = "monarch_server"
 
 [dependencies]
 monarch-core.workspace = true

@@ -1,5 +1,5 @@
 [package]
-name = "monarch-cli"
+name = "monarch-mux-cli"
 description = "Monarch command-line interface"
 version.workspace = true
 edition.workspace = true
@@ -8,6 +8,9 @@ license.workspace = true
 repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
+
+[lib]
+name = "monarch_cli"
 
 [dependencies]
 monarch-core.workspace = true

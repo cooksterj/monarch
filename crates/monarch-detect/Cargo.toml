@@ -1,5 +1,5 @@
 [package]
-name = "monarch-detect"
+name = "monarch-mux-detect"
 description = "Monarch agent-state detection from screen manifests"
 version.workspace = true
 edition.workspace = true
@@ -8,6 +8,9 @@ license.workspace = true
 repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
+
+[lib]
+name = "monarch_detect"
 
 [dependencies]
 monarch-core.workspace = true

@@ -1,7 +1,7 @@
 //! M1 spike 1 prototype: one pane, no chrome, everything in one process.
 //!
 //! portable-pty → `Terminal` (OscTap + alacritty) → `PaneView` → ratatui.
-//! Run with `cargo run -p monarch-tui --example single_pane [-- cmd args…]`
+//! Run with `cargo run -p monarch-mux-tui --example single_pane [-- cmd args…]`
 //! and try vim, htop, less, claude, codex. `Ctrl-b q` quits.
 //!
 //! Not yet mirrored to the host (spike 3): kitty keyboard, mouse, bracketed

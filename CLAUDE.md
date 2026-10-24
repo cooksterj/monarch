@@ -71,7 +71,15 @@ views, fixture tests for each detection manifest, `criterion` for hot paths.
 - `just test`, `just clippy`, `just lint-size`, `just deny`, `just install`.
 - `cargo run -- <args>` to try the binary.
 
-## Commits
+## Workflow: trunk-based (see CONTRIBUTING.md)
 
-Commit after each green slice (`feat(term): …`, `fix(tui): …`). Never end a session with
-uncommitted work: if tests fail, commit to a `wip/` branch and note it in Progress.
+- Never commit to `main` directly; it is protected. Branch from fresh `main` (`feat/…`, `fix/…`),
+  keep the slice small, run `just check`, push, and open a PR whose **title is a conventional
+  commit** (`feat(term): …`) — it becomes the squash commit and the changelog entry.
+- `gh pr create --fill` then `gh pr merge --auto --squash`; CI must pass before it merges.
+- Releases happen only by merging release-plz's `chore: release vX.Y.Z` PR. Don't bump versions
+  or edit `CHANGELOG.md` by hand in feature PRs.
+- Never end a session with unpushed work: push the branch (draft PR if red) and note it in
+  Progress in `docs/plan.md`.
+- Crates publish as `monarch-mux-*`; `[lib] name` keeps imports as `monarch_core` etc. Use
+  `cargo test -p monarch-mux-term`, not `-p monarch-term`.

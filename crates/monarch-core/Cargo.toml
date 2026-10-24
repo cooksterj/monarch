@@ -1,5 +1,5 @@
 [package]
-name = "monarch-core"
+name = "monarch-mux-core"
 description = "Monarch domain types, configuration, keymap and theme (no IO)"
 version.workspace = true
 edition.workspace = true
@@ -8,6 +8,9 @@ license.workspace = true
 repository.workspace = true
 homepage.workspace = true
 authors.workspace = true
+
+[lib]
+name = "monarch_core"
 
 [dependencies]
 serde.workspace = true

@@ -1,0 +1,64 @@
+# Release automation (https://release-plz.dev).
+#
+# On every push to main, release-plz keeps a "chore: release vX.Y.Z" PR up to
+# date with version bumps and a CHANGELOG generated from conventional commit
+# messages. Merging that PR publishes every crate to crates.io and pushes the
+# `vX.Y.Z` tag, which triggers cargo-dist (.github/workflows/release.yml) to
+# build binaries, the shell installer and the Homebrew formula.
+
+[workspace]
+# Release only when the release PR is merged, not on every push.
+release_always = false
+# cargo-dist creates the GitHub Release (with binaries) from the tag.
+git_release_enable = false
+# Only the installable package is tagged; internal crates ride along.
+git_tag_enable = false
+changelog_update = false
+# The public interface is the `monarch` binary, not the internal crates' APIs.
+semver_check = false
+pr_labels = ["release"]
+
+[[package]]
+name = "monarch-mux"
+version_group = "monarch"
+git_tag_enable = true
+git_tag_name = "v{{ version }}"
+changelog_update = true
+changelog_path = "CHANGELOG.md"
+changelog_include = [
+    "monarch-mux-core",
+    "monarch-mux-proto",
+    "monarch-mux-term",
+    "monarch-mux-detect",
+    "monarch-mux-server",
+    "monarch-mux-tui",
+    "monarch-mux-cli",
+]
+
+[[package]]
+name = "monarch-mux-core"
+version_group = "monarch"
+
+[[package]]
+name = "monarch-mux-proto"
+version_group = "monarch"
+
+[[package]]
+name = "monarch-mux-term"
+version_group = "monarch"
+
+[[package]]
+name = "monarch-mux-detect"
+version_group = "monarch"
+
+[[package]]
+name = "monarch-mux-server"
+version_group = "monarch"
+
+[[package]]
+name = "monarch-mux-tui"
+version_group = "monarch"
+
+[[package]]
+name = "monarch-mux-cli"
+version_group = "monarch"
