@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use futures_util::{SinkExt, StreamExt};
-use monarch_core::ClientId;
+use monarch_core::{Action, ClientId};
 use monarch_proto::{ClientMsg, FrameCodec, Hello, HelloAck, ServerMsg};
 use monarch_term::ScrollRequest;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
@@ -12,7 +12,7 @@ use tokio::net::unix::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::sync::mpsc::{self, Receiver};
 use tokio_util::codec::{FramedRead, FramedWrite};
 
-use crate::{RENDER_LANE, ServerContext, ServerError};
+use crate::{ActionEffect, RENDER_LANE, ServerContext, ServerError};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// Longest handshake line accepted.
@@ -137,9 +137,25 @@ fn handle(ctx: &ServerContext, id: ClientId, msg: ClientMsg) -> bool {
             return true;
         }
         ClientMsg::Detach => return false,
+        ClientMsg::Action(action) => {
+            drop(state);
+            run_action(ctx, action);
+            return true;
+        }
         _ => return true,
     }
     drop(state);
     ctx.wake();
     true
+}
+
+/// Applies a session command, starting a shell when it asks for one.
+fn run_action(ctx: &ServerContext, action: Action) {
+    let effect = ctx.lock().apply_action(action);
+    if let ActionEffect::Spawn(placement) = effect
+        && let Err(e) = ctx.spawn_shell_at(placement)
+    {
+        eprintln!("monarch: {e}");
+    }
+    ctx.wake();
 }

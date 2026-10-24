@@ -1,6 +1,7 @@
 //! Test doubles shared by the crate's unit tests.
 
-use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 
 use monarch_proto::ScreenSize;
 use monarch_term::Terminal;
@@ -12,6 +13,7 @@ use crate::{PaneEnv, PaneIo, PaneShared, ServerContext};
 pub struct FakePane {
     shared: PaneShared,
     pid: Option<u32>,
+    closed: Arc<AtomicBool>,
     /// Bytes passed to [`PaneIo::send`].
     pub sent: Mutex<Vec<u8>>,
 }
@@ -32,10 +34,18 @@ impl FakePane {
         Box::new(Self::sized(ScreenSize::new(80, 24), Some(pid)))
     }
 
+    /// A boxed 80×24 fake and a flag set when it is closed.
+    pub fn tracked() -> (Box<dyn PaneIo>, Arc<AtomicBool>) {
+        let fake = Self::sized(ScreenSize::new(80, 24), None);
+        let closed = Arc::clone(&fake.closed);
+        (Box::new(fake), closed)
+    }
+
     fn sized(size: ScreenSize, pid: Option<u32>) -> Self {
         Self {
             shared: PaneShared::new(Terminal::new(size, 100)),
             pid,
+            closed: Arc::new(AtomicBool::new(false)),
             sent: Mutex::new(Vec::new()),
         }
     }
@@ -50,6 +60,9 @@ impl PaneIo for FakePane {
     }
     fn process_id(&self) -> Option<u32> {
         self.pid
+    }
+    fn close(&self) {
+        self.closed.store(true, Ordering::SeqCst);
     }
 }
 

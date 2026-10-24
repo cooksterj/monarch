@@ -1,6 +1,6 @@
 //! Messages from an attached client to the server.
 
-use monarch_core::PaneId;
+use monarch_core::{Action, PaneId};
 use serde::{Deserialize, Serialize};
 
 use super::HostInfo;
@@ -36,6 +36,8 @@ pub enum ClientMsg {
     Ping(u64),
     /// The client is leaving; the session keeps running.
     Detach,
+    /// Run a session command (split, focus, tabs…).
+    Action(Action),
 }
 
 #[cfg(test)]

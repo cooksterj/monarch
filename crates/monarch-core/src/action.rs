@@ -1,0 +1,73 @@
+//! Everything a key binding can do: the one list the keymap, the command
+//! palette and the attach protocol share.
+
+use serde::{Deserialize, Serialize};
+
+use crate::{Direction, SplitAxis};
+
+/// Cells a single resize step moves a divider.
+pub const RESIZE_STEP: u16 = 2;
+
+/// A command. Most act on the session and travel to the server; a few
+/// only change the client (see [`Action::is_local`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+#[non_exhaustive]
+pub enum Action {
+    /// Split the focused pane; the new pane opens in its directory.
+    Split(SplitAxis),
+    /// Close the focused pane (its program is hung up).
+    ClosePane,
+    /// Focus the neighbouring pane.
+    Focus(Direction),
+    /// Focus the next pane in reading order.
+    FocusNext,
+    /// Focus the previous pane in reading order.
+    FocusPrev,
+    /// Move the focused pane's divider [`RESIZE_STEP`] cells.
+    Resize(Direction),
+    /// Make the focused pane fill its tab, or restore the layout.
+    ToggleZoom,
+    /// Share the tab's space evenly.
+    Equalize,
+    /// Open a tab with a shell in the focused pane's directory.
+    NewTab,
+    /// Show the next tab.
+    NextTab,
+    /// Show the previous tab.
+    PrevTab,
+    /// Show tab number `n`, counting from 1.
+    SelectTab(u8),
+    /// Leave the session running and exit the client.
+    Detach,
+    /// Hand the mouse to the host terminal, or take it back.
+    ToggleMouse,
+}
+
+impl Action {
+    /// Whether the client handles this itself instead of the server.
+    #[must_use]
+    pub fn is_local(self) -> bool {
+        matches!(self, Self::Detach | Self::ToggleMouse)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_client_actions_are_local() {
+        assert!(Action::Detach.is_local() && Action::ToggleMouse.is_local());
+        assert!(!Action::Split(SplitAxis::Rows).is_local());
+        assert!(!Action::SelectTab(1).is_local());
+    }
+
+    #[test]
+    fn actions_serialise_by_name() {
+        let json = serde_json::to_string(&Action::Focus(Direction::Left)).expect("json");
+        assert_eq!(json, r#"{"focus":"left"}"#);
+        let back: Action = serde_json::from_str(&json).expect("parse");
+        assert_eq!(back, Action::Focus(Direction::Left));
+    }
+}

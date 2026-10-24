@@ -1,19 +1,24 @@
-//! A session's panes, clients and layout: plain state behind one mutex.
+//! A session's tabs, panes and clients: plain state behind one mutex.
 //!
 //! Everything here is synchronous and never awaits, so the server's tasks
 //! hold the lock only briefly. Panes are reached through [`PaneIo`], which
-//! keeps this logic testable without PTYs.
+//! keeps this logic testable without PTYs. Arranging panes lives in
+//! `arrange`, session commands in `actions`, frames in `render`.
 
+mod actions;
+mod arrange;
 mod render;
 
 use std::collections::BTreeMap;
 
-use monarch_core::{ClientId, PaneId};
+use monarch_core::{ClientId, PaneId, Rect, Tab};
 use monarch_proto::{HostInfo, LayoutMsg, PaneLayout, ScreenSize, ServerMsg};
 use monarch_term::{HostProfile, ShadowGrid};
 use tokio::sync::mpsc::Sender;
 
-use crate::{ClientHandle, PaneIo};
+pub use actions::ActionEffect;
+
+use crate::{ClientHandle, PaneIo, Placement};
 
 /// Window size assumed until a client reports its own.
 pub const DEFAULT_SIZE: ScreenSize = ScreenSize { cols: 80, rows: 24 };
@@ -24,12 +29,15 @@ struct PaneEntry {
     shadow: ShadowGrid,
     seq: u64,
     title: Option<String>,
+    /// The size the pane was last given.
+    size: ScreenSize,
 }
 
-/// The session: panes, focus, window size, host facts and clients.
+/// The session: tabs of panes, window size, host facts and clients.
 pub struct SessionState {
     panes: BTreeMap<PaneId, PaneEntry>,
-    focus: Option<PaneId>,
+    tabs: Vec<Tab>,
+    active: usize,
     size: ScreenSize,
     generation: u32,
     host: HostInfo,
@@ -50,7 +58,8 @@ impl SessionState {
     pub fn new(size: ScreenSize) -> Self {
         Self {
             panes: BTreeMap::new(),
-            focus: None,
+            tabs: Vec::new(),
+            active: 0,
             size,
             generation: 0,
             host: HostInfo::default(),
@@ -67,36 +76,49 @@ impl SessionState {
         id
     }
 
-    /// Adds a spawned pane; the first pane takes focus.
+    /// Adds a spawned pane in a background tab (the first one is shown).
     pub fn insert_pane(&mut self, id: PaneId, io: Box<dyn PaneIo>) {
+        self.insert_pane_at(id, io, Placement::BACKGROUND);
+    }
+
+    /// Adds a spawned pane where `placement` says.
+    pub fn insert_pane_at(&mut self, id: PaneId, io: Box<dyn PaneIo>, placement: Placement) {
         io.shared().lock().set_host_profile(self.host_profile());
-        io.resize(self.size);
-        let shadow = ShadowGrid::new(self.size);
-        self.panes.insert(
-            id,
-            PaneEntry {
-                io,
-                shadow,
-                seq: 0,
-                title: None,
-            },
-        );
-        if self.focus.is_none() {
-            self.set_focus(id);
+        let entry = PaneEntry {
+            io,
+            shadow: ShadowGrid::new(self.size),
+            seq: 0,
+            title: None,
+            size: ScreenSize::new(0, 0),
+        };
+        self.panes.insert(id, entry);
+        let before = self.visible_panes();
+        let first = self.tabs.is_empty();
+        match (placement, self.tabs.get_mut(self.active)) {
+            (Placement::Split(axis), Some(tab)) => tab.split(id, axis),
+            (Placement::Tab { activate }, _) if activate || first => {
+                self.tabs.push(Tab::new(id));
+                self.active = self.tabs.len() - 1;
+            }
+            _ => self.tabs.push(Tab::new(id)),
         }
+        self.arrange(&before);
     }
 
     /// Removes a pane (its program exited). Returns `true` if none remain.
     pub fn remove_pane(&mut self, id: PaneId) -> bool {
+        let before = self.visible_panes();
         self.panes.remove(&id);
-        if self.focus == Some(id) {
-            self.focus = None;
-            if let Some(&next) = self.panes.keys().next() {
-                self.set_focus(next);
-            } else {
-                self.generation += 1;
+        let area = self.area();
+        if let Some(index) = self.tabs.iter().position(|t| t.contains(id))
+            && self.tabs[index].remove(area, id)
+        {
+            self.tabs.remove(index);
+            if index < self.active || self.active >= self.tabs.len() {
+                self.active = self.active.saturating_sub(1);
             }
         }
+        self.arrange(&before);
         self.panes.is_empty()
     }
 
@@ -112,42 +134,28 @@ impl SessionState {
         self.panes.keys().copied().collect()
     }
 
-    /// The focused pane.
+    /// The tabs, in order.
     #[must_use]
-    pub fn focus(&self) -> Option<PaneId> {
-        self.focus
+    pub fn tabs(&self) -> &[Tab] {
+        &self.tabs
     }
 
-    /// Focuses `id`; clients get it as a snapshot. Unknown panes are ignored.
-    pub fn set_focus(&mut self, id: PaneId) -> bool {
-        if !self.panes.contains_key(&id) {
-            return false;
-        }
-        if self.focus != Some(id) {
-            self.focus = Some(id);
-            self.generation += 1;
-            self.clients.values_mut().for_each(|c| c.mark_stale(id));
-        }
-        true
+    /// The index of the shown tab.
+    #[must_use]
+    pub fn active_tab(&self) -> usize {
+        self.active
+    }
+
+    /// The focused pane of the shown tab.
+    #[must_use]
+    pub fn focus(&self) -> Option<PaneId> {
+        self.tabs.get(self.active).map(|t| t.focus)
     }
 
     /// Current window size.
     #[must_use]
     pub fn size(&self) -> ScreenSize {
         self.size
-    }
-
-    /// Resizes every pane to the window (latest client wins).
-    pub fn resize(&mut self, size: ScreenSize) {
-        if size == self.size {
-            return;
-        }
-        self.size = size;
-        self.generation += 1;
-        for entry in self.panes.values() {
-            entry.io.resize(size);
-            entry.io.shared().mark_dirty();
-        }
     }
 
     /// Records the host facts and applies them to every pane.
@@ -206,27 +214,26 @@ impl SessionState {
             .for_each(|c| c.push(vec![msg.clone()]));
     }
 
-    /// Panes clients currently see (the focused pane fills the window until
-    /// splits arrive in M2; every other pane keeps parsing but costs no
-    /// rendering).
+    /// Panes clients currently see: the shown tab's (just the focused pane
+    /// when zoomed). Every other pane keeps parsing but costs no rendering.
     #[must_use]
     pub fn visible_panes(&self) -> Vec<PaneId> {
-        self.focus.into_iter().collect()
+        self.visible().into_iter().map(|(id, _)| id).collect()
     }
 
     /// The layout message for the current state.
     #[must_use]
     pub fn layout(&self) -> LayoutMsg {
         let panes = self
-            .visible_panes()
+            .visible()
             .into_iter()
-            .filter_map(|id| {
+            .filter_map(|(id, rect)| {
                 let entry = self.panes.get(&id)?;
                 Some(PaneLayout {
                     pane: id,
-                    x: 0,
-                    y: 0,
-                    size: self.size,
+                    x: rect.x,
+                    y: rect.y,
+                    size: ScreenSize::new(rect.cols, rect.rows),
                     title: entry.title.clone(),
                 })
             })
@@ -234,9 +241,21 @@ impl SessionState {
         LayoutMsg {
             generation: self.generation,
             size: self.size,
-            focus: self.focus,
+            focus: self.focus(),
             panes,
         }
+    }
+
+    /// The whole window, which the shown tab fills.
+    fn area(&self) -> Rect {
+        Rect::new(0, 0, self.size.cols, self.size.rows)
+    }
+
+    fn visible(&self) -> Vec<(PaneId, Rect)> {
+        self.tabs
+            .get(self.active)
+            .map(|tab| tab.visible(self.area()))
+            .unwrap_or_default()
     }
 }
 

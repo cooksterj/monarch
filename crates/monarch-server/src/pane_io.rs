@@ -21,6 +21,10 @@ pub trait PaneIo: Send {
         self.shared().lock().resize(size);
     }
 
+    /// Hangs up the program (closing its pane); it exits in its own time
+    /// and the exit removes the pane.
+    fn close(&self) {}
+
     /// The program's process id, when it runs as a real process.
     fn process_id(&self) -> Option<u32> {
         None

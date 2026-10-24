@@ -142,3 +142,40 @@ async fn a_second_server_for_the_same_socket_is_refused() {
     ));
     first.abort();
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_split_starts_a_second_pane_beside_the_first() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let socket = dir.path().join("split.sock");
+    let server = tokio::spawn(Server::serve(config(
+        &socket,
+        PaneSpec::shell_command("cat"),
+    )));
+    let (mut rx, mut tx) = connect(&socket).await;
+    tx.send(ClientMsg::Resize(ScreenSize::new(81, 10)))
+        .await
+        .expect("resize");
+    tx.send(ClientMsg::Action(monarch_core::Action::Split(
+        monarch_core::SplitAxis::Columns,
+    )))
+    .await
+    .expect("split");
+    let layout = until(
+        &mut rx,
+        |m| matches!(m, ServerMsg::Layout(l) if l.panes.len() == 2),
+    )
+    .await;
+    let ServerMsg::Layout(layout) = layout else {
+        unreachable!("matched a layout");
+    };
+    assert_eq!(layout.focus, Some(PaneId(2)), "the new pane has focus");
+    assert_eq!(layout.panes[1].x, 41, "right of the divider");
+    tx.send(ClientMsg::Input {
+        pane: PaneId(2),
+        bytes: b"echo split-ok\r".to_vec(),
+    })
+    .await
+    .expect("input");
+    until(&mut rx, |m| shows(m, "split-ok")).await;
+    server.abort();
+}
