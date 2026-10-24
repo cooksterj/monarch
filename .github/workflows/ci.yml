@@ -50,6 +50,7 @@ jobs:
           python3 scripts/spike3_input_matrix.py target/debug/examples/single_pane
           cargo build --bin monarch
           python3 scripts/spike4_attach_smoke.py target/debug/monarch
+          python3 scripts/spike5_mouse_smoke.py target/debug/monarch
 
   msrv:
     name: MSRV

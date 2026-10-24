@@ -7,7 +7,7 @@ use std::sync::Arc;
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
 use std::time::{Duration, Instant};
 
-use monarch_proto::{ClientMsg, HostInfo, ModeFlags, ScreenSize};
+use monarch_proto::{ClientMsg, HostInfo, ScreenSize};
 use ratatui::DefaultTerminal;
 use ratatui::crossterm::terminal::{BeginSynchronizedUpdate, EndSynchronizedUpdate};
 use ratatui::crossterm::{execute, queue};
@@ -81,7 +81,7 @@ impl AttachApp {
         let size = ScreenSize::new(area.width, area.height);
         link.send(&ClientMsg::HostInfo(host))?;
         link.send(&ClientMsg::Resize(AttachView::pane_area(size)))?;
-        let mut mirror = HostModeMirror::new(&host);
+        let mut mirror = HostModeMirror::new(&host).with_mouse(opts.mouse);
         let mut out = Vec::new();
         mirror.enter(&mut out);
         let state = AttachState::new();
@@ -153,11 +153,7 @@ impl AttachApp {
         }
         self.out.extend(applied.host_write);
         self.dirty |= applied.redraw;
-        let focus = self.state.focus();
-        let modes = focus
-            .and_then(|p| self.state.screen(p))
-            .map_or(ModeFlags::empty(), |s| s.modes.flags);
-        self.focus.set(focus, modes);
+        self.focus.set(&self.state.focus_view());
     }
 
     fn check_resize(&mut self) -> Result<(), TuiError> {

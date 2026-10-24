@@ -38,6 +38,7 @@ pub(crate) fn run(
         prefix,
         prefix_label: config.keys.prefix.clone(),
         window_title: config.ui.window_title.clone(),
+        mouse: config.ui.mouse,
     })?;
     writeln!(out, "{}", farewell(&session, outcome))?;
     Ok(ExitCode::SUCCESS)

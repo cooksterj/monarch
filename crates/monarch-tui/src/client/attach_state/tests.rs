@@ -136,3 +136,27 @@ fn reset_styles_forgets_definitions() {
     let screen = state.screen(PaneId(1)).expect("pane");
     assert!(screen.rows[0][0].style.is_plain());
 }
+
+#[test]
+fn focus_view_reports_rect_modes_and_scrollback() {
+    let mut state = AttachState::new();
+    assert_eq!(state.focus_view(), FocusView::default());
+    let mut scrolled = PaneState {
+        display_offset: 4,
+        ..PaneState::default()
+    };
+    scrolled.modes.flags = ModeFlags::ALT_SCREEN;
+    let snap = ServerMsg::Snapshot(Snapshot {
+        pane: PaneId(1),
+        generation: 1,
+        seq: 1,
+        size: SIZE,
+        rows: vec![vec![], vec![]],
+        state: scrolled,
+    });
+    apply_all(&mut state, vec![layout(1), snap]);
+    let view = state.focus_view();
+    assert_eq!((view.pane, view.cols, view.rows), (Some(PaneId(1)), 10, 2));
+    assert!(view.scrolled);
+    assert!(view.modes.contains(ModeFlags::ALT_SCREEN));
+}
