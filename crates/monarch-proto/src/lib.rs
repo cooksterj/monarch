@@ -6,9 +6,14 @@
 //! defining it once keeps all three in agreement.
 
 mod attach;
+mod error;
 mod screen;
 
-pub use attach::HostInfo;
+pub use attach::{
+    ClientMsg, Delta, FrameCodec, HostInfo, LayoutMsg, PaneLayout, PaneState, RowCodec, RowDelta,
+    Run, ServerMsg, Snapshot, StyleCache, StyleDef, StyleId, StyleTable,
+};
+pub use error::ProtoError;
 
 pub use screen::{
     Cell, CellAttrs, CellStyle, Cursor, CursorShape, ModeFlags, Rgb, Screen, ScreenSize, TermColor,

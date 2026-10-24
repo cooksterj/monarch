@@ -16,7 +16,7 @@ Architecture details for the terminal core: `docs/architecture/terminal-core.md`
 
 - Prefix-only keys, default `Ctrl-b`, fully rebindable. Presets: monarch, tmux, herdr.
 - Terminal engine: `alacritty_terminal` 0.26 behind an `Engine` trait. No Zig in the default build.
-- Server owns PTYs + emulators; client gets cell-grid deltas (bincode 2, length-delimited).
+- Server owns PTYs + emulators; client gets cell-grid deltas (postcard, `u32`-length frames; bincode is unmaintained — RUSTSEC-2025-0141).
 - Panes get `TERM=xterm-256color`, `TERM_PROGRAM=monarch`. Never impersonate the host terminal.
 - Agent state: hooks are authoritative; OSC tap, Herdr-compatible screen manifests, quiescence follow.
 - Package `monarch-mux`, binary `monarch`, repo `cooksterj/monarch`, MIT OR Apache-2.0.
