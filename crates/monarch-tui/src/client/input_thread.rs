@@ -51,6 +51,7 @@ fn run(p: &InputParams, mut stdin: impl Read) {
     let mut parser = PrefixParser::new(p.prefix);
     let mut filter = HostInputFilter::new();
     let (mut input, mut events) = (Vec::new(), Vec::new());
+    let mut pending = false;
     while let Ok(n @ 1..) = stdin.read(&mut buf) {
         input.clear();
         let probing = !probe.is_done();
@@ -62,6 +63,10 @@ fn run(p: &InputParams, mut stdin: impl Read) {
         parser.feed(&input, &mut events);
         for event in events.drain(..) {
             dispatch(p, &mut filter, event);
+        }
+        if parser.awaiting_command() != pending {
+            pending = parser.awaiting_command();
+            let _ = p.events.send(ClientEvent::Prefix(pending));
         }
     }
     let _ = p.events.send(ClientEvent::InputClosed);

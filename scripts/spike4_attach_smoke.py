@@ -71,10 +71,14 @@ def main():
         # Typed at once: keys sent before the first layout must not be lost.
         os.write(first.fd, b"echo monarch-$((40+2))\r")
         first.wait_for(b"monarch-42", "echo output")
-        os.write(first.fd, b"\x02d")
+        first.wait_for(b"monarch \xe2\x94\x82 smoke", "status line")
+        first.wait_for(b"\x1b]2;monarch:smoke", "window title")
+        os.write(first.fd, b"\x02")
+        first.wait_for(b"PREFIX", "prefix indicator")
+        os.write(first.fd, b"d")
         first.wait_for(b"[detached from session smoke]", "detach message")
         first.finish()
-        print("  attach: auto-started server, typed, detached")
+        print("  attach: auto-started server, status line + title shown, typed, prefix shown, detached")
 
         second = Client(binary, env)
         second.wait_for(b"monarch-42", "restored screen on reattach")

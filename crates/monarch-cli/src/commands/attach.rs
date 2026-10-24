@@ -27,7 +27,13 @@ pub(crate) fn run(
         .with_context(|| format!("prefix `{}` is not a ctrl+key chord", config.keys.prefix))?;
     let socket = SocketPath::for_session(&session)?;
     ensure_server(&session, &socket)?;
-    let outcome = AttachApp::attach(&AttachOptions { socket, prefix })?;
+    let outcome = AttachApp::attach(&AttachOptions {
+        socket,
+        session: session.clone(),
+        prefix,
+        prefix_label: config.keys.prefix.clone(),
+        window_title: config.ui.window_title.clone(),
+    })?;
     writeln!(out, "{}", farewell(&session, outcome))?;
     Ok(ExitCode::SUCCESS)
 }

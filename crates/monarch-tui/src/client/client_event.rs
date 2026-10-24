@@ -11,6 +11,8 @@ pub enum ClientEvent {
     ServerClosed,
     /// The host probe finished.
     Host(HostInfo),
+    /// The prefix was pressed (`true`) or its command key arrived (`false`).
+    Prefix(bool),
     /// The user pressed the prefix, then this key.
     Command(u8),
     /// The terminal's input closed.
