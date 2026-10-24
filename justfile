@@ -32,3 +32,5 @@ smoke:
     cargo build -p monarch-mux-tui --example single_pane
     python3 scripts/spike1_smoke.py target/debug/examples/single_pane
     python3 scripts/spike3_input_matrix.py target/debug/examples/single_pane
+    cargo build --bin monarch
+    python3 scripts/spike4_attach_smoke.py target/debug/monarch

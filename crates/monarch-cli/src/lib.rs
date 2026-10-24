@@ -8,7 +8,7 @@ use std::process::ExitCode;
 
 use clap::Parser;
 
-pub use cli::{Cli, Command, ConfigCommand};
+pub use cli::{AttachArgs, Cli, Command, ConfigCommand, ServerArgs};
 
 /// Parses `std::env::args` and runs the selected command.
 #[must_use]

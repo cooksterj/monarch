@@ -1,6 +1,12 @@
 //! The argument grammar for the `monarch` binary.
 
+mod attach_args;
+mod server_args;
+
 use clap::{Parser, Subcommand};
+
+pub use attach_args::AttachArgs;
+pub use server_args::ServerArgs;
 
 /// An attention-first terminal multiplexer for AI coding agents.
 #[derive(Debug, Parser)]
@@ -14,6 +20,10 @@ pub struct Cli {
 /// Top-level commands. New commands are added milestone by milestone.
 #[derive(Debug, Subcommand)]
 pub enum Command {
+    /// Attach to a session, starting its server if needed.
+    Attach(AttachArgs),
+    /// Run a session server (normally started for you by `monarch`).
+    Server(ServerArgs),
     /// Inspect or validate the configuration file.
     #[command(subcommand)]
     Config(ConfigCommand),
@@ -47,6 +57,23 @@ mod tests {
             cli.command,
             Some(Command::Config(ConfigCommand::Check))
         ));
+    }
+
+    #[test]
+    fn parses_attach_and_server() {
+        let cli = Cli::try_parse_from(["monarch", "attach", "-s", "work"]).expect("parses");
+        assert!(
+            matches!(cli.command, Some(Command::Attach(a)) if a.session.as_deref() == Some("work"))
+        );
+        let cli = Cli::try_parse_from([
+            "monarch", "server", "--pane", "htop", "--pane", "top", "--daemon",
+        ])
+        .expect("parses");
+        let Some(Command::Server(args)) = cli.command else {
+            panic!("not server");
+        };
+        assert_eq!(args.panes, ["htop", "top"]);
+        assert!(args.daemon);
     }
 
     #[test]
