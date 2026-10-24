@@ -18,14 +18,18 @@ APIs checked against alacritty_terminal 0.26.0 / vte 0.15.0 / portable-pty 0.9.0
 
 **Chords without ESC ambiguity.** Default prefix is a single C0 byte (Ctrl+Space `0x00`, configurable), which needs no look-ahead — no timer on the hot path. When the host is in kitty mode (mirrored from the pane) the prefix is `CSI 32;5u` and bare Esc is `CSI 27u`, so every `ESC` starts a complete sequence and is parsed to its final byte without a timeout. Optional direct Alt chords in legacy mode are recognised only when `ESC`+key arrive in the same `read()` (terminals write Alt+key atomically); a lone `ESC` is forwarded instantly. Paste bodies are never scanned.
 
-**Mode mirroring (focused pane `TermMode` → host).**
+**Kitty-encoded prefix.** Once a pane's kitty flags are mirrored, the host reports `Ctrl-b` as `CSI 98;5u` (and, with flag 8, the command key as `CSI 113u`). `PrefixParser` recognises both encodings via `KittyKey` and swallows the releases (flag 2) of keys it consumed, so the pane never sees a release without its press.
+
+**Mode mirroring (focused pane `TermMode` → host).** Implemented by `HostModeMirror` (writes only diffs, resets before sets because xterm mouse modes are exclusive); host-only input is removed per pane by `HostInputFilter`.
 
 | Pane state | Host action |
 |---|---|
 | `KITTY_KEYBOARD_PROTOCOL` bits | Startup probe `CSI ? u`; if supported, `CSI > 0 u` once. On focus/mode change `CSI = <bits> ; 1 u` (absolute set). Exit `CSI < u`. Never push/pop per pane — stack drift is the classic bug. Non-kitty host: panes get legacy bytes, as in a bare terminal. |
+| `APP_CURSOR` (DECCKM), `APP_KEYPAD` (DECKPAM) | Mirrored verbatim: the host encodes arrows/keypad, so it must be in the pane's mode for keys to be byte-exact. |
 | `BRACKETED_PASTE` | Host paste mode always on; strip `\e[200~…\e[201~` unless the pane set it; bytes otherwise untouched. |
 | `FOCUS_IN_OUT` | Host focus reporting always on; forward `CSI I/O` only if set; synthesize `O`/`I` on pane switch. |
 | mouse modes, `SGR_MOUSE`/`UTF8_MOUSE` | Host sends SGR; client subtracts the pane origin and re-encodes in the pane's encoding (SGR/UTF-8/X10). Coordinates make byte-exactness impossible; re-encoding is deterministic. |
+| `ALTERNATE_SCROLL` | Host 1007 = pane `ALTERNATE_SCROLL && ALT_SCREEN` (the host itself is always on its alternate screen, so mirroring the flag alone would turn the wheel into arrows in a shell). |
 | `ALTERNATE_SCROLL`+`ALT_SCREEN`, no mouse mode | Wheel → 3× `CSI A/B` (`SS3` if `APP_CURSOR`); otherwise server `scroll_display`. |
 | `cursor_style()`, `SHOW_CURSOR` | DECSCUSR + blink; `Frame::set_cursor_position` or hidden. |
 | `Event::Title`, `Bell` | OSC 2 on host (configurable format); BEL if pane visible, plus an attention flag. |

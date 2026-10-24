@@ -78,6 +78,50 @@ fn paste_markers_split_across_reads() {
     );
 }
 
+#[test]
+fn kitty_encoded_prefix_and_command() {
+    assert_eq!(
+        parse(&[b"a\x1b[98;5uqb"]),
+        [fwd(b"a"), InputEvent::Command(b'q'), fwd(b"b")]
+    );
+}
+
+#[test]
+fn kitty_command_key_and_releases_are_consumed() {
+    // Flags 1|2|8: every key is a report, releases included.
+    let keys: &[&[u8]] = &[
+        b"\x1b[98;5u",
+        b"\x1b[113u",
+        b"\x1b[113;1:3u",
+        b"\x1b[98;5:3u",
+        b"\x1b[120u",
+    ];
+    assert_eq!(
+        normalise(parse(keys)),
+        [InputEvent::Command(b'q'), fwd(b"\x1b[120u")]
+    );
+}
+
+#[test]
+fn kitty_double_prefix_sends_the_report_to_the_pane() {
+    assert_eq!(
+        normalise(parse(&[b"\x1b[98;5u\x1b[98;5u"])),
+        [fwd(b"\x1b[98;5u")]
+    );
+}
+
+#[test]
+fn other_kitty_keys_pass_through() {
+    let keys = b"\x1b[13;2u\x1b[98;7u\x1b[97;5:3u";
+    assert_eq!(parse(&[keys]), [fwd(keys)]);
+}
+
+#[test]
+fn kitty_prefix_inside_paste_belongs_to_the_pane() {
+    let paste = b"\x1b[200~\x1b[98;5uq\x1b[201~";
+    assert_eq!(parse(&[paste]), [fwd(paste)]);
+}
+
 proptest! {
     /// Results never depend on how the host split input into reads.
     #[test]

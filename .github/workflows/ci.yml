@@ -43,6 +43,11 @@ jobs:
           tool: cargo-nextest
       - run: cargo nextest run --workspace
       - run: cargo test --workspace --doc
+      - name: Fidelity smoke (PTY harnesses)
+        run: |
+          cargo build -p monarch-mux-tui --example single_pane
+          python3 scripts/spike1_smoke.py target/debug/examples/single_pane
+          python3 scripts/spike3_input_matrix.py target/debug/examples/single_pane
 
   msrv:
     name: MSRV

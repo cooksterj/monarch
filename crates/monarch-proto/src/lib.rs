@@ -5,7 +5,10 @@
 //! terminal engine, carried over the attach stream and rendered by the TUI;
 //! defining it once keeps all three in agreement.
 
+mod attach;
 mod screen;
+
+pub use attach::HostInfo;
 
 pub use screen::{
     Cell, CellAttrs, CellStyle, Cursor, CursorShape, ModeFlags, Rgb, Screen, ScreenSize, TermColor,

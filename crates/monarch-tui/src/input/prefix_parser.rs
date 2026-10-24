@@ -5,14 +5,23 @@
 //! look-ahead and no escape timeout. Bracketed-paste bodies are never
 //! scanned: a prefix byte inside a paste belongs to the pane. Pressing the
 //! prefix twice sends one literal prefix byte to the pane, as in tmux.
+//!
+//! When the pane has kitty keyboard flags on, the host reports the prefix
+//! as `CSI 98;5u` (Ctrl+b) instead of `0x02`, and may report the command
+//! key and key releases as `CSI … u` too; both forms are recognised, and the
+//! releases of keys Monarch consumed are swallowed so the pane never sees a
+//! release without its press.
 
 use memchr::{memchr, memchr2};
 
-use super::InputEvent;
+use super::{InputEvent, KittyKey};
 
 const ESC: u8 = 0x1b;
 const PASTE_START: &[u8] = b"\x1b[200~";
 const PASTE_END: &[u8] = b"\x1b[201~";
+/// Releases remembered for swallowing; hosts without release events never
+/// drain the list, so it is kept short.
+const MAX_SWALLOW: usize = 4;
 
 /// Streaming prefix detector; keeps state across `read()` boundaries.
 #[derive(Debug, Clone)]
@@ -21,6 +30,7 @@ pub struct PrefixParser {
     pending_prefix: bool,
     in_paste: bool,
     marker_progress: usize,
+    swallow: Vec<u32>,
 }
 
 impl PrefixParser {
@@ -32,6 +42,7 @@ impl PrefixParser {
             pending_prefix: false,
             in_paste: false,
             marker_progress: 0,
+            swallow: Vec::new(),
         }
     }
 
@@ -46,13 +57,7 @@ impl PrefixParser {
         let mut forward = Vec::with_capacity(bytes.len());
         let mut i = 0;
         while i < bytes.len() {
-            if self.pending_prefix {
-                self.pending_prefix = false;
-                self.after_prefix(bytes[i], &mut forward, out);
-                i += 1;
-                continue;
-            }
-            if self.marker_progress == 0 {
+            if self.marker_progress == 0 && !self.pending_prefix {
                 let rest = &bytes[i..];
                 match self.next_interesting(rest) {
                     Some(off) => {
@@ -65,7 +70,17 @@ impl PrefixParser {
                     }
                 }
             }
-            self.step(bytes[i], &mut forward, out);
+            if let Some((key, len)) = self.kitty_key_at(&bytes[i..]) {
+                self.on_kitty_key(key, &bytes[i..i + len], &mut forward, out);
+                i += len;
+                continue;
+            }
+            if self.pending_prefix {
+                self.pending_prefix = false;
+                self.after_prefix(bytes[i], &mut forward, out);
+            } else {
+                self.step(bytes[i], &mut forward, out);
+            }
             i += 1;
         }
         flush(&mut forward, out);
@@ -78,6 +93,52 @@ impl PrefixParser {
         } else {
             memchr2(self.prefix, ESC, rest)
         }
+    }
+
+    /// A kitty key report starting at `rest`, outside any paste.
+    fn kitty_key_at(&self, rest: &[u8]) -> Option<(KittyKey, usize)> {
+        if self.in_paste || rest.first() != Some(&ESC) {
+            return None;
+        }
+        KittyKey::parse(rest)
+    }
+
+    fn on_kitty_key(
+        &mut self,
+        key: KittyKey,
+        raw: &[u8],
+        forward: &mut Vec<u8>,
+        out: &mut Vec<InputEvent>,
+    ) {
+        self.marker_progress = 0;
+        if key.release {
+            match self.swallow.iter().position(|&code| code == key.code) {
+                Some(found) => drop(self.swallow.remove(found)),
+                None => forward.extend_from_slice(raw),
+            }
+        } else if self.pending_prefix {
+            self.pending_prefix = false;
+            if key.is_ctrl_byte(self.prefix) {
+                forward.extend_from_slice(raw);
+            } else if let Some(byte) = key.ascii() {
+                flush(forward, out);
+                out.push(InputEvent::Command(byte));
+                self.remember_release(key.code);
+            }
+        } else if key.is_ctrl_byte(self.prefix) {
+            flush(forward, out);
+            self.pending_prefix = true;
+            self.remember_release(key.code);
+        } else {
+            forward.extend_from_slice(raw);
+        }
+    }
+
+    fn remember_release(&mut self, code: u32) {
+        if self.swallow.len() == MAX_SWALLOW {
+            self.swallow.remove(0);
+        }
+        self.swallow.push(code);
     }
 
     fn step(&mut self, byte: u8, forward: &mut Vec<u8>, out: &mut Vec<InputEvent>) {
