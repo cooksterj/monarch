@@ -9,6 +9,7 @@ mod agent_state;
 mod config;
 mod error;
 mod ids;
+mod layout;
 
 pub use agent_kind::AgentKind;
 pub use agent_state::AgentState;
@@ -18,3 +19,4 @@ pub use config::{
 };
 pub use error::CoreError;
 pub use ids::{ClientId, PaneId, TabId};
+pub use layout::{Direction, Rect, SplitAxis, SplitTree};
