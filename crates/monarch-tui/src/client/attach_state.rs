@@ -56,6 +56,7 @@ impl AttachState {
                 out.redraw = true;
             }
             ServerMsg::HostWrite(bytes) => out.host_write.extend(bytes),
+            ServerMsg::Clipboard(text) => out.clipboard.push(text),
             ServerMsg::PaneExited { pane } => {
                 self.panes.remove(&pane);
                 out.exited.push(pane);

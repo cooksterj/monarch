@@ -10,6 +10,10 @@ use tokio::sync::mpsc::UnboundedReceiver;
 
 use crate::{PaneEvent, ServerContext};
 
+/// Larger copies are dropped: no clipboard needs them, and they would
+/// crowd every client's render lane.
+pub const MAX_CLIPBOARD: usize = 1 << 20;
+
 /// The task that turns [`PaneEvent`]s into session changes and messages.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct EventLoop;
@@ -29,6 +33,14 @@ impl EventLoop {
                 let mut state = ctx.lock();
                 if state.visible_panes().contains(&pane) {
                     state.broadcast(&ServerMsg::HostWrite(vec![0x07]));
+                }
+            }
+            PaneEvent::Clipboard { pane, text } => {
+                // Only a pane the user can see may set their clipboard, so
+                // a background program cannot overwrite it unnoticed.
+                let mut state = ctx.lock();
+                if text.len() <= MAX_CLIPBOARD && state.visible_panes().contains(&pane) {
+                    state.broadcast(&ServerMsg::Clipboard(text));
                 }
             }
             PaneEvent::SyncPending { pane, deadline } => {
@@ -147,6 +159,24 @@ mod tests {
                 ServerMsg::HostWrite(vec![0x07]),
             ]
         );
+    }
+
+    #[tokio::test]
+    async fn only_visible_panes_may_set_the_clipboard() {
+        let ctx = context();
+        let (lane, mut rx) = mpsc::channel(8);
+        ctx.lock().add_client(lane);
+        let copy = |pane, text: &str| PaneEvent::Clipboard {
+            pane: PaneId(pane),
+            text: text.into(),
+        };
+        EventLoop::handle(&ctx, copy(1, "visible"));
+        EventLoop::handle(&ctx, copy(9, "hidden"));
+        EventLoop::handle(&ctx, copy(1, &"x".repeat(MAX_CLIPBOARD + 1)));
+        let got: Vec<_> = std::iter::from_fn(|| rx.try_recv().ok())
+            .flatten()
+            .collect();
+        assert_eq!(got, [ServerMsg::Clipboard("visible".into())]);
     }
 
     #[tokio::test]

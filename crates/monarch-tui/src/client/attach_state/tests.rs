@@ -117,11 +117,13 @@ fn titles_host_writes_and_exits_are_reported() {
                 title: Some("vim".into()),
             },
             ServerMsg::HostWrite(vec![7]),
+            ServerMsg::Clipboard("copied".into()),
             ServerMsg::PaneExited { pane: PaneId(1) },
         ],
     );
     assert_eq!(state.focused_title(), Some("vim"));
     assert_eq!(out.host_write, [7]);
+    assert_eq!(out.clipboard, ["copied"]);
     assert_eq!(out.exited, [PaneId(1)]);
     assert!(state.screen(PaneId(1)).is_none());
 }

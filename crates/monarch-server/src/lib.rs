@@ -32,7 +32,7 @@ pub use attach_connection::AttachConnection;
 pub use client_handle::{ClientHandle, RENDER_LANE};
 pub use daemon::Daemon;
 pub use error::{BoxedError, ServerError};
-pub use event_loop::EventLoop;
+pub use event_loop::{EventLoop, MAX_CLIPBOARD};
 pub use frame_coalescer::{FRAME_BUDGET, FrameCoalescer};
 pub use frame_encoder::FrameEncoder;
 pub use frame_header::FrameHeader;

@@ -9,8 +9,10 @@ pub struct Applied {
     pub redraw: bool,
     /// Panes whose frames arrived out of sequence; ask for snapshots.
     pub resync: Vec<PaneId>,
-    /// Bytes for the host terminal (bell, clipboard).
+    /// Bytes for the host terminal (bell).
     pub host_write: Vec<u8>,
+    /// Text a pane copied; goes to the user's clipboard.
+    pub clipboard: Vec<String>,
     /// Panes whose programs exited.
     pub exited: Vec<PaneId>,
 }

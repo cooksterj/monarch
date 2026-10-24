@@ -16,6 +16,13 @@ pub enum PaneEvent {
     },
     /// The program rang the bell.
     Bell(PaneId),
+    /// The program copied text to the clipboard (OSC 52).
+    Clipboard {
+        /// The pane.
+        pane: PaneId,
+        /// What it copied.
+        text: String,
+    },
     /// The program began a synchronized update that must be force-ended at
     /// `deadline` if it never finishes (the program died mid-frame).
     SyncPending {
@@ -40,6 +47,7 @@ impl PaneEvent {
         match self {
             Self::Title { pane, .. }
             | Self::Bell(pane)
+            | Self::Clipboard { pane, .. }
             | Self::SyncPending { pane, .. }
             | Self::Exited { pane, .. } => *pane,
         }

@@ -1,6 +1,8 @@
-//! Mouse selection and copy for the attached client.
+//! Mouse selection, copy and the mouse passthrough toggle.
 
 use std::thread;
+
+use monarch_core::MouseMode;
 use std::time::{Duration, Instant};
 
 use super::AttachApp;
@@ -44,6 +46,24 @@ impl AttachApp {
         self.dirty = true;
     }
 
+    /// `prefix m`: hand the mouse to the host terminal (native selection,
+    /// its own menus) or take it back.
+    pub(super) fn toggle_mouse(&mut self) {
+        self.passthrough = !self.passthrough;
+        let (policy, notice) = if self.passthrough {
+            (
+                MouseMode::Off,
+                format!("mouse: terminal ({} m to restore)", self.opts.prefix_label),
+            )
+        } else {
+            (self.opts.mouse, "mouse: monarch".to_owned())
+        };
+        self.mirror.set_mouse(policy);
+        self.selection = None;
+        self.notice = Some((notice, Instant::now()));
+        self.dirty = true;
+    }
+
     /// Typing ends a selection, as in a bare terminal.
     pub(super) fn on_typed(&mut self) {
         if self.selection.take().is_some() {
@@ -54,7 +74,7 @@ impl AttachApp {
     /// Sends `text` to the host clipboard (OSC 52) and, when this client is
     /// not running over SSH, to the local clipboard too, since some hosts
     /// ignore OSC 52.
-    fn copy(&mut self, text: String) {
+    pub(super) fn copy(&mut self, text: String) {
         self.out.extend(HostClipboard::osc52(&text));
         let count = text.chars().count();
         if is_local() {
