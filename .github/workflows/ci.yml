@@ -54,7 +54,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@1.88
+      # The version is an input, not the ref: Dependabot reads `@1.88` as a
+      # tag and "upgrades" it, which would silently stop testing the MSRV.
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.88"
       - uses: Swatinem/rust-cache@v2
       - run: cargo check --workspace --locked
 
