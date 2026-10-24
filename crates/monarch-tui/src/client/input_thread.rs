@@ -13,7 +13,10 @@ use std::time::{Duration, Instant};
 use monarch_proto::ClientMsg;
 
 use super::{ClientEvent, MouseAction, MouseRouter, ServerLink, SharedFocus};
-use crate::{HostInput, HostInputFilter, HostProbe, InputEvent, MouseExtractor, PrefixParser};
+use crate::{
+    HostInput, HostInputFilter, HostProbe, InputEvent, MouseEvent, MouseExtractor, MouseKind,
+    PrefixParser,
+};
 
 /// How long to wait for the host to answer the startup probe.
 pub const PROBE_TIMEOUT: Duration = Duration::from_millis(500);
@@ -42,6 +45,8 @@ struct Pipeline {
     filter: HostInputFilter,
     router: MouseRouter,
     pieces: Vec<HostInput>,
+    /// A click focused another pane; its drags and release go nowhere.
+    focusing: bool,
 }
 
 /// Spawns the input thread.
@@ -92,10 +97,7 @@ fn dispatch(p: &InputParams, pipe: &mut Pipeline, event: InputEvent) {
             for piece in std::mem::take(&mut pipe.pieces) {
                 match piece {
                     HostInput::Keys(keys) => send_keys(p, &mut pipe.filter, &keys),
-                    HostInput::Mouse(event) => {
-                        let action = pipe.router.route(&event, &p.focus.view(), Instant::now());
-                        send_mouse(p, action);
-                    }
+                    HostInput::Mouse(event) => route_mouse(p, pipe, &event),
                 }
             }
         }
@@ -103,6 +105,26 @@ fn dispatch(p: &InputParams, pipe: &mut Pipeline, event: InputEvent) {
             let _ = p.events.send(ClientEvent::Command(key));
         }
     }
+}
+
+/// A press on another pane focuses it (and nothing else); everything
+/// else goes through the router for the focused pane.
+fn route_mouse(p: &InputParams, pipe: &mut Pipeline, event: &MouseEvent) {
+    if pipe.focusing {
+        pipe.focusing = !matches!(event.kind, MouseKind::Release(_));
+        return;
+    }
+    let view = p.focus.view();
+    if matches!(event.kind, MouseKind::Press(_))
+        && view.local(event.col, event.row).is_none()
+        && let Some(other) = p.focus.pane_at(event.col, event.row)
+    {
+        pipe.focusing = true;
+        let _ = p.link.send(&ClientMsg::Focus(other));
+        return;
+    }
+    let action = pipe.router.route(event, &view, Instant::now());
+    send_mouse(p, action);
 }
 
 /// Keys go to the focused pane; typing while scrolled back returns to live
@@ -149,18 +171,24 @@ mod tests {
     use std::sync::mpsc;
 
     use bytes::BytesMut;
-    use monarch_core::PaneId;
-    use monarch_proto::{FrameCodec, ServerMsg};
+    use monarch_core::{PaneId, Rect};
+    use monarch_proto::{FrameCodec, ModeFlags, ServerMsg};
 
     use super::*;
     use crate::client::FocusView;
 
     /// Runs the thread over `input` and returns everything it sent.
     fn sent(focus: FocusView, input: &[u8]) -> Vec<ClientMsg> {
+        sent_with_panes(focus, &[], input)
+    }
+
+    /// Like [`sent`], with other panes laid out beside the focused one.
+    fn sent_with_panes(focus: FocusView, panes: &[(PaneId, Rect)], input: &[u8]) -> Vec<ClientMsg> {
         let (ours, mut theirs) = UnixStream::pair().expect("pair");
         let (events, _rx) = mpsc::channel();
         let shared = Arc::new(SharedFocus::default());
         shared.set(&focus);
+        shared.set_panes(panes.to_vec());
         let params = InputParams {
             link: ServerLink::from_stream(ours),
             prefix: 0x02,
@@ -200,6 +228,39 @@ mod tests {
                     bytes: b"x".to_vec()
                 },
             ]
+        );
+    }
+
+    #[test]
+    fn a_click_on_another_pane_focuses_it_and_nothing_else() {
+        let focus = FocusView {
+            pane: Some(PaneId(1)),
+            cols: 10,
+            rows: 5,
+            modes: ModeFlags::MOUSE_CLICK | ModeFlags::SGR_MOUSE,
+            ..FocusView::default()
+        };
+        let panes = [
+            (PaneId(1), Rect::new(0, 0, 10, 5)),
+            (PaneId(2), Rect::new(11, 0, 10, 5)),
+        ];
+        let click = b"\x1b[?62;22c\x1b[<0;13;2M\x1b[<32;3;2M\x1b[<0;3;2m\x1b[<0;2;2M";
+        let msgs = sent_with_panes(focus, &panes, click);
+        assert_eq!(msgs[0], ClientMsg::Focus(PaneId(2)));
+        assert_eq!(
+            msgs.len(),
+            2,
+            "the drag and release are swallowed: {msgs:?}"
+        );
+        assert!(
+            matches!(
+                &msgs[1],
+                ClientMsg::Input {
+                    pane: PaneId(1),
+                    ..
+                }
+            ),
+            "the next click goes to the focused pane as usual"
         );
     }
 

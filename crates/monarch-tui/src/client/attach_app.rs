@@ -166,6 +166,9 @@ impl AttachApp {
         }
         self.dirty |= applied.redraw;
         self.focus.set(&self.state.focus_view());
+        if applied.redraw {
+            self.focus.set_panes(self.state.pane_rects());
+        }
     }
 
     fn check_resize(&mut self) -> Result<(), TuiError> {

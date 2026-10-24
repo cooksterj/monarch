@@ -1,10 +1,11 @@
 //! The focused pane, shared with the input thread.
 
+use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use monarch_core::PaneId;
+use monarch_core::{PaneId, Rect};
 use monarch_proto::ModeFlags;
 
 use super::FocusView;
@@ -17,6 +18,8 @@ pub struct SharedFocus {
     modes: AtomicU32,
     rect: AtomicU64,
     scrolled: AtomicBool,
+    /// Every visible pane's place, read only on mouse presses.
+    panes: Mutex<Vec<(PaneId, Rect)>>,
 }
 
 impl SharedFocus {
@@ -77,6 +80,26 @@ impl SharedFocus {
         self.scrolled.store(false, Ordering::Release);
     }
 
+    /// Publishes where every visible pane is, for clicks.
+    pub fn set_panes(&self, panes: Vec<(PaneId, Rect)>) {
+        *self.lock_panes() = panes;
+    }
+
+    /// The pane under host cell (`col`, `row`).
+    #[must_use]
+    pub fn pane_at(&self, col: u16, row: u16) -> Option<PaneId> {
+        self.lock_panes()
+            .iter()
+            .find(|(_, r)| r.contains(col, row))
+            .map(|(p, _)| *p)
+    }
+
+    fn lock_panes(&self) -> std::sync::MutexGuard<'_, Vec<(PaneId, Rect)>> {
+        self.panes
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
     /// Everything at once.
     #[must_use]
     pub fn view(&self) -> FocusView {
@@ -117,6 +140,18 @@ mod tests {
         assert_eq!(focus.pane(), Some(PaneId(3)));
         focus.clear_scrolled();
         assert!(!focus.scrolled());
+    }
+
+    #[test]
+    fn clicks_find_the_pane_under_them() {
+        let focus = SharedFocus::default();
+        assert_eq!(focus.pane_at(0, 0), None, "no layout yet");
+        focus.set_panes(vec![
+            (PaneId(1), Rect::new(0, 0, 10, 5)),
+            (PaneId(2), Rect::new(11, 0, 10, 5)),
+        ]);
+        assert_eq!(focus.pane_at(12, 4), Some(PaneId(2)));
+        assert_eq!(focus.pane_at(10, 0), None, "divider");
     }
 
     #[test]
