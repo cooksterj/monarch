@@ -6,6 +6,7 @@
 //! `CSI = bits ; 1 u` on top of one push made on entry, never pushed and
 //! popped per pane, so the host's flag stack cannot drift.
 
+use monarch_core::MouseMode;
 use monarch_proto::{Cursor, CursorShape, HostInfo, ModeFlags, TerminalModes};
 
 /// DEC private modes copied verbatim from pane to host, with their numbers.
@@ -31,6 +32,7 @@ struct Applied {
 #[derive(Debug, Clone, Default)]
 pub struct HostModeMirror {
     kitty: bool,
+    mouse: Option<MouseMode>,
     applied: Option<Applied>,
     title: Option<String>,
 }
@@ -43,6 +45,15 @@ impl HostModeMirror {
             kitty: host.kitty_keyboard(),
             ..Self::default()
         }
+    }
+
+    /// Captures the mouse by `policy` instead of copying the pane's mouse
+    /// modes verbatim. Captured reports are always SGR, which the client
+    /// decodes and re-encodes for the pane (see `MouseRouter`).
+    #[must_use]
+    pub fn with_mouse(mut self, policy: MouseMode) -> Self {
+        self.mouse = Some(policy);
+        self
     }
 
     /// Modes Monarch itself needs on the host: bracketed paste and focus
@@ -81,7 +92,7 @@ impl HostModeMirror {
     /// changed since the last call.
     pub fn sync(&mut self, modes: &TerminalModes, cursor: &Cursor, out: &mut Vec<u8>) {
         let next = Applied {
-            flags: host_flags(modes),
+            flags: host_flags(modes, self.mouse),
             kitty_flags: modes.kitty_flags,
             cursor: (cursor.shape, cursor.blinking),
         };
@@ -118,12 +129,36 @@ impl HostModeMirror {
 /// The host-side view of a pane's modes. Alternate scroll only applies to
 /// the alternate screen, but the host is always on its alternate screen, so
 /// it is mirrored only while the pane is too.
-fn host_flags(modes: &TerminalModes) -> ModeFlags {
+fn host_flags(modes: &TerminalModes, mouse: Option<MouseMode>) -> ModeFlags {
     let mut flags = modes.flags;
     if !flags.contains(ModeFlags::ALT_SCREEN) {
         flags.remove(ModeFlags::ALTERNATE_SCROLL);
     }
+    if let Some(policy) = mouse {
+        flags = captured(flags, policy);
+    }
     flags & (mirrored() | ModeFlags::APP_KEYPAD)
+}
+
+/// Mouse modes when Monarch captures: `auto` always tracks drags (and all
+/// motion if the pane wants it), `pane` tracks what the pane asked for,
+/// `off` never tracks. Reports are SGR whenever tracking is on, and the
+/// client then handles the wheel itself, so the host's alternate scroll
+/// is turned off.
+fn captured(flags: ModeFlags, policy: MouseMode) -> ModeFlags {
+    let tracking = ModeFlags::MOUSE_CLICK | ModeFlags::MOUSE_DRAG | ModeFlags::MOUSE_MOTION;
+    let wanted = flags & tracking;
+    let capture = match policy {
+        MouseMode::Auto => ModeFlags::MOUSE_DRAG | (wanted & ModeFlags::MOUSE_MOTION),
+        MouseMode::Pane => wanted,
+        MouseMode::Off => ModeFlags::empty(),
+    };
+    let mut flags = flags - (tracking | ModeFlags::UTF8_MOUSE | ModeFlags::SGR_MOUSE);
+    if !capture.is_empty() {
+        flags |= capture | ModeFlags::SGR_MOUSE;
+        flags.remove(ModeFlags::ALTERNATE_SCROLL);
+    }
+    flags
 }
 
 fn mirrored() -> ModeFlags {

@@ -119,3 +119,51 @@ fn title_changes_are_written_once_and_sanitised() {
     mirror.sync_title(None, &mut out);
     assert_eq!(out, b"\x1b]2;\x1b\\");
 }
+
+fn captured(policy: MouseMode, flags: ModeFlags) -> String {
+    let mut mirror = HostModeMirror::new(&HostInfo::default()).with_mouse(policy);
+    sync(&mut mirror, &modes(flags, 0), &Cursor::default())
+}
+
+#[test]
+fn auto_capture_always_tracks_drags_in_sgr() {
+    let plain = captured(MouseMode::Auto, ModeFlags::empty());
+    assert!(
+        plain.contains("\x1b[?1002h") && plain.contains("\x1b[?1006h"),
+        "{plain:?}"
+    );
+    let x10_pane = captured(
+        MouseMode::Auto,
+        ModeFlags::MOUSE_CLICK | ModeFlags::UTF8_MOUSE,
+    );
+    assert!(
+        x10_pane.contains("\x1b[?1005l") && x10_pane.contains("\x1b[?1006h"),
+        "host stays SGR: {x10_pane:?}"
+    );
+    let motion = captured(MouseMode::Auto, ModeFlags::MOUSE_MOTION);
+    assert!(motion.contains("\x1b[?1003h"), "{motion:?}");
+}
+
+#[test]
+fn captured_wheel_turns_host_alternate_scroll_off() {
+    let alt = ModeFlags::ALT_SCREEN | ModeFlags::ALTERNATE_SCROLL;
+    assert!(captured(MouseMode::Auto, alt).contains("\x1b[?1007l"));
+    assert!(
+        captured(MouseMode::Pane, alt).contains("\x1b[?1007h"),
+        "pane mode without tracking leaves the host wheel"
+    );
+}
+
+#[test]
+fn pane_and_off_policies() {
+    assert!(captured(MouseMode::Pane, ModeFlags::empty()).contains("\x1b[?1002l"));
+    let wants = captured(MouseMode::Pane, ModeFlags::MOUSE_CLICK);
+    assert!(
+        wants.contains("\x1b[?1000h") && wants.contains("\x1b[?1006h"),
+        "{wants:?}"
+    );
+    let off = captured(MouseMode::Off, ModeFlags::MOUSE_DRAG | ModeFlags::SGR_MOUSE);
+    for mode in [1000, 1002, 1003, 1006] {
+        assert!(!off.contains(&format!("\x1b[?{mode}h")), "{off:?}");
+    }
+}

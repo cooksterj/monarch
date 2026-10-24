@@ -3,9 +3,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use monarch_core::PaneId;
-use monarch_proto::{LayoutMsg, Screen, ServerMsg, StyleCache};
+use monarch_proto::{LayoutMsg, ModeFlags, Screen, ServerMsg, StyleCache};
 
-use super::{Applied, PaneReplica};
+use super::{Applied, FocusView, PaneReplica};
 
 /// Layout, decoded pane screens, titles and the connection's style cache.
 /// Pure data: applying a message never does I/O, it reports what to do in
@@ -91,6 +91,24 @@ impl AttachState {
             return Some(title.as_str());
         }
         self.layout.as_ref()?.focused()?.title.as_deref()
+    }
+
+    /// The focused pane as the input thread needs it.
+    #[must_use]
+    pub fn focus_view(&self) -> FocusView {
+        let Some(pane) = self.layout.as_ref().and_then(LayoutMsg::focused) else {
+            return FocusView::default();
+        };
+        let screen = self.screen(pane.pane);
+        FocusView {
+            pane: Some(pane.pane),
+            x: pane.x,
+            y: pane.y,
+            cols: pane.size.cols,
+            rows: pane.size.rows,
+            modes: screen.map_or(ModeFlags::empty(), |s| s.modes.flags),
+            scrolled: screen.is_some_and(|s| s.display_offset > 0),
+        }
     }
 }
 

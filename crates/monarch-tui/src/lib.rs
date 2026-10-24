@@ -11,9 +11,13 @@ mod widgets;
 
 pub use client::{
     Applied, AttachApp, AttachOptions, AttachOutcome, AttachState, AttachView, ClientEvent,
-    PaneReplica, ServerLink, SharedFocus, WindowTitle,
+    FocusView, MouseAction, MouseRouter, PaneReplica, ServerLink, SharedFocus, WHEEL_LINES,
+    WindowTitle,
 };
 pub use error::TuiError;
 pub use host::{HostModeMirror, HostProbe, HostReply};
-pub use input::{HostFocus, HostInputFilter, InputEvent, PrefixParser};
+pub use input::{
+    HostFocus, HostInput, HostInputFilter, InputEvent, MOD_BITS, MouseButton, MouseEncoder,
+    MouseEvent, MouseExtractor, MouseKind, PrefixParser, WheelDirection,
+};
 pub use widgets::{PaneView, StatusLine, StyleConverter};

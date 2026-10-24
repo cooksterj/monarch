@@ -1,11 +1,13 @@
-//! The focused pane and its modes, shared with the input thread.
+//! The focused pane, shared with the input thread.
 
-use std::sync::atomic::{AtomicU32, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
 
 use monarch_core::PaneId;
 use monarch_proto::ModeFlags;
+
+use super::FocusView;
 
 /// Lock-free hand-off from the main loop (which decodes frames) to the input
 /// thread (which must know where keys go and how to filter them).
@@ -13,13 +15,22 @@ use monarch_proto::ModeFlags;
 pub struct SharedFocus {
     pane: AtomicU32,
     modes: AtomicU32,
+    rect: AtomicU64,
+    scrolled: AtomicBool,
 }
 
 impl SharedFocus {
-    /// Publishes the focused pane and its modes.
-    pub fn set(&self, pane: Option<PaneId>, modes: ModeFlags) {
-        self.modes.store(modes.bits(), Ordering::Release);
-        self.pane.store(pane.map_or(0, |p| p.0), Ordering::Release);
+    /// Publishes the focused pane. The pane id is stored last, so a reader
+    /// that sees it also sees the rest.
+    pub fn set(&self, view: &FocusView) {
+        let rect = [view.x, view.y, view.cols, view.rows]
+            .iter()
+            .fold(0u64, |acc, v| (acc << 16) | u64::from(*v));
+        self.rect.store(rect, Ordering::Release);
+        self.modes.store(view.modes.bits(), Ordering::Release);
+        self.scrolled.store(view.scrolled, Ordering::Release);
+        self.pane
+            .store(view.pane.map_or(0, |p| p.0), Ordering::Release);
     }
 
     /// The focused pane, if any.
@@ -53,6 +64,35 @@ impl SharedFocus {
     pub fn modes(&self) -> ModeFlags {
         ModeFlags::from_bits_truncate(self.modes.load(Ordering::Acquire))
     }
+
+    /// Whether the focused pane shows scrollback.
+    #[must_use]
+    pub fn scrolled(&self) -> bool {
+        self.scrolled.load(Ordering::Acquire)
+    }
+
+    /// Notes that a scroll-to-bottom was requested, so later keys do not
+    /// request it again before the next frame arrives.
+    pub fn clear_scrolled(&self) {
+        self.scrolled.store(false, Ordering::Release);
+    }
+
+    /// Everything at once.
+    #[must_use]
+    pub fn view(&self) -> FocusView {
+        let pane = self.pane();
+        let rect = self.rect.load(Ordering::Acquire);
+        let part = |shift: u32| (rect >> shift) as u16;
+        FocusView {
+            pane,
+            x: part(48),
+            y: part(32),
+            cols: part(16),
+            rows: part(0),
+            modes: self.modes(),
+            scrolled: self.scrolled(),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -62,10 +102,21 @@ mod tests {
     #[test]
     fn starts_empty_and_round_trips() {
         let focus = SharedFocus::default();
-        assert_eq!(focus.pane(), None);
-        focus.set(Some(PaneId(3)), ModeFlags::BRACKETED_PASTE);
+        assert_eq!(focus.view(), FocusView::default());
+        let view = FocusView {
+            pane: Some(PaneId(3)),
+            x: 1,
+            y: 2,
+            cols: 300,
+            rows: 65535,
+            modes: ModeFlags::BRACKETED_PASTE,
+            scrolled: true,
+        };
+        focus.set(&view);
+        assert_eq!(focus.view(), view);
         assert_eq!(focus.pane(), Some(PaneId(3)));
-        assert!(focus.modes().contains(ModeFlags::BRACKETED_PASTE));
+        focus.clear_scrolled();
+        assert!(!focus.scrolled());
     }
 
     #[test]
@@ -75,7 +126,10 @@ mod tests {
         let setter = std::sync::Arc::clone(&focus);
         let t = thread::spawn(move || {
             thread::sleep(Duration::from_millis(20));
-            setter.set(Some(PaneId(2)), ModeFlags::empty());
+            setter.set(&FocusView {
+                pane: Some(PaneId(2)),
+                ..FocusView::default()
+            });
         });
         assert_eq!(focus.wait_pane(Duration::from_secs(5)), Some(PaneId(2)));
         t.join().expect("setter");
