@@ -26,3 +26,9 @@ deny:
 # Install the local build onto PATH.
 install:
     cargo install --path . --locked
+
+# Headless PTY harnesses for the M1 spike prototype (fidelity checks).
+smoke:
+    cargo build -p monarch-mux-tui --example single_pane
+    python3 scripts/spike1_smoke.py target/debug/examples/single_pane
+    python3 scripts/spike3_input_matrix.py target/debug/examples/single_pane
