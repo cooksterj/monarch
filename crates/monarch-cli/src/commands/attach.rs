@@ -21,6 +21,11 @@ pub(crate) fn run(
         .session
         .clone()
         .unwrap_or_else(|| config.session.default_name.clone());
+    refuse_nesting(
+        std::env::var("MONARCH_PANE").ok().as_deref(),
+        std::env::var("MONARCH_SESSION").ok().as_deref(),
+        config,
+    )?;
     let prefix = config
         .keys
         .prefix_byte()
@@ -36,6 +41,25 @@ pub(crate) fn run(
     })?;
     writeln!(out, "{}", farewell(&session, outcome))?;
     Ok(ExitCode::SUCCESS)
+}
+
+/// Panes carry `MONARCH_PANE`. A client started inside one reads the very
+/// pane it writes to, so every key loops back into it and none reach the
+/// shell. Refuse, as tmux does; unsetting the variable deliberately nests.
+fn refuse_nesting(
+    pane: Option<&str>,
+    session: Option<&str>,
+    config: &Config,
+) -> anyhow::Result<()> {
+    if pane.is_none() {
+        return Ok(());
+    }
+    let session = session.unwrap_or("?");
+    anyhow::bail!(
+        "already inside monarch session `{session}`; press {} d to detach instead \
+         (to nest a session deliberately, run with MONARCH_PANE unset)",
+        config.keys.prefix
+    )
 }
 
 /// The line printed after the client gives the terminal back.
@@ -60,6 +84,16 @@ mod tests {
             farewell("w", AttachOutcome::ServerExited),
             "[session w ended]"
         );
+    }
+
+    #[test]
+    fn attaching_from_inside_a_pane_is_refused() {
+        let config = Config::default();
+        let err = refuse_nesting(Some("1"), Some("main"), &config).expect_err("refused");
+        let text = err.to_string();
+        assert!(text.contains("inside monarch session `main`"), "{text}");
+        assert!(text.contains("ctrl+b d"), "{text}");
+        assert!(refuse_nesting(None, Some("main"), &config).is_ok());
     }
 
     #[test]
