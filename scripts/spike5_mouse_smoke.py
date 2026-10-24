@@ -19,6 +19,7 @@ import base64
 import fcntl
 import os
 import pty
+import subprocess
 import re
 import select
 import struct
@@ -29,6 +30,9 @@ import time
 
 # Runs inside the pane: raw mode, set modes, then record every byte.
 # Raw mode makes Ctrl-C a plain byte, so `Q` ends it and the tty is restored.
+# Unique per run, so cleanup can never touch a real session.
+TAG = f"s5-{os.getpid()}-"
+
 RECORDER = r"""
 import os, sys, termios, tty
 out, setup = sys.argv[1], bytes.fromhex(sys.argv[2])
@@ -60,7 +64,7 @@ class Host:
             env.pop(var, None)
         self.pid, self.fd = pty.fork()
         if self.pid == 0:
-            os.execve(binary, [binary, "attach", "-s", session], env)
+            os.execve(binary, [binary, "attach", "-s", TAG + session], env)
         fcntl.ioctl(self.fd, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 80, 0, 0))
         self.seen = b""
         self.wait_for(b"\x1b[c", "probe query")
@@ -142,7 +146,7 @@ def pane_copy_reaches_host(host):
 def passthrough_toggles(host):
     mark = len(host.seen)
     host.type(b"\x02m")
-    host.wait_for(b"to restore)", "passthrough notice")  # diffed draws skip unchanged cells
+    host.wait_for(b"(ctrl+b m", "passthrough notice")  # diffed draws skip unchanged cells
     assert b"\x1b[?1002l" in host.seen[mark:], "host mouse not released"
     mark = len(host.seen)
     host.type(b"\x02m")
@@ -181,7 +185,14 @@ def tracking_pane(binary, run, name, setup, expected):
 
 
 def main():
-    binary = os.path.abspath(sys.argv[1])
+    try:
+        run_all(os.path.abspath(sys.argv[1]))
+    finally:
+        # A failed check leaves servers running; stop this run's servers.
+        subprocess.run(["pkill", "-f", f"session {TAG}"], check=False)
+
+
+def run_all(binary):
     with tempfile.TemporaryDirectory(prefix="monarch-spike5-") as run:
         host = Host(binary, run, "shell")
         wheel_scrolls_history(host)

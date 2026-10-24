@@ -46,4 +46,4 @@ pub use server::Server;
 pub use server_config::ServerConfig;
 pub use server_context::ServerContext;
 pub use session_state::{DEFAULT_SIZE, SessionState};
-pub use socket_path::SocketPath;
+pub use socket_path::{MAX_SOCKET_PATH, SocketPath};

@@ -12,12 +12,16 @@ Usage: python3 scripts/spike4_attach_smoke.py target/debug/monarch
 import fcntl
 import os
 import pty
+import subprocess
 import select
 import struct
 import sys
 import tempfile
 import termios
 import time
+
+# Unique per run, so cleanup can never touch a real session.
+SESSION = f"smoke-{os.getpid()}"
 
 HOST_REPLIES = b"\x1b]11;rgb:2828/2c2c/3434\x1b\\\x1b[?2026;2$y\x1b[?62;22c"
 
@@ -28,7 +32,7 @@ class Client:
     def __init__(self, binary, env):
         self.pid, self.fd = pty.fork()
         if self.pid == 0:
-            os.execve(binary, [binary, "attach", "-s", "smoke"], env)
+            os.execve(binary, [binary, "attach", "-s", SESSION], env)
         fcntl.ioctl(self.fd, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 80, 0, 0))
         self.seen = b""
         self.wait_for(b"\x1b[c", "probe query")
@@ -61,7 +65,14 @@ class Client:
 
 
 def main():
-    binary = os.path.abspath(sys.argv[1])
+    try:
+        run_all(os.path.abspath(sys.argv[1]))
+    finally:
+        # A failed check leaves the server running; stop this run's server.
+        subprocess.run(["pkill", "-f", f"session {SESSION}$"], check=False)
+
+
+def run_all(binary):
     with tempfile.TemporaryDirectory(prefix="monarch-spike4-") as run:
         env = dict(os.environ, XDG_RUNTIME_DIR=run, SHELL="/bin/sh", PS1="$ ",
                    MONARCH_CONFIG=os.path.join(run, "none.toml"))
@@ -72,22 +83,22 @@ def main():
         os.write(first.fd, b"echo monarch-$((40+2))\r")
         first.wait_for(b"monarch-42", "echo output")
         os.write(first.fd, binary.encode() + b"\r")
-        first.wait_for(b"`smoke`;", "nested attach refused")  # spaces are cursor moves
-        first.wait_for(b"monarch \xe2\x94\x82 smoke", "status line")
-        first.wait_for(b"\x1b]2;monarch:smoke", "window title")
+        first.wait_for(f"`{SESSION}`;".encode(), "nested attach refused")  # spaces are cursor moves
+        first.wait_for(b"monarch \xe2\x94\x82 " + SESSION.encode(), "status line")
+        first.wait_for(b"\x1b]2;monarch:" + SESSION.encode(), "window title")
         os.write(first.fd, b"\x02")
         first.wait_for(b"PREFIX", "prefix indicator")
         os.write(first.fd, b"d")
-        first.wait_for(b"[detached from session smoke]", "detach message")
+        first.wait_for(f"[detached from session {SESSION}]".encode(), "detach message")
         first.finish()
         print("  attach: auto-started server, nested attach refused, status line + title shown, typed, prefix shown, detached")
 
         second = Client(binary, env)
         second.wait_for(b"monarch-42", "restored screen on reattach")
         os.write(second.fd, b"exit\r")
-        second.wait_for(b"[session smoke ended]", "session end message")
+        second.wait_for(f"[session {SESSION} ended]".encode(), "session end message")
         second.finish()
-        assert not os.path.exists(os.path.join(run, "monarch", "smoke.sock")), "socket left behind"
+        assert not os.path.exists(os.path.join(run, "monarch", f"{SESSION}.sock")), "socket left behind"
         print("  reattach: screen restored; exiting the shell ends the session")
     print("spike4 attach smoke: ok")
 
