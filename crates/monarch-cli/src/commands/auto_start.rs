@@ -22,13 +22,16 @@ pub(crate) fn ensure_server(session: &str, socket: &Path) -> anyhow::Result<()> 
     let log =
         File::create(&log_path).with_context(|| format!("creating {}", log_path.display()))?;
     let exe = std::env::current_exe().context("locating the monarch binary")?;
-    Command::new(exe)
+    let mut server = Command::new(exe)
         .args(["server", "--daemon", "--session", session])
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(log)
         .spawn()
         .context("starting the session server")?;
+    // Reap it if it exits while this client still runs, so it never lingers
+    // as a zombie.
+    thread::spawn(move || server.wait());
     wait_for_socket(socket, START_TIMEOUT)
         .with_context(|| format!("server did not start; see {}", log_path.display()))
 }

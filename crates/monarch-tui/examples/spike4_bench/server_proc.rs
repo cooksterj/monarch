@@ -22,6 +22,7 @@ impl ServerProc {
         }
         let child = cmd
             .env("XDG_RUNTIME_DIR", run_dir)
+            .env("XDG_STATE_HOME", run_dir)
             .env("MONARCH_CONFIG", run_dir.join("none.toml"))
             .stdin(Stdio::null())
             .stdout(Stdio::null())

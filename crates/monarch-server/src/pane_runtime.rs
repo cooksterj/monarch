@@ -23,6 +23,7 @@ pub struct PaneRuntime {
     input: Sender<Vec<u8>>,
     master: Box<dyn MasterPty + Send>,
     killer: Box<dyn ChildKiller + Send + Sync>,
+    pid: Option<u32>,
 }
 
 impl PaneRuntime {
@@ -37,6 +38,9 @@ impl PaneRuntime {
             .map_err(pty_error)?;
         let mut term = Terminal::new(p.size, p.scrollback);
         term.set_host_profile(p.profile);
+        if let Some(banner) = p.banner {
+            term.feed(banner.as_bytes(), &mut Vec::new());
+        }
         let child = pair
             .slave
             .spawn_command(p.spec.command(p.id, p.env))
@@ -44,6 +48,7 @@ impl PaneRuntime {
         // Only the child may hold the slave, or EOF never reaches the reader.
         drop(pair.slave);
         let killer = child.clone_killer();
+        let pid = child.process_id();
         let shared = Arc::new(PaneShared::new(term));
         let (input, rx) = mpsc::channel();
         let thread = |e| ServerError::io("starting pane thread", e);
@@ -64,6 +69,7 @@ impl PaneRuntime {
             input,
             master: pair.master,
             killer,
+            pid,
         })
     }
 }
@@ -81,6 +87,10 @@ impl PaneIo for PaneRuntime {
     fn resize(&self, size: ScreenSize) {
         self.shared.lock().resize(size);
         let _ = self.master.resize(pty_size(size));
+    }
+
+    fn process_id(&self) -> Option<u32> {
+        self.pid
     }
 }
 

@@ -58,7 +58,7 @@ class Host:
     def __init__(self, binary, run, session):
         # SSH_CONNECTION keeps copies on OSC 52 only: no pbcopy clobbering
         # the clipboard of whoever runs the tests.
-        env = dict(os.environ, XDG_RUNTIME_DIR=run, SHELL="/bin/sh", PS1="$ ",
+        env = dict(os.environ, XDG_RUNTIME_DIR=run, XDG_STATE_HOME=run, SHELL="/bin/sh", PS1="$ ",
                    MONARCH_CONFIG=os.path.join(run, "none.toml"), SSH_CONNECTION="smoke")
         for var in ("MONARCH_PANE", "MONARCH_SESSION", "TMUX"):
             env.pop(var, None)

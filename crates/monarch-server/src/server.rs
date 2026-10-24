@@ -9,9 +9,11 @@ use tokio::net::UnixListener;
 use tokio::sync::mpsc;
 
 use crate::{
-    AttachConnection, EventLoop, FrameCoalescer, PaneEnv, ServerConfig, ServerContext, ServerError,
-    SocketPath,
+    AttachConnection, EventLoop, FrameCoalescer, PaneEnv, Persister, ServerConfig, ServerContext,
+    ServerError, SocketPath, SystemProbe,
 };
+
+mod restore;
 
 /// Runs a session until its last pane exits.
 #[derive(Debug, Clone, Copy, Default)]
@@ -47,9 +49,11 @@ impl Server {
             socket: socket.clone(),
         };
         let ctx = Arc::new(ServerContext::new(env, events, config.scrollback));
-        for spec in &config.panes {
-            ctx.spawn_pane(spec)?;
-        }
+        restore::start_panes(&ctx, &config)?;
+        let persister = config.state.clone().map(|file| {
+            let persister = Persister::new(file, Box::new(SystemProbe::new()));
+            tokio::spawn(persister.run(Arc::clone(&ctx)))
+        });
         let coalescer = tokio::spawn(FrameCoalescer::default().run(Arc::clone(&ctx)));
         let event_loop = tokio::spawn(EventLoop::run(Arc::clone(&ctx), events_rx));
         loop {
@@ -64,6 +68,13 @@ impl Server {
         }
         coalescer.abort();
         event_loop.abort();
+        if let Some(persister) = persister {
+            persister.abort();
+        }
+        // Every pane exited on purpose: there is nothing to restore.
+        if let Some(file) = &config.state {
+            file.remove();
+        }
         let _ = fs::remove_file(&socket);
         Ok(())
     }

@@ -2,9 +2,9 @@
 
 use std::path::PathBuf;
 
-use crate::PaneSpec;
+use crate::{PaneSpec, StateFile};
 
-/// Session name, socket and initial panes.
+/// Session name, socket, initial panes and where state is kept.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ServerConfig {
     /// Session name (also the socket file name).
@@ -15,6 +15,10 @@ pub struct ServerConfig {
     pub panes: Vec<PaneSpec>,
     /// Scrollback lines per pane.
     pub scrollback: usize,
+    /// Where the session is saved for restore; `None` keeps no state.
+    pub state: Option<StateFile>,
+    /// Start from the saved session, if there is one, instead of `panes`.
+    pub restore: bool,
 }
 
 impl Default for ServerConfig {
@@ -24,6 +28,8 @@ impl Default for ServerConfig {
             socket: None,
             panes: vec![PaneSpec::default()],
             scrollback: 10_000,
+            state: None,
+            restore: false,
         }
     }
 }
@@ -37,5 +43,9 @@ mod tests {
         let config = ServerConfig::default();
         assert_eq!(config.session, "main");
         assert_eq!(config.panes, [PaneSpec::default()]);
+        assert!(
+            config.state.is_none() && !config.restore,
+            "no state unless asked"
+        );
     }
 }

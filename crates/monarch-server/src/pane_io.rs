@@ -20,6 +20,11 @@ pub trait PaneIo: Send {
     fn resize(&self, size: ScreenSize) {
         self.shared().lock().resize(size);
     }
+
+    /// The program's process id, when it runs as a real process.
+    fn process_id(&self) -> Option<u32> {
+        None
+    }
 }
 
 #[cfg(test)]
@@ -54,5 +59,6 @@ mod tests {
         assert_eq!(fake.shared().lock().size(), ScreenSize::new(30, 5));
         fake.send(b"x".to_vec());
         assert_eq!(*fake.sent.lock().expect("lock"), b"x");
+        assert_eq!(fake.process_id(), None, "no process by default");
     }
 }
