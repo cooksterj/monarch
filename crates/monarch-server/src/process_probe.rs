@@ -7,6 +7,12 @@ use std::path::PathBuf;
 pub trait ProcessProbe: Send + Sync {
     /// The working directory of process `pid`, if it can be read.
     fn cwd(&self, pid: u32) -> Option<PathBuf>;
+
+    /// The name of process `pid`'s program (`zsh`, `vim`), if it can be
+    /// read.
+    fn name(&self, _pid: u32) -> Option<String> {
+        None
+    }
 }
 
 #[cfg(test)]
@@ -28,5 +34,6 @@ mod tests {
         let probe: Box<dyn ProcessProbe> = Box::new(Fixed(BTreeMap::from([(7, "/w".into())])));
         assert_eq!(probe.cwd(7), Some(PathBuf::from("/w")));
         assert_eq!(probe.cwd(8), None, "unknown process");
+        assert_eq!(probe.name(7), None, "no names by default");
     }
 }

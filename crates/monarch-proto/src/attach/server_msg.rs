@@ -26,6 +26,14 @@ pub enum ServerMsg {
         /// The new title.
         title: Option<String>,
     },
+    /// A pane's foreground program changed (`zsh` → `vim`); names the
+    /// pane when its program sets no title.
+    Command {
+        /// The pane.
+        pane: PaneId,
+        /// The program's name.
+        command: Option<String>,
+    },
     /// Bytes for the host terminal itself (bell).
     HostWrite(Vec<u8>),
     /// A visible pane's program copied text (OSC 52); the client puts it

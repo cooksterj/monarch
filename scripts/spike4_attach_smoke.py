@@ -12,6 +12,7 @@ Usage: python3 scripts/spike4_attach_smoke.py target/debug/monarch
 import fcntl
 import os
 import pty
+import re
 import subprocess
 import select
 import struct
@@ -59,6 +60,14 @@ class Client:
             assert time.time() < deadline, f"timed out waiting for {what}: {self.seen[-300:]!r}"
             self.pump(0.05)
 
+    def wait_for_bar(self, text, what, seconds=10):
+        """Waits for `text` written on the bottom row (the tab bar)."""
+        pattern = re.compile(rb"\x1b\[24;\d+H(?:[^\x1b]|\x1b\[[0-9;]*m)*?" + re.escape(text))
+        deadline = time.time() + seconds
+        while not pattern.search(self.seen):
+            assert time.time() < deadline, f"timed out waiting for {what}: {self.seen[-300:]!r}"
+            self.pump(0.05)
+
     def finish(self):
         deadline = time.time() + 5
         while time.time() < deadline:
@@ -93,6 +102,14 @@ def run_all(binary):
         first.wait_for(f"`{SESSION}`;".encode(), "nested attach refused")  # spaces are cursor moves
         first.wait_for(b"monarch \xe2\x94\x82 " + SESSION.encode(), "status line")
         first.wait_for(b"\x1b]2;monarch:" + SESSION.encode(), "window title")
+        first.wait_for_bar(b" 1 sh ", "the tab named after the shell")
+        first.seen = b""
+        os.write(first.fd, b"cat\r")
+        first.wait_for_bar(b"cat", "the tab named after the program in front")
+        first.seen = b""
+        os.write(first.fd, b"\x04")
+        first.wait_for_bar(b"sh ", "the shell's name back")
+        print("  names: the tab follows the foreground program (sh, cat, sh)")
         os.write(first.fd, b"\x02%")
         first.idle(0.5)
         os.write(first.fd, b"echo split-$((1+1))\r")

@@ -9,8 +9,8 @@ use tokio::net::UnixListener;
 use tokio::sync::mpsc;
 
 use crate::{
-    AttachConnection, EventLoop, FrameCoalescer, PaneEnv, Persister, ServerConfig, ServerContext,
-    ServerError, SocketPath, SystemProbe,
+    AttachConnection, CommandWatcher, EventLoop, FrameCoalescer, PaneEnv, Persister, ServerConfig,
+    ServerContext, ServerError, SocketPath, SystemProbe,
 };
 
 mod restore;
@@ -50,12 +50,15 @@ impl Server {
         };
         let ctx = Arc::new(ServerContext::new(env, events, config.scrollback));
         restore::start_panes(&ctx, &config)?;
-        let persister = config.state.clone().map(|file| {
+        let mut tasks = vec![
+            tokio::spawn(FrameCoalescer::default().run(Arc::clone(&ctx))),
+            tokio::spawn(EventLoop::run(Arc::clone(&ctx), events_rx)),
+            tokio::spawn(CommandWatcher::new(Box::new(SystemProbe::new())).run(Arc::clone(&ctx))),
+        ];
+        if let Some(file) = config.state.clone() {
             let persister = Persister::new(file, Box::new(SystemProbe::new()));
-            tokio::spawn(persister.run(Arc::clone(&ctx)))
-        });
-        let coalescer = tokio::spawn(FrameCoalescer::default().run(Arc::clone(&ctx)));
-        let event_loop = tokio::spawn(EventLoop::run(Arc::clone(&ctx), events_rx));
+            tasks.push(tokio::spawn(persister.run(Arc::clone(&ctx))));
+        }
         loop {
             tokio::select! {
                 accepted = listener.accept() => {
@@ -66,11 +69,7 @@ impl Server {
                 () = ctx.shutdown.notified() => break,
             }
         }
-        coalescer.abort();
-        event_loop.abort();
-        if let Some(persister) = persister {
-            persister.abort();
-        }
+        tasks.iter().for_each(tokio::task::JoinHandle::abort);
         // Every pane exited on purpose: there is nothing to restore.
         if let Some(file) = &config.state {
             file.remove();
