@@ -155,3 +155,124 @@ fn closed_clients_are_dropped() {
     s.render_frame();
     assert_eq!(s.client_count(), 0);
 }
+
+mod tabs_and_splits {
+    use std::sync::atomic::Ordering;
+
+    use monarch_core::{Action, Direction, SplitAxis};
+
+    use super::*;
+    use crate::{ActionEffect, Placement};
+
+    const A: PaneId = PaneId(1);
+    const B: PaneId = PaneId(2);
+
+    /// One pane split side by side: A | B, B focused.
+    fn split() -> SessionState {
+        let mut s = session_with_panes(1);
+        let effect = s.apply_action(Action::Split(SplitAxis::Columns));
+        assert_eq!(
+            effect,
+            ActionEffect::Spawn(Placement::Split(SplitAxis::Columns))
+        );
+        let id = s.allocate_pane_id();
+        s.insert_pane_at(id, fake(), Placement::Split(SplitAxis::Columns));
+        s
+    }
+
+    fn size_of(s: &SessionState, pane: PaneId) -> ScreenSize {
+        s.pane(pane).expect("pane").shared().lock().size()
+    }
+
+    #[test]
+    fn a_split_shows_both_panes_sized_to_their_halves() {
+        let s = split();
+        let layout = s.layout();
+        assert_eq!(layout.focus, Some(B));
+        let places: Vec<_> = layout.panes.iter().map(|p| (p.pane, p.x, p.size)).collect();
+        assert_eq!(
+            places,
+            [
+                (A, 0, ScreenSize::new(39, 24)),
+                (B, 40, ScreenSize::new(40, 24))
+            ]
+        );
+        assert_eq!(size_of(&s, A), ScreenSize::new(39, 24), "the PTY follows");
+    }
+
+    #[test]
+    fn focus_moves_and_zoom_fills_the_window() {
+        let mut s = split();
+        s.apply_action(Action::Focus(Direction::Left));
+        assert_eq!(s.focus(), Some(A));
+        s.apply_action(Action::ToggleZoom);
+        assert_eq!(s.visible_panes(), [A]);
+        assert_eq!(size_of(&s, A), DEFAULT_SIZE);
+        assert_eq!(
+            size_of(&s, B),
+            ScreenSize::new(40, 24),
+            "B keeps its split size"
+        );
+        s.apply_action(Action::ToggleZoom);
+        assert_eq!(s.visible_panes(), [A, B]);
+    }
+
+    #[test]
+    fn resize_moves_the_divider() {
+        let mut s = split();
+        s.apply_action(Action::Resize(Direction::Left));
+        assert_eq!(size_of(&s, A), ScreenSize::new(37, 24));
+    }
+
+    #[test]
+    fn switching_tabs_snapshots_the_panes_that_appear() {
+        let mut s = session_with_panes(1);
+        let (tx, mut rx) = mpsc::channel(8);
+        s.add_client(tx);
+        s.render_frame();
+        drain(&mut rx);
+        s.apply_action(Action::NewTab);
+        s.insert_pane_at(B, fake(), Placement::Tab { activate: true });
+        assert_eq!((s.active_tab(), s.visible_panes()), (1, vec![B]));
+        s.render_frame();
+        assert_eq!(snapshot(&drain(&mut rx)).map(|s| s.pane), Some(B));
+        s.apply_action(Action::SelectTab(1));
+        s.render_frame();
+        let msgs = drain(&mut rx);
+        assert!(matches!(&msgs[0], ServerMsg::Layout(l) if l.focus == Some(A)));
+        assert_eq!(
+            snapshot(&msgs).map(|s| s.pane),
+            Some(A),
+            "A may have changed while hidden"
+        );
+        s.apply_action(Action::SelectTab(9));
+        assert_eq!(s.active_tab(), 0, "no tab 9");
+    }
+
+    #[test]
+    fn close_hangs_up_and_the_exit_hands_focus_on() {
+        let mut s = session_with_panes(1);
+        let (io, closed) = FakePane::tracked();
+        s.insert_pane_at(B, io, Placement::Split(SplitAxis::Rows));
+        s.apply_action(Action::ClosePane);
+        assert!(closed.load(Ordering::SeqCst));
+        assert_eq!(
+            s.visible_panes(),
+            [A, B],
+            "the pane stays until its program exits"
+        );
+        assert!(!s.remove_pane(B));
+        assert_eq!((s.focus(), s.visible_panes()), (Some(A), vec![A]));
+        assert_eq!(size_of(&s, A), DEFAULT_SIZE, "A takes the space back");
+    }
+
+    #[test]
+    fn closing_a_tab_shows_a_neighbour() {
+        let mut s = session_with_panes(1);
+        s.insert_pane_at(B, fake(), Placement::Tab { activate: true });
+        assert!(!s.remove_pane(B));
+        assert_eq!((s.active_tab(), s.tabs().len(), s.focus()), (0, 1, Some(A)));
+        assert!(s.remove_pane(A), "the session is empty");
+        assert_eq!(s.apply_action(Action::FocusNext), ActionEffect::Done);
+    }
+}

@@ -4,8 +4,8 @@ mod reader_thread;
 mod spawn_params;
 mod writer_thread;
 
-use std::sync::Arc;
 use std::sync::mpsc::{self, Sender};
+use std::sync::{Arc, Mutex};
 
 use monarch_proto::ScreenSize;
 use monarch_term::Terminal;
@@ -22,7 +22,7 @@ pub struct PaneRuntime {
     shared: Arc<PaneShared>,
     input: Sender<Vec<u8>>,
     master: Box<dyn MasterPty + Send>,
-    killer: Box<dyn ChildKiller + Send + Sync>,
+    killer: Mutex<Box<dyn ChildKiller + Send + Sync>>,
     pid: Option<u32>,
 }
 
@@ -68,7 +68,7 @@ impl PaneRuntime {
             shared,
             input,
             master: pair.master,
-            killer,
+            killer: Mutex::new(killer),
             pid,
         })
     }
@@ -92,11 +92,19 @@ impl PaneIo for PaneRuntime {
     fn process_id(&self) -> Option<u32> {
         self.pid
     }
+
+    fn close(&self) {
+        let _ = self
+            .killer
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .kill();
+    }
 }
 
 impl Drop for PaneRuntime {
     fn drop(&mut self) {
-        let _ = self.killer.kill();
+        self.close();
     }
 }
 

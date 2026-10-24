@@ -1,6 +1,7 @@
 //! What every server task shares.
 
 use std::collections::BTreeMap;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use monarch_core::PaneId;
@@ -8,8 +9,8 @@ use tokio::sync::Notify;
 use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{
-    PaneEnv, PaneEvent, PaneRuntime, PaneSpec, PersistedPane, ServerError, SessionState,
-    SpawnParams,
+    PaneEnv, PaneEvent, PaneRuntime, PaneSpec, PersistedPane, Placement, ProcessProbe, ServerError,
+    SessionState, SpawnParams, SystemProbe,
 };
 
 /// The session state plus the wake-ups and channels around it.
@@ -26,6 +27,7 @@ pub struct ServerContext {
     events: UnboundedSender<PaneEvent>,
     env: PaneEnv,
     scrollback: usize,
+    probe: Box<dyn ProcessProbe>,
 }
 
 impl ServerContext {
@@ -41,6 +43,7 @@ impl ServerContext {
             events,
             env,
             scrollback,
+            probe: Box::new(SystemProbe::new()),
         }
     }
 
@@ -56,12 +59,35 @@ impl ServerContext {
         self.wake.notify_one();
     }
 
-    /// Starts a pane running `spec` at the session's size.
+    /// Starts a pane running `spec` in a background tab.
     ///
     /// # Errors
     /// The PTY or program could not be started.
     pub fn spawn_pane(&self, spec: &PaneSpec) -> Result<PaneId, ServerError> {
-        self.spawn(spec, None)
+        self.spawn(spec, None, Placement::BACKGROUND)
+    }
+
+    /// Starts a shell where `placement` says, in the focused pane's
+    /// current directory (as a new terminal tab would).
+    ///
+    /// # Errors
+    /// The PTY or program could not be started.
+    pub fn spawn_shell_at(&self, placement: Placement) -> Result<PaneId, ServerError> {
+        let spec = PaneSpec {
+            cwd: self.focused_cwd(),
+            ..PaneSpec::default()
+        };
+        self.spawn(&spec, None, placement)
+    }
+
+    /// The focused pane's working directory, if it can be read.
+    #[must_use]
+    pub fn focused_cwd(&self) -> Option<PathBuf> {
+        let pid = {
+            let state = self.lock();
+            state.focus().and_then(|p| state.pane(p)?.process_id())
+        }?;
+        self.probe.cwd(pid)
     }
 
     /// Starts the pane that replaces `pane` after a restart, with a notice
@@ -70,10 +96,15 @@ impl ServerContext {
     /// # Errors
     /// The PTY or program could not be started.
     pub fn spawn_restored(&self, pane: &PersistedPane) -> Result<PaneId, ServerError> {
-        self.spawn(&pane.restore(), Some(&pane.banner()))
+        self.spawn(&pane.restore(), Some(&pane.banner()), Placement::BACKGROUND)
     }
 
-    fn spawn(&self, spec: &PaneSpec, banner: Option<&str>) -> Result<PaneId, ServerError> {
+    fn spawn(
+        &self,
+        spec: &PaneSpec,
+        banner: Option<&str>,
+        placement: Placement,
+    ) -> Result<PaneId, ServerError> {
         let (id, size, profile) = {
             let mut state = self.lock();
             (state.allocate_pane_id(), state.size(), state.host_profile())
@@ -89,7 +120,7 @@ impl ServerContext {
             events: self.events.clone(),
             wake: Arc::clone(&self.wake),
         })?;
-        self.lock().insert_pane(id, Box::new(runtime));
+        self.lock().insert_pane_at(id, Box::new(runtime), placement);
         self.remember(id, spec.clone());
         self.wake();
         Ok(id)
