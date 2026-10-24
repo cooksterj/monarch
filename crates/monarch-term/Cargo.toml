@@ -11,8 +11,13 @@ authors.workspace = true
 
 [dependencies]
 monarch-core.workspace = true
+monarch-proto.workspace = true
+alacritty_terminal.workspace = true
+memchr.workspace = true
+thiserror.workspace = true
 
 [dev-dependencies]
+proptest.workspace = true
 
 [lints]
 workspace = true

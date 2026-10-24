@@ -11,8 +11,11 @@ authors.workspace = true
 
 [dependencies]
 monarch-core.workspace = true
+bitflags.workspace = true
+serde.workspace = true
 
 [dev-dependencies]
+serde_json.workspace = true
 
 [lints]
 workspace = true

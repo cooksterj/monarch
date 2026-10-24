@@ -44,6 +44,11 @@ serde_json = "1"
 thiserror = "2"
 toml = "0.9"
 tempfile = "3"
+alacritty_terminal = { version = "0.26", default-features = false }
+memchr = "2"
+bitflags = { version = "2", features = ["serde"] }
+portable-pty = "0.9"
+proptest = "1"
 
 [package]
 name = "monarch-mux"
