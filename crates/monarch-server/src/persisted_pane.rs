@@ -4,7 +4,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use crate::PaneSpec;
+use crate::{PaneAgent, PaneSpec};
 
 /// What a pane ran and where, enough to start it again after the server
 /// died.
@@ -14,6 +14,9 @@ pub struct PersistedPane {
     pub argv: Vec<String>,
     /// The program's working directory when last seen.
     pub cwd: Option<PathBuf>,
+    /// The agent session the pane ran, if Monarch launched it as one.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent: Option<PaneAgent>,
 }
 
 impl PersistedPane {
@@ -23,22 +26,25 @@ impl PersistedPane {
         Self {
             argv: spec.argv.clone(),
             cwd: cwd.or_else(|| spec.cwd.clone()),
+            agent: spec.agent.clone(),
         }
     }
 
-    /// The pane to start in its place. A shell comes back as a shell in the
-    /// same directory. Any other command also comes back as a shell there,
-    /// never re-run: it may not be safe to run twice (a deploy, a delete).
+    /// The pane to start in its place. An agent resumes its session; a
+    /// shell comes back as a shell in the same directory. Any other command
+    /// also comes back as a shell there, never re-run: it may not be safe
+    /// to run twice (a deploy, a delete).
     #[must_use]
     pub fn restore(&self) -> PaneSpec {
-        let argv = if self.is_shell() {
-            self.argv.clone()
-        } else {
-            Vec::new()
+        let argv = match &self.agent {
+            Some(agent) => agent.resume_argv(),
+            None if self.is_shell() => self.argv.clone(),
+            None => Vec::new(),
         };
         PaneSpec {
             argv,
             cwd: self.cwd.clone().filter(|dir| dir.is_dir()),
+            agent: self.agent.clone(),
         }
     }
 
@@ -46,7 +52,10 @@ impl PersistedPane {
     #[must_use]
     pub fn banner(&self) -> String {
         let mut text = String::from("\x1b[2mmonarch: restored after the server stopped");
-        if !self.is_shell() {
+        if let Some(agent) = &self.agent {
+            text.push_str("; ");
+            text.push_str(&agent.resume_note());
+        } else if !self.is_shell() {
             text.push_str("; it was running: ");
             text.push_str(&self.command_text());
         }
@@ -73,6 +82,8 @@ impl PersistedPane {
 
 #[cfg(test)]
 mod tests {
+    use monarch_core::AgentKind;
+
     use super::*;
 
     #[test]
@@ -93,10 +104,34 @@ mod tests {
     }
 
     #[test]
+    fn an_agent_resumes_its_session() {
+        let spec = PaneSpec::agent(AgentKind::Claude);
+        let id = spec
+            .agent
+            .as_ref()
+            .and_then(|a| a.session_id.clone())
+            .expect("id");
+        let pane = PersistedPane::new(&spec, None);
+        let back = pane.restore();
+        assert_eq!(back.argv, ["claude", "--resume", id.as_str()]);
+        assert_eq!(back.agent, spec.agent, "still the same session next time");
+        assert!(
+            pane.banner()
+                .contains(&format!("resuming Claude Code session {id}"))
+        );
+    }
+
+    #[test]
+    fn files_without_agents_still_load() {
+        let pane: PersistedPane = serde_json::from_str(r#"{"argv":[],"cwd":null}"#).expect("parse");
+        assert_eq!(pane.agent, None);
+    }
+
+    #[test]
     fn a_vanished_directory_is_dropped() {
         let pane = PersistedPane {
-            argv: Vec::new(),
             cwd: Some("/nonexistent/monarch/dir".into()),
+            ..PersistedPane::default()
         };
         assert_eq!(pane.restore().cwd, None);
     }
@@ -105,7 +140,7 @@ mod tests {
     fn control_characters_never_reach_the_banner() {
         let pane = PersistedPane {
             argv: vec!["sh".into(), "-c".into(), "echo \x1b]2;x\x07".into()],
-            cwd: None,
+            ..PersistedPane::default()
         };
         assert!(!pane.banner().contains('\x07'));
     }

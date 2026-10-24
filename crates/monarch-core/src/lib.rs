@@ -4,11 +4,13 @@
 //! [`ConfigLoader`]; everything else is pure data so it can be shared by the
 //! server, the TUI client and the CLI and tested without a terminal.
 
+mod agent_kind;
 mod agent_state;
 mod config;
 mod error;
 mod ids;
 
+pub use agent_kind::AgentKind;
 pub use agent_state::AgentState;
 pub use config::{
     AgentConfig, Config, ConfigLoader, KeysConfig, LoadedConfig, MouseMode, NotificationsConfig,

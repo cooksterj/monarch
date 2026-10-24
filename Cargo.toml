@@ -59,6 +59,7 @@ tokio = { version = "1.54", features = ["rt-multi-thread", "net", "io-util", "sy
 tokio-util = { version = "0.7", features = ["codec"] }
 rustix = { version = "1.1", default-features = false, features = ["std", "process"] }
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+uuid = { version = "1", features = ["v4"] }
 sysinfo = { version = "0.38", default-features = false, features = ["system"] }
 
 [package]

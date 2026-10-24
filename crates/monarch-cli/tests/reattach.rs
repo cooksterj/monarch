@@ -126,7 +126,7 @@ fn a_reattached_client_sees_exactly_what_an_attached_one_sees() {
         socket: Some(socket.clone()),
         panes: vec![PaneSpec {
             argv: vec!["sh".into(), "-c".into(), SCRIPT.into()],
-            cwd: None,
+            ..PaneSpec::default()
         }],
         scrollback: 100,
         ..ServerConfig::default()

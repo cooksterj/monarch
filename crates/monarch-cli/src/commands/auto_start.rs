@@ -8,14 +8,24 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use anyhow::Context;
+use monarch_core::AgentKind;
 
 /// How long a freshly started server gets to open its socket.
 const START_TIMEOUT: Duration = Duration::from_secs(3);
 const POLL: Duration = Duration::from_millis(20);
 
-/// Makes sure a server for `session` listens on `socket`.
-pub(crate) fn ensure_server(session: &str, socket: &Path) -> anyhow::Result<()> {
+/// Makes sure a server for `session` listens on `socket`, starting one
+/// with `agents` if needed.
+pub(crate) fn ensure_server(
+    session: &str,
+    socket: &Path,
+    agents: &[AgentKind],
+) -> anyhow::Result<()> {
     if UnixStream::connect(socket).is_ok() {
+        anyhow::ensure!(
+            agents.is_empty(),
+            "session `{session}` is already running; --agent only starts a new session"
+        );
         return Ok(());
     }
     let log_path = socket.with_extension("log");
@@ -24,6 +34,7 @@ pub(crate) fn ensure_server(session: &str, socket: &Path) -> anyhow::Result<()> 
     let exe = std::env::current_exe().context("locating the monarch binary")?;
     let mut server = Command::new(exe)
         .args(["server", "--daemon", "--session", session])
+        .args(agents.iter().flat_map(|kind| ["--agent", kind.name()]))
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(log)
@@ -70,5 +81,15 @@ mod tests {
         let dir = tempfile::tempdir().expect("tempdir");
         let err = wait_for_socket(&dir.path().join("none.sock"), Duration::from_millis(50));
         assert!(err.is_err());
+    }
+
+    #[test]
+    fn agents_are_refused_for_a_running_session() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("s.sock");
+        let _listener = UnixListener::bind(&path).expect("bind");
+        ensure_server("s", &path, &[]).expect("plain attach is fine");
+        let err = ensure_server("s", &path, &[AgentKind::Claude]).expect_err("refused");
+        assert!(err.to_string().contains("already running"), "{err}");
     }
 }
