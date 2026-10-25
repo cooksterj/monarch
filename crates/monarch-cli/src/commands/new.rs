@@ -29,11 +29,7 @@ pub(crate) fn run(
         .is_ok()
         .then(|| std::env::var("MONARCH_SESSION").ok())
         .flatten();
-    let session = args
-        .session
-        .clone()
-        .or_else(|| inside.clone())
-        .unwrap_or_else(|| config.session.default_name.clone());
+    let session = super::session_name(args.session.clone(), config);
     let socket = SocketPath::for_session(&session)?;
     ensure_server(&session, &socket, &[])?;
     let request = NewWorktree {

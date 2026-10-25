@@ -10,8 +10,8 @@ mod screen;
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use monarch_core::{AgentState, PaneId};
-use monarch_proto::{AgentReport, AgentStatus};
+use monarch_core::{AgentKind, AgentState, PaneId};
+use monarch_proto::{AgentReport, AgentStatus, StatusSource};
 
 /// Agent status per pane (panes never reported on are plain shells),
 /// which pane each agent session id was seen in, and where each status
@@ -75,6 +75,34 @@ impl StateEngine {
         }
         current.clone_from(&next);
         Some(next)
+    }
+
+    /// Monarch started `kind` in `pane`: idle, labelled as that agent,
+    /// until something reports on it.
+    pub fn launched(&mut self, pane: PaneId, kind: AgentKind) -> Option<AgentStatus> {
+        let current = self.status(pane);
+        let next = AgentStatus {
+            state: AgentState::Idle,
+            activity: None,
+            agent: Some(kind),
+        };
+        self.replace(pane, &current, next)
+    }
+
+    /// Which signal `pane`'s status came from.
+    #[must_use]
+    pub fn source(&self, pane: PaneId) -> StatusSource {
+        if self.hooked.contains(&pane) {
+            StatusSource::Hooks
+        } else if self.screened.contains(&pane) {
+            StatusSource::Screen
+        } else if self.guessed.contains(&pane) {
+            StatusSource::Notification
+        } else if self.panes.contains_key(&pane) {
+            StatusSource::Launch
+        } else {
+            StatusSource::None
+        }
     }
 
     /// The user looked at `pane`: a Done agent is now Idle (keeping its
@@ -181,6 +209,29 @@ mod tests {
             "Blocked still needs an answer"
         );
         assert_eq!(engine.seen(PaneId(9)), None);
+    }
+
+    #[test]
+    fn launched_agents_wait_for_a_signal_and_sources_are_named() {
+        let mut engine = StateEngine::default();
+        let p = PaneId(1);
+        assert_eq!(engine.source(p), StatusSource::None);
+        let idle = engine.launched(p, AgentKind::Codex).expect("changed");
+        assert_eq!(
+            (idle.state, idle.agent),
+            (AgentState::Idle, Some(AgentKind::Codex))
+        );
+        assert_eq!(engine.source(p), StatusSource::Launch);
+        engine.screen(p, AgentState::Working, None, false);
+        assert_eq!(
+            engine.source(p),
+            StatusSource::Screen,
+            "not mistaken for hooks"
+        );
+        engine.report(p, &report(Some(AgentState::Working), None));
+        assert_eq!(engine.source(p), StatusSource::Hooks);
+        engine.forget(p);
+        assert_eq!(engine.source(p), StatusSource::None);
     }
 
     #[test]

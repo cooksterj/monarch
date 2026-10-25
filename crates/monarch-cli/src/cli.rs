@@ -1,6 +1,8 @@
 //! The argument grammar for the `monarch` binary.
 
+mod agent_command;
 mod attach_args;
+mod explain_args;
 mod hook_command;
 mod kill_args;
 mod new_args;
@@ -9,7 +11,9 @@ mod setup_args;
 
 use clap::{Parser, Subcommand};
 
+pub use agent_command::AgentCommand;
 pub use attach_args::AttachArgs;
+pub use explain_args::ExplainArgs;
 pub use hook_command::HookCommand;
 pub use kill_args::KillArgs;
 pub use new_args::NewArgs;
@@ -39,6 +43,9 @@ pub enum Command {
     /// End a session: hang up its panes and stop its server. It is not
     /// restored afterwards.
     Kill(KillArgs),
+    /// Ask a session about its agents.
+    #[command(subcommand)]
+    Agent(AgentCommand),
     /// Run a session server (normally started for you by `monarch`).
     Server(ServerArgs),
     /// List what each key after the prefix does.

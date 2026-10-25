@@ -16,8 +16,8 @@ mod screen;
 mod worktree_entry;
 
 pub use api::{
-    AgentReport, KillSession, NewWorktree, Request, Response, RpcError, SessionInfo,
-    WorktreeCreated,
+    AgentReport, ExplainPanes, KillSession, NewWorktree, PaneExplanation, Request, Response,
+    RpcError, RuleOutcome, SessionInfo, StatusSource, WorktreeCreated,
 };
 pub use attach::{
     AgentStatus, ClientMsg, Delta, FrameCodec, HostInfo, LayoutMsg, PaneLayout, PanePlace,
