@@ -7,6 +7,16 @@ use std::path::Path;
 pub trait GitRunner: Send + Sync {
     /// Runs `git <args>` in `dir`; its trimmed output if it succeeded.
     fn run(&self, dir: &Path, args: &[&str]) -> Option<String>;
+
+    /// Like [`Self::run`], but a failure says why (git's own message when
+    /// the runner has one), for commands whose failure the user sees.
+    ///
+    /// # Errors
+    /// The command failed.
+    fn try_run(&self, dir: &Path, args: &[&str]) -> Result<String, String> {
+        self.run(dir, args)
+            .ok_or_else(|| format!("git {} failed", args.first().unwrap_or(&"")))
+    }
 }
 
 #[cfg(test)]
@@ -29,5 +39,13 @@ mod tests {
             Some("/w status")
         );
         assert_eq!(git.run(Path::new("/w"), &[]), None, "a failed command");
+        assert_eq!(
+            git.try_run(Path::new("/w"), &[]),
+            Err("git  failed".to_owned())
+        );
+        assert_eq!(
+            git.try_run(Path::new("/w"), &["log"]).as_deref(),
+            Ok("/w log")
+        );
     }
 }

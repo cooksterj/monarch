@@ -20,6 +20,9 @@ impl RpcError {
     pub const INVALID_PARAMS: i32 = -32602;
     /// The pane named does not exist in this session.
     pub const NO_SUCH_PANE: i32 = -32001;
+    /// The method was understood but could not be done (the message says
+    /// why).
+    pub const FAILED: i32 = -32002;
 
     /// An error with `code` and `message`.
     #[must_use]

@@ -23,6 +23,10 @@ pub enum ServerError {
     /// The PTY could not be opened or the program could not be started.
     #[error("cannot start pane: {0}")]
     Pty(#[source] BoxedError),
+    /// A worktree could not be created (git's message, or why it wasn't
+    /// tried).
+    #[error("cannot create worktree: {0}")]
+    Worktree(String),
     /// A server for this session is already listening.
     #[error("a server for session {session:?} is already running at {}", socket.display())]
     AlreadyRunning {

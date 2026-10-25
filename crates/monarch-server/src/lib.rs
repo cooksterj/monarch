@@ -44,6 +44,7 @@ mod state_file;
 mod system_probe;
 #[cfg(test)]
 mod test_support;
+mod worktree_maker;
 
 pub use api_connection::{ApiConnection, MAX_REQUEST};
 pub use attach_connection::AttachConnection;
@@ -81,3 +82,4 @@ pub use socket_path::{MAX_SOCKET_PATH, SocketPath};
 pub use state_engine::StateEngine;
 pub use state_file::StateFile;
 pub use system_probe::SystemProbe;
+pub use worktree_maker::WorktreeMaker;
