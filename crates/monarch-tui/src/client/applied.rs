@@ -1,7 +1,7 @@
 //! What applying server messages asks the client to do.
 
 use monarch_core::PaneId;
-use monarch_proto::{GridPoint, Review};
+use monarch_proto::{GridPoint, Review, WorktreeCreated};
 
 /// Side effects collected by [`super::AttachState::apply`].
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -20,6 +20,8 @@ pub struct Applied {
     pub found: Vec<(PaneId, Option<(GridPoint, GridPoint)>)>,
     /// Answers to review requests: the pane and its checkout's changes.
     pub reviews: Vec<(PaneId, Option<Review>)>,
+    /// Answers to new-worktree requests.
+    pub worktrees: Vec<Result<WorktreeCreated, String>>,
 }
 
 impl Applied {

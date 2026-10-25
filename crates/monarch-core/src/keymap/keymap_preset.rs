@@ -112,6 +112,7 @@ fn monarch() -> Vec<(Key, Action)> {
         (ch('a'), Action::Inbox),
         (Key::Tab, Action::NextBlocked),
         (ch('v'), Action::Review),
+        (ch('N'), Action::NewWorktree),
     ];
     out.extend(arrows());
     out.extend(vi(false, Action::Focus));
@@ -141,6 +142,7 @@ fn tmux() -> Vec<(Key, Action)> {
         (ch('a'), Action::Inbox),
         (Key::Tab, Action::NextBlocked),
         (ch('v'), Action::Review),
+        (ch('N'), Action::NewWorktree),
     ];
     out.extend(arrows());
     out
@@ -164,6 +166,7 @@ fn herdr() -> Vec<(Key, Action)> {
         (ch('g'), Action::GoToPane),
         (ch('a'), Action::Inbox),
         (Key::Tab, Action::NextBlocked),
+        (ch('N'), Action::NewWorktree),
     ];
     out.extend(arrows());
     out.extend(vi(false, Action::Focus));

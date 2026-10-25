@@ -9,10 +9,10 @@ use ratatui::crossterm::terminal::{BeginSynchronizedUpdate, EndSynchronizedUpdat
 use ratatui::crossterm::{execute, queue};
 
 use super::AttachApp;
-use crate::client::{AttachView, WindowTitle};
+use crate::client::{AttachOptions, AttachView, WindowTitle};
 use crate::{
     ContextMenuView, MouseOwner, PickerView, ReviewView, Sidebar, SidebarGroup, StatusLine,
-    TuiError, WhichKey,
+    TuiError, WhichKey, WorktreeFormView,
 };
 
 impl AttachApp {
@@ -53,42 +53,42 @@ impl AttachApp {
         let (tabs, active_tab) = self.state.tab_labels();
         let copy = self.copy_view();
         let notice = self.notice.as_ref().map(|(text, _)| text.as_str());
+        let theme = self.glyphs.theme();
         let view = AttachView {
             state: &self.state,
             status: StatusLine {
-                session: &self.opts.session,
                 tabs: &tabs,
                 active_tab,
-                prefix: &self.opts.prefix_label,
-                detach: self.opts.keymap.key_for(Action::Detach),
                 pending: self.prefix_pending,
                 message: notice.or(copy.as_ref().map(|c| c.status.as_str())),
                 mouse: MouseOwner::new(self.mirror.captures_mouse()),
+                ..session_status(&self.opts)
             },
             sidebar: Some(Sidebar { groups: &groups }),
-            selection: match &copy {
-                Some(c) => c.selection,
-                None => self.selection_span(),
-            },
+            selection: copy
+                .as_ref()
+                .map_or_else(|| self.selection_span(), |c| c.selection),
             matches: copy.as_ref().map_or(&[][..], |c| &c.matches),
             copy_cursor: copy.as_ref().and_then(|c| c.cursor),
             picker: self.picker.as_ref().map(|picker| PickerView { picker }),
             menu: self.menu.as_ref().map(|menu| ContextMenuView { menu }),
-            review: self.review.as_ref().map(|state| ReviewView {
-                state,
-                theme: self.glyphs.theme(),
+            review: self
+                .review
+                .as_ref()
+                .map(|state| ReviewView { state, theme }),
+            form: self
+                .form
+                .as_ref()
+                .map(|form| WorktreeFormView { form, theme }),
+            which_key: (self.popup && !self.any_overlay()).then_some(WhichKey {
+                entries: &self.which_key,
+                title: &self.opts.prefix_label,
             }),
-            which_key: (self.popup && self.picker.is_none() && self.review.is_none()).then_some(
-                WhichKey {
-                    entries: &self.which_key,
-                    title: &self.opts.prefix_label,
-                },
-            ),
         };
         self.ui
             .draw(|frame| view.draw(frame))
-            .map_err(|e| TuiError::io("drawing", e))?;
-        Ok(())
+            .map(drop)
+            .map_err(|e| TuiError::io("drawing", e))
     }
 
     /// Tells the review pane how many diff lines a page holds.
@@ -108,5 +108,20 @@ impl AttachApp {
         };
         self.dress(&mut groups);
         groups
+    }
+}
+
+/// The status line's session, prefix and detach key, with nothing else
+/// shown yet.
+fn session_status(opts: &AttachOptions) -> StatusLine<'_> {
+    StatusLine {
+        session: &opts.session,
+        tabs: &[],
+        active_tab: 0,
+        prefix: &opts.prefix_label,
+        detach: opts.keymap.key_for(Action::Detach),
+        pending: false,
+        message: None,
+        mouse: MouseOwner::new(false),
     }
 }

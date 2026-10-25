@@ -40,6 +40,7 @@ impl From<&AttachOptions> for InputKeys {
                     | Action::CopyMode
                     | Action::Inbox
                     | Action::Review
+                    | Action::NewWorktree
             )
         };
         Self {

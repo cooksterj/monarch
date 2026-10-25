@@ -32,6 +32,8 @@ mod selection;
 mod server_link;
 mod shared_focus;
 mod window_title;
+mod worktree_form;
+mod worktree_step;
 
 pub use applied::Applied;
 pub use attach_app::AttachApp;
@@ -64,3 +66,5 @@ pub use selection::Selection;
 pub use server_link::ServerLink;
 pub use shared_focus::SharedFocus;
 pub use window_title::WindowTitle;
+pub use worktree_form::{WORKTREE_CHOICES, WorktreeForm};
+pub use worktree_step::WorktreeStep;

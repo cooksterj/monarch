@@ -41,6 +41,8 @@ pub struct AttachOptions {
     pub repeat: Duration,
     /// Problems with the config, shown once the client is up.
     pub warnings: Vec<String>,
+    /// `[projects].worktree_root`, sent with new-worktree requests.
+    pub worktree_root: Option<String>,
 }
 
 impl AttachOptions {
@@ -66,6 +68,7 @@ impl AttachOptions {
             which_key_delay: Duration::ZERO,
             repeat: Duration::ZERO,
             warnings: Vec::new(),
+            worktree_root: None,
         };
         opts.configure(loaded)?;
         Ok(opts)
@@ -98,6 +101,8 @@ impl AttachOptions {
         self.sidebar_width = config.ui.sidebar_width;
         self.sidebar_min_columns = config.ui.sidebar_min_columns;
         self.animations = config.ui.animations;
+        self.worktree_root =
+            (config.projects.worktree_root.as_ref()).map(|r| r.to_string_lossy().into_owned());
         self.keymap = keymap;
         self.which_key_delay = Duration::from_millis(config.keys.which_key_delay_ms);
         self.repeat = Duration::from_millis(config.keys.repeat_ms);

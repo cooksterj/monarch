@@ -129,14 +129,14 @@ mod tests {
     fn wide_hosts_get_columns() {
         insta::assert_snapshot!(draw(80, 10), @r#"
         ┌ ctrl+b ─────────────────────────────────────────────────────────────────────┐
-        │ " -        split down     =          equalize       [          copy mode    │
-        │ % |        split right    HJKL       resize         a          inbox        │
-        │ x          close pane     1-9        go to tab      g w        go to pane   │
-        │ z          zoom           c          new tab        m          toggle mouse │
-        │ hjkl ←↓↑→  focus          n          next tab       t          sidebar      │
-        │ o          focus next     p          prev tab       v          review       │
-        │ {          swap prev      :          palette        tab        next blocked │
-        │ }          swap next      R          reload         d          detach       │
+        │ " -        split down     HJKL       resize         a          inbox        │
+        │ % |        split right    1-9        go to tab      g w        go to pane   │
+        │ x          close pane     c          new tab        m          toggle mouse │
+        │ z          zoom           n          next tab       t          sidebar      │
+        │ hjkl ←↓↑→  focus          p          prev tab       v          review       │
+        │ o          focus next     :          palette        tab        next blocked │
+        │ {          swap prev      N          new worktree   d          detach       │
+        │ }          swap next      R          reload                                 │
         └─────────────────────────────────────────────────────────────────────────────┘
         "#);
     }

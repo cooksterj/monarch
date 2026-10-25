@@ -14,7 +14,7 @@ use super::{
     Applied, AttachOptions, AttachOutcome, AttachState, ClientEvent, ConfigWatch, ContextMenu,
     CopyMode, DragScroll, InputKeys, Selection, ServerLink, SharedFocus,
 };
-use crate::{HostModeMirror, Picker, ReviewState, TuiError, WhichKeyEntry};
+use crate::{HostModeMirror, Picker, ReviewState, TuiError, WhichKeyEntry, WorktreeForm};
 
 mod animate;
 mod copy;
@@ -28,6 +28,7 @@ mod select;
 mod sidebar;
 mod startup;
 mod which_key;
+mod worktree;
 
 use startup::{Started, warnings_notice, write_host};
 
@@ -65,6 +66,8 @@ pub struct AttachApp {
     menu: Option<ContextMenu>,
     /// The review pane, which takes the keys.
     review: Option<ReviewState>,
+    /// The new-worktree form, which takes the keys.
+    form: Option<WorktreeForm>,
     selection: Option<Selection>,
     /// Scrolling while a selection drag is past the pane's edge.
     drag: Option<DragScroll>,
@@ -122,6 +125,7 @@ impl AttachApp {
             which_key: WhichKeyEntry::from_keymap(&opts.keymap),
             picker: None,
             review: None,
+            form: None,
             copy: None,
             menu: None,
             selection: None,
@@ -201,6 +205,9 @@ impl AttachApp {
         self.after_copy_frames(applied.found);
         for (pane, review) in applied.reviews {
             self.loaded_review(pane, review);
+        }
+        for made in applied.worktrees {
+            self.worktree_made(made);
         }
         if applied.redraw && self.drag.is_some() {
             self.drag_extend();

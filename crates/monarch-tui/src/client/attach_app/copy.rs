@@ -83,7 +83,7 @@ impl AttachApp {
                 top,
             });
         }
-        self.focus.set_overlay(self.picker.is_some());
+        self.focus.set_overlay(self.any_overlay());
         self.dirty = true;
     }
 

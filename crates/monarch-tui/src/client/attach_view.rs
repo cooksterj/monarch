@@ -8,7 +8,7 @@ use ratatui::layout::{Position, Rect};
 use super::AttachState;
 use crate::{
     ContextMenuView, PaneBorders, PaneView, PickerView, ReviewView, SelectionSpan, Sidebar,
-    StatusLine, WhichKey,
+    StatusLine, WhichKey, WorktreeFormView,
 };
 
 /// Rows the client keeps for itself at the bottom of the host terminal.
@@ -38,6 +38,8 @@ pub struct AttachView<'a> {
     pub menu: Option<ContextMenuView<'a>>,
     /// The review pane, drawn over the panes.
     pub review: Option<ReviewView<'a>>,
+    /// The new-worktree form, drawn over the panes with the cursor in it.
+    pub form: Option<WorktreeFormView<'a>>,
 }
 
 impl AttachView<'_> {
@@ -79,6 +81,10 @@ impl AttachView<'_> {
         }
         if let Some(review) = self.review {
             frame.render_widget(review, pane_rect);
+        }
+        if let Some(form) = self.form {
+            frame.render_widget(form, pane_rect);
+            frame.set_cursor_position(form.cursor(pane_rect));
         }
         if let Some(picker) = self.picker {
             frame.render_widget(picker, pane_rect);
@@ -188,6 +194,7 @@ mod tests {
             which_key: None,
             picker: None,
             review: None,
+            form: None,
             menu: None,
         };
         term.draw(|f| view.draw(f)).expect("draw");
@@ -233,6 +240,7 @@ mod tests {
             which_key: None,
             picker: None,
             review: None,
+            form: None,
             menu: None,
         };
         term.draw(|f| view.draw(f)).expect("draw");
@@ -294,6 +302,7 @@ mod tests {
             which_key: None,
             picker: None,
             review: None,
+            form: None,
             menu: None,
         };
         term.draw(|f| view.draw(f)).expect("draw");

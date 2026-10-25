@@ -4,7 +4,7 @@ use monarch_core::{Action, PaneId};
 use serde::{Deserialize, Serialize};
 
 use super::{HostInfo, SelectShape};
-use crate::{GridPoint, ScreenSize};
+use crate::{GridPoint, NewWorktree, ScreenSize};
 
 /// One client → server attach-stream message.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -85,6 +85,9 @@ pub enum ClientMsg {
         /// argument (as git runs `$EDITOR`).
         editor: String,
     },
+    /// Make a worktree and open a tab in it (as the API's
+    /// `worktree.create`); answered with `ServerMsg::WorktreeMade`.
+    NewWorktree(NewWorktree),
 }
 
 #[cfg(test)]
