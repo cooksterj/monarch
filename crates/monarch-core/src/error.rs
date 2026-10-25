@@ -36,6 +36,9 @@ pub enum CoreError {
         "unknown key {0:?}: use a single character or left, right, up, down, tab, enter, esc, space"
     )]
     UnknownKey(String),
+    /// An id that is not `<prefix><number>` (e.g. `p3`) or a number.
+    #[error("invalid id {0:?}")]
+    InvalidId(String),
     /// A keymap preset Monarch does not have.
     #[error("unknown preset {0:?}; expected monarch, tmux or herdr")]
     UnknownPreset(String),

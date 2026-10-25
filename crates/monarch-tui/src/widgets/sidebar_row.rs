@@ -1,6 +1,6 @@
 //! One pane as the sidebar lists it.
 
-use monarch_core::PaneId;
+use monarch_core::{AgentState, PaneId};
 
 /// A pane under its project heading.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -9,8 +9,11 @@ pub struct SidebarRow {
     pub pane: PaneId,
     /// Its tab number and name (`2 vim`).
     pub label: String,
-    /// Where in the checkout it works (`src`), or its directory outside
-    /// one; drawn dim after the label.
+    /// Its agent's state, drawn as a glyph before the label (`$` for a
+    /// plain shell).
+    pub state: AgentState,
+    /// Its agent's activity, or where in the checkout it works (`src`),
+    /// or its directory outside one; drawn dim after the label.
     pub detail: Option<String>,
     /// It is the focused pane.
     pub focused: bool,
@@ -27,6 +30,7 @@ mod tests {
         let row = SidebarRow {
             pane: PaneId(1),
             label: "1 zsh".into(),
+            state: AgentState::Unknown,
             detail: None,
             focused: true,
             shown: true,

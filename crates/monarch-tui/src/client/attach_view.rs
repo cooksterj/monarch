@@ -250,6 +250,7 @@ mod tests {
             title: Some(format!("p{id}")),
             command: None,
             place: None,
+            agent: Default::default(),
         };
         let layout = LayoutMsg {
             generation: 1,
@@ -289,7 +290,7 @@ mod tests {
         let buf = term.backend().buffer();
         let row = |y| (0..15).map(|x| buf[(x, y)].symbol()).collect::<String>();
         assert_eq!(row(0), "▾ Scrat│   │   ");
-        assert_eq!(row(1), "▸ 1 p1 │   │   ");
+        assert_eq!(row(1), "▸ $ 1 p│   │   ");
         assert_eq!(state.pane_rects()[1].1.x, 12, "clicks use host columns");
         assert_eq!(state.focus_view().x, 8);
     }

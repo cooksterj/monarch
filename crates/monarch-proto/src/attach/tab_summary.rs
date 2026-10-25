@@ -35,6 +35,7 @@ mod tests {
             title: title.map(Into::into),
             command: None,
             place: None,
+            agent: Default::default(),
         }
     }
 

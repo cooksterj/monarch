@@ -1,11 +1,13 @@
 //! The argument grammar for the `monarch` binary.
 
 mod attach_args;
+mod hook_command;
 mod server_args;
 
 use clap::{Parser, Subcommand};
 
 pub use attach_args::AttachArgs;
+pub use hook_command::HookCommand;
 pub use server_args::ServerArgs;
 
 /// An attention-first terminal multiplexer for AI coding agents.
@@ -26,6 +28,9 @@ pub enum Command {
     Server(ServerArgs),
     /// List what each key after the prefix does.
     Keys,
+    /// Report an agent's hook event to its pane (called by agents' hooks).
+    #[command(subcommand)]
+    Hook(HookCommand),
     /// Inspect or validate the configuration file.
     #[command(subcommand)]
     Config(ConfigCommand),

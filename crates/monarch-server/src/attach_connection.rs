@@ -1,12 +1,11 @@
-//! One client connection: handshake, then attach frames both ways.
+//! An attach connection: frames both ways once the handshake is done.
 
 use std::sync::Arc;
 
 use futures_util::{SinkExt, StreamExt};
 use monarch_core::{Action, ClientId};
-use monarch_proto::{ClientMsg, FrameCodec, Hello, HelloAck, ServerMsg};
+use monarch_proto::{ClientMsg, FrameCodec, ServerMsg};
 use monarch_term::ScrollRequest;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixStream;
 use tokio::net::unix::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::sync::mpsc::{self, Receiver};
@@ -14,35 +13,20 @@ use tokio_util::codec::{FramedRead, FramedWrite};
 
 use crate::{ActionEffect, RENDER_LANE, ServerContext, ServerError};
 
-const VERSION: &str = env!("CARGO_PKG_VERSION");
-/// Longest handshake line accepted.
-const MAX_HELLO: usize = 4096;
-
 mod history;
 
 type Codec = FrameCodec<ClientMsg, ServerMsg>;
 
-/// Serves one accepted socket until the client detaches or disconnects.
+/// Serves an attached client until it detaches or disconnects.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct AttachConnection;
 
 impl AttachConnection {
-    /// Runs the connection to completion.
+    /// Runs the attach stream, after the handshake, to completion.
     ///
     /// # Errors
-    /// The handshake or the stream failed.
-    pub async fn serve(ctx: Arc<ServerContext>, mut stream: UnixStream) -> Result<(), ServerError> {
-        let io = |e| ServerError::io("attach handshake", e);
-        let hello = read_hello(&mut stream).await.map_err(io)?;
-        let ack = if hello.as_ref().is_some_and(Hello::is_attach) {
-            HelloAck::accept(VERSION)
-        } else {
-            HelloAck::refuse(VERSION, "only the attach protocol is available")
-        };
-        write_line(&mut stream, &ack).await.map_err(io)?;
-        if !ack.ok {
-            return Ok(());
-        }
+    /// The stream failed.
+    pub async fn serve(ctx: Arc<ServerContext>, stream: UnixStream) -> Result<(), ServerError> {
         let (rd, wr) = stream.into_split();
         let (lane, lane_rx) = mpsc::channel(RENDER_LANE);
         let id = ctx.lock().add_client(lane);
@@ -53,28 +37,6 @@ impl AttachConnection {
         writer.abort();
         result
     }
-}
-
-/// Reads the JSON hello line byte by byte, so nothing after it is consumed.
-async fn read_hello(stream: &mut UnixStream) -> std::io::Result<Option<Hello>> {
-    let mut line = Vec::new();
-    loop {
-        let byte = stream.read_u8().await?;
-        if byte == b'\n' {
-            break;
-        }
-        line.push(byte);
-        if line.len() > MAX_HELLO {
-            return Ok(None);
-        }
-    }
-    Ok(serde_json::from_slice(&line).ok())
-}
-
-async fn write_line(stream: &mut UnixStream, ack: &HelloAck) -> std::io::Result<()> {
-    let mut line = serde_json::to_vec(ack).map_err(std::io::Error::other)?;
-    line.push(b'\n');
-    stream.write_all(&line).await
 }
 
 /// Drains the client's render lane onto the socket, one flush per frame.

@@ -1011,6 +1011,8 @@ dependencies = [
  "monarch-mux-server",
  "monarch-mux-tui",
  "ratatui",
+ "serde",
+ "serde_json",
  "tempfile",
 ]
 

@@ -19,6 +19,8 @@ impl Hello {
     pub const FORMAT: u32 = 1;
     /// Protocol name for the binary attach stream.
     pub const ATTACH: &'static str = "attach";
+    /// Protocol name for the JSON-lines API.
+    pub const JSON: &'static str = "json";
 
     /// An attach hello from this build.
     #[must_use]
@@ -28,6 +30,21 @@ impl Hello {
             proto: Self::ATTACH.into(),
             version: version.into(),
         }
+    }
+
+    /// A JSON API hello from this build.
+    #[must_use]
+    pub fn json(version: &str) -> Self {
+        Self {
+            proto: Self::JSON.into(),
+            ..Self::attach(version)
+        }
+    }
+
+    /// Whether this asks for the JSON API in a format we speak.
+    #[must_use]
+    pub fn is_json(&self) -> bool {
+        self.monarch == Self::FORMAT && self.proto == Self::JSON
     }
 
     /// Whether this asks for the attach stream in a format we speak.
@@ -55,6 +72,7 @@ mod tests {
             ..Hello::attach("x")
         };
         assert!(!json.is_attach());
+        assert!(json.is_json() && Hello::json("x") == json);
         let future = Hello {
             monarch: 2,
             ..Hello::attach("x")

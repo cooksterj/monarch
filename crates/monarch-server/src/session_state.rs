@@ -6,6 +6,7 @@
 //! `arrange`, session commands in `actions`, frames in `render`.
 
 mod actions;
+mod agents;
 mod arrange;
 mod commands;
 mod render;
@@ -21,7 +22,7 @@ use tokio::sync::mpsc::Sender;
 
 pub use actions::ActionEffect;
 
-use crate::{ClientHandle, PaneIo, Placement};
+use crate::{ClientHandle, PaneIo, Placement, StateEngine};
 
 /// Window size assumed until a client reports its own.
 pub const DEFAULT_SIZE: ScreenSize = ScreenSize { cols: 80, rows: 24 };
@@ -51,6 +52,7 @@ pub struct SessionState {
     clients: BTreeMap<ClientId, ClientHandle>,
     next_client: ClientId,
     next_pane: PaneId,
+    agents: StateEngine,
 }
 
 impl Default for SessionState {
@@ -73,6 +75,7 @@ impl SessionState {
             clients: BTreeMap::new(),
             next_client: ClientId(1),
             next_pane: PaneId(1),
+            agents: StateEngine::default(),
         }
     }
 
@@ -118,6 +121,7 @@ impl SessionState {
     pub fn remove_pane(&mut self, id: PaneId) -> bool {
         let before = self.visible_panes();
         self.panes.remove(&id);
+        self.agents.forget(id);
         let area = self.area();
         if let Some(index) = self.tabs.iter().position(|t| t.contains(id))
             && self.tabs[index].remove(area, id)

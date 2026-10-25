@@ -3,12 +3,13 @@
 
 mod cli;
 mod commands;
+mod hook;
 
 use std::process::ExitCode;
 
 use clap::Parser;
 
-pub use cli::{AttachArgs, Cli, Command, ConfigCommand, ServerArgs};
+pub use cli::{AttachArgs, Cli, Command, ConfigCommand, HookCommand, ServerArgs};
 
 /// Parses `std::env::args` and runs the selected command.
 #[must_use]
