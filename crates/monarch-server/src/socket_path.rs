@@ -49,6 +49,31 @@ impl SocketPath {
         Ok(path)
     }
 
+    /// The directory every session's socket lives in, for this user.
+    #[must_use]
+    pub fn dir() -> PathBuf {
+        let uid = rustix::process::getuid().as_raw();
+        Self::dir_from(
+            std::env::var_os("XDG_RUNTIME_DIR"),
+            std::env::var_os("TMPDIR"),
+            uid,
+        )
+    }
+
+    /// Every session socket in [`Self::dir`] (some may be stale).
+    #[must_use]
+    pub fn all() -> Vec<PathBuf> {
+        let Ok(entries) = fs::read_dir(Self::dir()) else {
+            return Vec::new();
+        };
+        let mut sockets: Vec<PathBuf> = entries
+            .filter_map(|e| Some(e.ok()?.path()))
+            .filter(|p| p.extension().is_some_and(|x| x == "sock"))
+            .collect();
+        sockets.sort();
+        sockets
+    }
+
     /// Session names are file names: letters, digits, `-`, `_`, `.`.
     ///
     /// # Errors

@@ -25,15 +25,18 @@ impl<'a> AgentHook<'a> {
         Self { agent, input }
     }
 
-    /// What to tell the server about `pane`, or `None` for events that
-    /// change nothing (an idle reminder, a subagent finishing).
-    pub fn report(&self, pane: PaneId) -> Option<AgentReport> {
+    /// What to tell the server about `pane` (`None` when the hook can't
+    /// know it), or `None` for events that change nothing (an idle
+    /// reminder, a subagent finishing).
+    pub fn report(&self, pane: Option<PaneId>) -> Option<AgentReport> {
         let (state, activity) = self.meaning()?;
         Some(AgentReport {
+            pane,
             state: Some(state),
             activity,
             session_id: self.field("session_id").map(str::to_owned),
-            ..AgentReport::new(pane, self.agent)
+            cwd: self.field("cwd").map(str::to_owned),
+            ..AgentReport::unplaced(self.agent)
         })
     }
 
@@ -90,8 +93,11 @@ mod tests {
     use super::*;
 
     fn report(input: &Value) -> Option<(Option<AgentState>, Option<String>)> {
-        let report = AgentHook::new(AgentKind::Claude, input).report(PaneId(4))?;
-        assert_eq!((report.pane, report.agent), (PaneId(4), AgentKind::Claude));
+        let report = AgentHook::new(AgentKind::Claude, input).report(Some(PaneId(4)))?;
+        assert_eq!(
+            (report.pane, report.agent),
+            (Some(PaneId(4)), AgentKind::Claude)
+        );
         Some((report.state, report.activity))
     }
 
@@ -151,7 +157,7 @@ mod tests {
     fn sessions_start_idle_and_end_as_a_shell() {
         let start = json!({"hook_event_name": "SessionStart", "session_id": "abc"});
         let sent = AgentHook::new(AgentKind::Claude, &start)
-            .report(PaneId(1))
+            .report(Some(PaneId(1)))
             .expect("report");
         assert_eq!(sent.session_id.as_deref(), Some("abc"));
         assert_eq!(report(&start), says(AgentState::Idle, ""));
@@ -168,8 +174,9 @@ mod tests {
             "tool_input": {"command": "*** Begin Patch\n*** Update File: /w/src/lib.rs\n@@\n-a\n+b\n"}
         });
         let sent = AgentHook::new(AgentKind::Codex, &patch)
-            .report(PaneId(2))
+            .report(None)
             .expect("report");
+        assert_eq!(sent.cwd.as_deref(), Some("/w"));
         assert_eq!(sent.agent, AgentKind::Codex);
         assert_eq!(sent.activity.as_deref(), Some("Edit src/lib.rs"));
         let interrupt = json!({"hook_event_name": "Interrupt", "turn_id": "t1"});
