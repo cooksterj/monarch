@@ -4,10 +4,10 @@ use std::path::Path;
 use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};
-use monarch_core::PaneId;
-use monarch_proto::{ClientMsg, FrameCodec, Hello, HelloAck, ScreenSize, ServerMsg};
+use monarch_core::{AgentState, PaneId};
+use monarch_proto::{AgentStatus, ClientMsg, FrameCodec, Hello, HelloAck, ScreenSize, ServerMsg};
 use monarch_server::{PaneSpec, Server, ServerConfig};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixStream;
 use tokio::net::unix::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::time::timeout;
@@ -177,5 +177,51 @@ async fn a_split_starts_a_second_pane_beside_the_first() {
     .await
     .expect("input");
     until(&mut rx, |m| shows(m, "split-ok")).await;
+    server.abort();
+}
+
+/// Opens a JSON API connection and returns the answer to one request line.
+async fn api_call(socket: &Path, request: &str) -> String {
+    let mut stream = UnixStream::connect(socket).await.expect("connect");
+    let hello = serde_json::to_string(&Hello::json("test")).expect("json");
+    stream
+        .write_all(format!("{hello}\n{request}\n").as_bytes())
+        .await
+        .expect("send");
+    let mut lines = tokio::io::BufReader::new(stream).lines();
+    let ack = lines.next_line().await.expect("ack").expect("ack line");
+    assert!(ack.contains("\"ok\":true"), "{ack}");
+    lines
+        .next_line()
+        .await
+        .expect("answer")
+        .expect("answer line")
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn agent_reports_reach_attached_clients() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let socket = dir.path().join("api.sock");
+    let server = tokio::spawn(Server::serve(config(
+        &socket,
+        PaneSpec::shell_command("cat"),
+    )));
+    let (mut rx, _tx) = connect(&socket).await;
+    until(&mut rx, |m| matches!(m, ServerMsg::Layout(_))).await;
+    let report = r#"{"id":1,"method":"agent.report","params":{"pane":1,"agent":"claude","state":"blocked","activity":"Allow Bash?"}}"#;
+    assert_eq!(api_call(&socket, report).await, r#"{"id":1,"result":{}}"#);
+    let status = AgentStatus {
+        state: AgentState::Blocked,
+        activity: Some("Allow Bash?".into()),
+    };
+    until(&mut rx, |m| {
+        *m == ServerMsg::Agent {
+            pane: PaneId(1),
+            status: status.clone(),
+        }
+    })
+    .await;
+    let missing = r#"{"id":2,"method":"agent.report","params":{"pane":9,"agent":"claude"}}"#;
+    assert!(api_call(&socket, missing).await.contains("-32001"));
     server.abort();
 }

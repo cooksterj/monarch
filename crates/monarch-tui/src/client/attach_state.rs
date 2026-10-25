@@ -4,11 +4,12 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use monarch_core::{PaneId, Rect};
 use monarch_proto::{
-    Delta, LayoutMsg, ModeFlags, PanePlace, PaneSummary, Screen, ServerMsg, StyleCache,
+    AgentStatus, Delta, LayoutMsg, ModeFlags, PanePlace, PaneSummary, Screen, ServerMsg, StyleCache,
 };
 
 use super::{Applied, FocusView, PaneReplica};
 
+mod facts;
 mod sidebar;
 
 /// Longest pane title shown in a tab label, in characters.
@@ -25,6 +26,7 @@ pub struct AttachState {
     titles: BTreeMap<PaneId, String>,
     commands: BTreeMap<PaneId, String>,
     places: BTreeMap<PaneId, Option<PanePlace>>,
+    agents: BTreeMap<PaneId, AgentStatus>,
     resyncing: BTreeSet<PaneId>,
     /// Columns left of the panes (the sidebar); layout coordinates are
     /// shifted right by this on the host.
@@ -56,16 +58,11 @@ impl AttachState {
             ServerMsg::Delta(delta) => self.apply_delta(&delta, out),
             ServerMsg::DefineStyle(def) => self.styles.define(def),
             ServerMsg::ResetStyles => self.styles.clear(),
-            ServerMsg::Title { pane, title } => {
-                self.titles.insert(pane, title.unwrap_or_default());
-                out.redraw = true;
-            }
-            ServerMsg::Command { pane, command } => {
-                self.commands.insert(pane, command.unwrap_or_default());
-                out.redraw = true;
-            }
-            ServerMsg::Place { pane, place } => {
-                self.places.insert(pane, place);
+            msg @ (ServerMsg::Title { .. }
+            | ServerMsg::Command { .. }
+            | ServerMsg::Place { .. }
+            | ServerMsg::Agent { .. }) => {
+                self.apply_fact(msg);
                 out.redraw = true;
             }
             ServerMsg::HostWrite(bytes) => out.host_write.extend(bytes),

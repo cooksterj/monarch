@@ -6,6 +6,7 @@
 mod attach;
 mod auto_start;
 mod config;
+mod hook;
 mod keys;
 mod server;
 
@@ -18,8 +19,16 @@ use crate::{AttachArgs, Cli, Command};
 
 /// Runs the command selected by `cli`, writing user-facing output to `out`.
 pub(crate) fn dispatch(cli: Cli, out: &mut dyn Write) -> anyhow::Result<ExitCode> {
+    if let Some(Command::Hook(cmd)) = cli.command {
+        return Ok(hook::run(
+            cmd,
+            &hook::HookEnv::from_env(),
+            std::io::stdin().lock(),
+        ));
+    }
     let loader = ConfigLoader::from_env();
     match cli.command {
+        Some(Command::Hook(_)) => Ok(ExitCode::SUCCESS),
         Some(Command::Config(cmd)) => config::run(&cmd, &loader, out),
         Some(Command::Keys) => keys::run(&loader.load()?.config, out),
         Some(Command::Server(args)) => server::run(&args, &loader.load()?.config),

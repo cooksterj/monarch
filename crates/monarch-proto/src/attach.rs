@@ -7,6 +7,7 @@
 //! the server, [`StyleCache`] on the client). Frames are postcard messages
 //! behind a big-endian `u32` length ([`FrameCodec`]).
 
+mod agent_status;
 mod client_msg;
 mod delta;
 mod frame_codec;
@@ -28,6 +29,7 @@ mod style_id;
 mod style_table;
 mod tab_summary;
 
+pub use agent_status::AgentStatus;
 pub use client_msg::ClientMsg;
 pub use delta::Delta;
 pub use frame_codec::FrameCodec;

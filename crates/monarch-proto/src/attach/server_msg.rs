@@ -3,7 +3,7 @@
 use monarch_core::PaneId;
 use serde::{Deserialize, Serialize};
 
-use super::{Delta, LayoutMsg, PanePlace, Snapshot, StyleDef};
+use super::{AgentStatus, Delta, LayoutMsg, PanePlace, Snapshot, StyleDef};
 use crate::GridPoint;
 
 /// One server → client attach-stream message.
@@ -61,6 +61,13 @@ pub enum ServerMsg {
         pane: PaneId,
         /// Where it is now.
         place: Option<PanePlace>,
+    },
+    /// A pane's agent state or activity changed.
+    Agent {
+        /// The pane.
+        pane: PaneId,
+        /// What its agent is doing now.
+        status: AgentStatus,
     },
 }
 

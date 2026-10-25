@@ -3,7 +3,8 @@
 
 use std::path::Path;
 
-use monarch_proto::{PanePlace, PaneSummary};
+use monarch_core::AgentState;
+use monarch_proto::{AgentStatus, PanePlace, PaneSummary};
 
 use super::AttachState;
 use crate::{SidebarGroup, SidebarRow};
@@ -21,12 +22,14 @@ impl AttachState {
         for (tab, summary) in layout.tabs.iter().enumerate() {
             for pane in &summary.panes {
                 let place = self.place(pane);
+                let agent = self.agent(pane);
                 let row = SidebarRow {
                     pane: pane.pane,
                     label: format!("{} {}", tab + 1, self.name(pane))
                         .trim_end()
                         .to_owned(),
-                    detail: place.and_then(where_in),
+                    state: agent.state,
+                    detail: activity(agent).or_else(|| place.and_then(where_in)),
                     focused: Some(pane.pane) == layout.focus,
                     shown: tab == layout.active_tab,
                 };
@@ -40,6 +43,12 @@ impl AttachState {
             groups.push(scratch);
         }
         groups
+    }
+
+    /// What a pane's agent does, from the latest `Agent` or else the
+    /// layout.
+    fn agent<'a>(&'a self, sent: &'a PaneSummary) -> &'a AgentStatus {
+        self.agents.get(&sent.pane).unwrap_or(&sent.agent)
     }
 
     /// Where a pane works, from the latest `Place` or else the layout.
@@ -66,6 +75,20 @@ fn group_for<'a>(groups: &'a mut Vec<SidebarGroup>, place: &PanePlace) -> &'a mu
         }
     };
     &mut groups[index]
+}
+
+/// An agent's activity line, or its state's name when it has none; a
+/// plain shell has neither.
+fn activity(agent: &AgentStatus) -> Option<String> {
+    if agent.state == AgentState::Unknown {
+        return None;
+    }
+    Some(
+        agent
+            .activity
+            .clone()
+            .unwrap_or_else(|| agent.state.label().to_owned()),
+    )
 }
 
 /// The directory below the checkout's top (`src/x`), or the directory's
@@ -102,6 +125,7 @@ mod tests {
             title: None,
             command: Some(command.into()),
             place: at,
+            agent: Default::default(),
         }
     }
 
@@ -191,6 +215,48 @@ mod tests {
         assert!(
             AttachState::new().sidebar_groups().is_empty(),
             "no layout yet"
+        );
+    }
+
+    #[test]
+    fn agent_rows_show_their_state_and_activity() {
+        let mut state = state();
+        let status = |state, activity: Option<&str>| AgentStatus {
+            state,
+            activity: activity.map(Into::into),
+        };
+        let msgs = [
+            ServerMsg::Agent {
+                pane: PaneId(1),
+                status: status(AgentState::Blocked, Some("Allow Bash: rm -rf target?")),
+            },
+            ServerMsg::Agent {
+                pane: PaneId(3),
+                status: status(AgentState::Working, None),
+            },
+        ];
+        msgs.into_iter()
+            .for_each(|m| state.apply(m, &mut Applied::default()));
+        let rows: Vec<_> = state
+            .sidebar_groups()
+            .into_iter()
+            .flat_map(|g| g.rows)
+            .map(|r| (r.state, r.detail))
+            .collect();
+        assert_eq!(
+            rows[..2],
+            [
+                (
+                    AgentState::Blocked,
+                    Some("Allow Bash: rm -rf target?".into())
+                ),
+                (AgentState::Working, Some("Working".into())),
+            ]
+        );
+        assert_eq!(
+            rows[2],
+            (AgentState::Unknown, Some("x".into())),
+            "a shell keeps its place"
         );
     }
 }

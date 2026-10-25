@@ -6,10 +6,12 @@
 //! mutex; the [`FrameCoalescer`] task renders visible dirty panes into
 //! per-client snapshots and deltas at most once per frame budget.
 
+mod api_connection;
 mod attach_connection;
 mod cli_git_runner;
 mod client_handle;
 mod command_watcher;
+mod connection;
 mod daemon;
 mod error;
 mod event_loop;
@@ -36,15 +38,18 @@ mod server_config;
 mod server_context;
 mod session_state;
 mod socket_path;
+mod state_engine;
 mod state_file;
 mod system_probe;
 #[cfg(test)]
 mod test_support;
 
+pub use api_connection::{ApiConnection, MAX_REQUEST};
 pub use attach_connection::AttachConnection;
 pub use cli_git_runner::CliGitRunner;
 pub use client_handle::{ClientHandle, RENDER_LANE};
 pub use command_watcher::{COMMAND_INTERVAL, CommandWatcher};
+pub use connection::Connection;
 pub use daemon::Daemon;
 pub use error::{BoxedError, ServerError};
 pub use event_loop::{EventLoop, MAX_CLIPBOARD};
@@ -71,5 +76,6 @@ pub use server_config::ServerConfig;
 pub use server_context::ServerContext;
 pub use session_state::{ActionEffect, DEFAULT_SIZE, SessionState};
 pub use socket_path::{MAX_SOCKET_PATH, SocketPath};
+pub use state_engine::StateEngine;
 pub use state_file::StateFile;
 pub use system_probe::SystemProbe;

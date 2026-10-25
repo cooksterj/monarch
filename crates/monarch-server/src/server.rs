@@ -10,7 +10,7 @@ use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 
 use crate::{
-    AttachConnection, CliGitRunner, CommandWatcher, EventLoop, FrameCoalescer, PaneEnv, PaneEvent,
+    CliGitRunner, CommandWatcher, Connection, EventLoop, FrameCoalescer, PaneEnv, PaneEvent,
     Persister, PlaceWatcher, RepoProbe, ServerConfig, ServerContext, ServerError, SocketPath,
     SystemProbe,
 };
@@ -57,7 +57,7 @@ impl Server {
             tokio::select! {
                 accepted = listener.accept() => {
                     if let Ok((stream, _)) = accepted {
-                        tokio::spawn(AttachConnection::serve(Arc::clone(&ctx), stream));
+                        tokio::spawn(Connection::serve(Arc::clone(&ctx), stream));
                     }
                 }
                 () = ctx.shutdown.notified() => break,
