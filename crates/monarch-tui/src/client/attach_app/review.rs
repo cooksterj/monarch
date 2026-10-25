@@ -4,7 +4,7 @@
 use std::time::Instant;
 
 use monarch_core::PaneId;
-use monarch_proto::{ClientMsg, Review};
+use monarch_proto::{ClientMsg, FileChange, Review};
 
 use super::AttachApp;
 use super::select::NOTICE;
@@ -46,13 +46,58 @@ impl AttachApp {
                 ReviewStep::Refresh => {
                     let _ = self.link.send(&ClientMsg::Review(state.pane()));
                 }
-                ReviewStep::Close => {
-                    self.review = None;
-                    let others =
-                        self.picker.is_some() || self.copy.is_some() || self.menu.is_some();
-                    self.focus.set_overlay(others);
-                }
+                ReviewStep::Edit => self.edit_selected(),
+                ReviewStep::Close => self.close_review(),
             }
         }
+    }
+
+    /// Opens the selected file in the user's editor, zoomed over the
+    /// focused pane, and closes the review.
+    fn edit_selected(&mut self) {
+        let Some(state) = self.review.as_ref() else {
+            return;
+        };
+        let Some(path) = state.editable() else {
+            let deleted = state.selected().map(|f| f.change) == Some(FileChange::Deleted);
+            let why = if deleted { "it was deleted" } else { "no file" };
+            self.notice = Some((format!("nothing to open: {why}"), Instant::now() + NOTICE));
+            return;
+        };
+        let msg = ClientMsg::Edit {
+            pane: state.pane(),
+            path: path.to_owned(),
+            editor: editor(std::env::var("VISUAL").ok(), std::env::var("EDITOR").ok()),
+        };
+        let _ = self.link.send(&msg);
+        self.close_review();
+    }
+
+    fn close_review(&mut self) {
+        self.review = None;
+        let others = self.picker.is_some() || self.copy.is_some() || self.menu.is_some();
+        self.focus.set_overlay(others);
+    }
+}
+
+/// The editor to run: `$VISUAL`, else `$EDITOR`, else `vi`, as git picks.
+fn editor(visual: Option<String>, editor: Option<String>) -> String {
+    [visual, editor]
+        .into_iter()
+        .flatten()
+        .find(|e| !e.trim().is_empty())
+        .unwrap_or_else(|| "vi".into())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::editor;
+
+    #[test]
+    fn visual_then_editor_then_vi() {
+        let some = |s: &str| Some(s.to_owned());
+        assert_eq!(editor(some("code -w"), some("nano")), "code -w");
+        assert_eq!(editor(some(" "), some("nano")), "nano");
+        assert_eq!(editor(None, None), "vi");
     }
 }

@@ -13,6 +13,9 @@ pub enum Placement {
     },
     /// Beside (or below) the focused pane of the shown tab, taking focus.
     Split(SplitAxis),
+    /// Beside the focused pane of the shown tab, zoomed over it: when it
+    /// exits, the tab looks as it did and focus goes back.
+    Zoomed,
 }
 
 impl Placement {
@@ -28,5 +31,6 @@ mod tests {
     fn background_tabs_do_not_activate() {
         assert_eq!(Placement::BACKGROUND, Placement::Tab { activate: false });
         assert_ne!(Placement::Split(SplitAxis::Rows), Placement::BACKGROUND);
+        assert_ne!(Placement::Zoomed, Placement::BACKGROUND);
     }
 }

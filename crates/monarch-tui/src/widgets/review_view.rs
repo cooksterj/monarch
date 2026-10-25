@@ -12,7 +12,7 @@ use ratatui::widgets::{Block, Borders, Clear, Widget};
 
 use crate::ReviewState;
 
-const KEYS: &str = " j/k file · space/b page · g/G ends · r refresh · esc close ";
+const KEYS: &str = " j/k file · e edit · space/b page · g/G ends · r refresh · esc close ";
 
 /// The review pane as drawn.
 #[derive(Debug, Clone, Copy)]
@@ -181,7 +181,7 @@ mod tests {
         │                       │ +    println!("hello");                      │
         │                       │                                              │
         │                       │                                              │
-        └ j/k file · space/b page · g/G ends · r refresh · esc close ──────────┘
+        └ j/k file · e edit · space/b page · g/G ends · r refresh · esc close ─┘
         "#);
     }
 

@@ -2,7 +2,7 @@
 //! selected and how far its diff is scrolled. Pure data.
 
 use monarch_core::PaneId;
-use monarch_proto::{Review, ReviewFile};
+use monarch_proto::{FileChange, Review, ReviewFile};
 
 use super::ReviewStep;
 use crate::OverlayKey;
@@ -55,6 +55,14 @@ impl ReviewState {
         self.review.as_ref()?.as_ref()?.files.get(self.file)
     }
 
+    /// The selected file's path if it can be opened (it wasn't deleted).
+    #[must_use]
+    pub fn editable(&self) -> Option<&str> {
+        self.selected()
+            .filter(|f| f.change != FileChange::Deleted)
+            .map(|f| f.path.as_str())
+    }
+
     /// The first diff line shown.
     #[must_use]
     pub fn scroll(&self) -> usize {
@@ -95,6 +103,7 @@ impl ReviewState {
             OverlayKey::Char('g') | OverlayKey::Home => self.scroll = 0,
             OverlayKey::Char('G') | OverlayKey::End => self.scroll = self.max_scroll(),
             OverlayKey::Char('r') => return ReviewStep::Refresh,
+            OverlayKey::Char('e') | OverlayKey::Enter => return ReviewStep::Edit,
             OverlayKey::Esc | OverlayKey::Char('q') | OverlayKey::Ctrl('c' | 'g') => {
                 return ReviewStep::Close;
             }
@@ -133,7 +142,7 @@ impl ReviewState {
 
 #[cfg(test)]
 mod tests {
-    use monarch_proto::{DiffLine, DiffLineKind, FileChange};
+    use monarch_proto::{DiffLine, DiffLineKind};
 
     use super::*;
 
@@ -162,7 +171,21 @@ mod tests {
         state.key(OverlayKey::Up);
         assert_eq!(state.file(), 2, "wraps back");
         assert_eq!(state.key(OverlayKey::Char('r')), ReviewStep::Refresh);
+        assert_eq!(state.key(OverlayKey::Enter), ReviewStep::Edit);
+        assert_eq!(state.editable(), Some("c"));
         assert_eq!(state.key(OverlayKey::Char('q')), ReviewStep::Close);
+    }
+
+    #[test]
+    fn deleted_files_and_empty_reviews_cannot_be_opened() {
+        let mut state = ReviewState::new(PaneId(1));
+        assert_eq!(state.editable(), None, "loading");
+        state.load(Some(Review {
+            files: vec![ReviewFile::new("gone.rs", FileChange::Deleted)],
+            ..Review::default()
+        }));
+        assert_eq!(state.key(OverlayKey::Char('e')), ReviewStep::Edit);
+        assert_eq!(state.editable(), None);
     }
 
     #[test]

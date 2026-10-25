@@ -9,6 +9,8 @@ pub enum ReviewStep {
     Close,
     /// Ask the server for the changes again.
     Refresh,
+    /// Open the selected file in an editor.
+    Edit,
 }
 
 #[cfg(test)]
@@ -18,5 +20,6 @@ mod tests {
     #[test]
     fn steps_compare_by_value() {
         assert_ne!(ReviewStep::Open, ReviewStep::Refresh);
+        assert_ne!(ReviewStep::Edit, ReviewStep::Close);
     }
 }

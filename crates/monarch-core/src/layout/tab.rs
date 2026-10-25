@@ -51,6 +51,13 @@ impl Tab {
         }
     }
 
+    /// Splits the focused pane and zooms `new` over it, so removing `new`
+    /// later leaves the tab as it was, focus included.
+    pub fn split_zoomed(&mut self, new: PaneId) {
+        self.split(new, SplitAxis::Columns);
+        self.zoomed = self.focus == new;
+    }
+
     /// Focuses `pane` if it is in this tab; leaves zoom when the zoomed
     /// pane loses focus. Returns whether focus is on `pane`.
     pub fn focus(&mut self, pane: PaneId) -> bool {
@@ -137,6 +144,19 @@ mod tests {
     const B: PaneId = PaneId(2);
     const C: PaneId = PaneId(3);
     const AREA: Rect = Rect::new(0, 0, 81, 24);
+
+    #[test]
+    fn a_zoomed_split_gives_the_layout_back_when_it_goes() {
+        let mut tab = Tab::new(A);
+        tab.split(B, SplitAxis::Rows);
+        tab.focus(A);
+        tab.split_zoomed(C);
+        assert_eq!((tab.focus, tab.zoomed), (C, true));
+        assert_eq!(tab.visible(AREA), vec![(C, AREA)]);
+        assert!(!tab.remove(AREA, C));
+        assert_eq!((tab.focus, tab.zoomed), (A, false));
+        assert_eq!(tab.visible(AREA).len(), 2);
+    }
 
     #[test]
     fn splitting_focuses_the_new_pane_and_unzooms() {
