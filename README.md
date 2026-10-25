@@ -44,7 +44,13 @@ monarch                 # attach to the default session
 monarch config path     # where the config file lives
 monarch config default  # print the default config
 monarch config check    # validate your config and flag unknown keys
+monarch setup           # let Claude Code and Codex report their state to Monarch
 ```
+
+`monarch setup` adds Monarch's hooks to `~/.claude/settings.json` and `~/.codex/config.toml`
+(honouring `CLAUDE_CONFIG_DIR` and `CODEX_HOME`), touching nothing else and backing each file up
+first. It is safe to re-run; `--dry-run` shows what would change and `--uninstall` removes the
+hooks. Outside Monarch the hooks do nothing. Codex asks you to trust new hooks in `/hooks`.
 
 Configuration lives at `~/.config/monarch/config.toml` (override with `MONARCH_CONFIG`).
 

@@ -19,7 +19,8 @@ monarch-tui.workspace = true
 monarch-proto.workspace = true
 anyhow.workspace = true
 serde.workspace = true
-serde_json.workspace = true
+serde_json = { workspace = true, features = ["preserve_order"] }
+toml_edit.workspace = true
 clap.workspace = true
 
 [dev-dependencies]

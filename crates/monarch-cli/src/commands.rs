@@ -9,6 +9,7 @@ mod config;
 mod hook;
 mod keys;
 mod server;
+mod setup;
 
 use std::io::Write;
 use std::process::ExitCode;
@@ -30,6 +31,7 @@ pub(crate) fn dispatch(cli: Cli, out: &mut dyn Write) -> anyhow::Result<ExitCode
     match cli.command {
         Some(Command::Hook(_)) => Ok(ExitCode::SUCCESS),
         Some(Command::Config(cmd)) => config::run(&cmd, &loader, out),
+        Some(Command::Setup(args)) => setup::run(args, &setup::SetupEnv::from_env(), out),
         Some(Command::Keys) => keys::run(&loader.load()?.config, out),
         Some(Command::Server(args)) => server::run(&args, &loader.load()?.config),
         Some(Command::Attach(args)) => attach::run(&args, &loader.load()?, out),
