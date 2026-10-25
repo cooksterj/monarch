@@ -1,17 +1,17 @@
 //! What every server task shares.
 
 use std::collections::BTreeMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use monarch_core::{AgentState, PaneId};
-use monarch_proto::AgentReport;
+use monarch_proto::{AgentReport, Review};
 use tokio::sync::Notify;
 use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{
-    PaneEnv, PaneEvent, PaneRuntime, PaneSpec, PersistedPane, Placement, ProcessProbe, ServerError,
-    SessionState, SpawnParams, SystemProbe,
+    CliGitRunner, DiffReader, PaneEnv, PaneEvent, PaneRuntime, PaneSpec, PersistedPane, Placement,
+    ProcessProbe, ServerError, SessionState, SpawnParams, SystemProbe,
 };
 
 /// The session state plus the wake-ups and channels around it.
@@ -29,6 +29,7 @@ pub struct ServerContext {
     env: PaneEnv,
     scrollback: usize,
     probe: Box<dyn ProcessProbe>,
+    diffs: DiffReader,
 }
 
 impl ServerContext {
@@ -45,7 +46,26 @@ impl ServerContext {
             env,
             scrollback,
             probe: Box::new(SystemProbe::new()),
+            diffs: DiffReader::new(Box::new(CliGitRunner)),
         }
+    }
+
+    /// The same context reading reviews with `diffs` (tests use a fake
+    /// git).
+    #[must_use]
+    pub fn with_diffs(mut self, diffs: DiffReader) -> Self {
+        self.diffs = diffs;
+        self
+    }
+
+    /// The uncommitted changes in `pane`'s checkout, or `None` when it
+    /// isn't in one. Runs git: call it off the async runtime.
+    #[must_use]
+    pub fn review(&self, pane: PaneId) -> Option<Review> {
+        let place = self.lock().place(pane)?;
+        let mut review = self.diffs.review(Path::new(place.worktree.as_deref()?));
+        review.branch = place.branch;
+        Some(review)
     }
 
     /// Locks the session. Never hold this across an `.await`.

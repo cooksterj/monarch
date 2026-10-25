@@ -14,7 +14,7 @@ use super::{
     Applied, AttachOptions, AttachOutcome, AttachState, ClientEvent, ConfigWatch, ContextMenu,
     CopyMode, DragScroll, InputKeys, Selection, ServerLink, SharedFocus,
 };
-use crate::{HostModeMirror, HostProbe, Picker, TuiError, WhichKeyEntry};
+use crate::{HostModeMirror, Picker, ReviewState, TuiError, WhichKeyEntry};
 
 mod animate;
 mod copy;
@@ -23,12 +23,13 @@ mod inbox;
 mod menu;
 mod picker;
 mod reload;
+mod review;
 mod select;
 mod sidebar;
 mod startup;
 mod which_key;
 
-use startup::{enter_host, introduce, spawn_input, wait_for_host, warnings_notice, write_host};
+use startup::{Started, warnings_notice, write_host};
 
 /// Minimum time between frames drawn to the host.
 const FRAME: Duration = Duration::from_millis(16);
@@ -62,6 +63,8 @@ pub struct AttachApp {
     copy: Option<CopyMode>,
     /// The right-click menu, which takes clicks and keys.
     menu: Option<ContextMenu>,
+    /// The review pane, which takes the keys.
+    review: Option<ReviewState>,
     selection: Option<Selection>,
     /// Scrolling while a selection drag is past the pane's edge.
     drag: Option<DragScroll>,
@@ -95,31 +98,22 @@ impl AttachApp {
     }
 
     fn start(
-        mut ui: DefaultTerminal,
+        ui: DefaultTerminal,
         link: ServerLink,
         reader: UnixStream,
         opts: &AttachOptions,
     ) -> Result<Self, TuiError> {
-        let (tx, events) = mpsc::channel();
-        ServerLink::spawn_reader(reader, tx.clone());
-        write_host(&mut ui, HostProbe::QUERY)?;
-        let focus = Arc::new(SharedFocus::default());
-        let rekey = spawn_input(&link, opts, Arc::clone(&focus), tx);
-        let (host, backlog) = wait_for_host(&events);
-        let size = introduce(&ui, &link, host, opts)?;
-        let (mirror, out) = enter_host(&host, opts);
-        let mut state = AttachState::new();
-        state.set_left(sidebar::sidebar_cols(opts, opts.sidebar, size));
+        let s = Started::new(ui, link, reader, opts)?;
         Ok(Self {
-            ui,
-            link,
-            events,
-            backlog,
-            state,
-            mirror,
-            host,
-            focus,
-            rekey,
+            ui: s.ui,
+            link: s.link,
+            events: s.events,
+            backlog: s.backlog,
+            state: s.state,
+            mirror: s.mirror,
+            host: s.host,
+            focus: s.focus,
+            rekey: s.rekey,
             opts: opts.clone(),
             config: ConfigWatch::new(opts.config_path.clone(), Instant::now()),
             prefix_pending: false,
@@ -127,16 +121,17 @@ impl AttachApp {
             popup: false,
             which_key: WhichKeyEntry::from_keymap(&opts.keymap),
             picker: None,
+            review: None,
             copy: None,
             menu: None,
             selection: None,
             drag: None,
             sidebar: opts.sidebar,
             passthrough: false,
-            glyphs: animate::Glyphs::new(host.background),
+            glyphs: animate::Glyphs::new(s.host.background),
             notice: warnings_notice(opts),
-            out,
-            size,
+            out: s.out,
+            size: s.size,
             dirty: true,
             last_draw: Instant::now() - FRAME,
         })
@@ -204,6 +199,9 @@ impl AttachApp {
         }
         self.dirty |= applied.redraw;
         self.after_copy_frames(applied.found);
+        for (pane, review) in applied.reviews {
+            self.loaded_review(pane, review);
+        }
         if applied.redraw && self.drag.is_some() {
             self.drag_extend();
         }

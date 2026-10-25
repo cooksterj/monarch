@@ -10,7 +10,10 @@ use ratatui::crossterm::{execute, queue};
 
 use super::AttachApp;
 use crate::client::{AttachView, WindowTitle};
-use crate::{ContextMenuView, MouseOwner, PickerView, Sidebar, StatusLine, TuiError, WhichKey};
+use crate::{
+    ContextMenuView, MouseOwner, PickerView, ReviewView, Sidebar, SidebarGroup, StatusLine,
+    TuiError, WhichKey,
+};
 
 impl AttachApp {
     /// Mirrors the focused pane onto the host, then draws every visible
@@ -34,6 +37,7 @@ impl AttachApp {
         }
         self.ui.backend_mut().write_all(&self.out).map_err(io)?;
         self.out.clear();
+        self.size_review();
         self.paint()?;
         if self.host.sync_output {
             execute!(self.ui.backend_mut(), EndSynchronizedUpdate).map_err(io)?;
@@ -45,12 +49,7 @@ impl AttachApp {
 
     /// Draws panes, the status line and the key popup.
     fn paint(&mut self) -> Result<(), TuiError> {
-        let mut groups = if self.state.left() > 0 {
-            self.state.sidebar_groups()
-        } else {
-            Vec::new()
-        };
-        self.dress(&mut groups);
+        let groups = self.sidebar_rows();
         let (tabs, active_tab) = self.state.tab_labels();
         let copy = self.copy_view();
         let notice = self.notice.as_ref().map(|(text, _)| text.as_str());
@@ -75,14 +74,39 @@ impl AttachApp {
             copy_cursor: copy.as_ref().and_then(|c| c.cursor),
             picker: self.picker.as_ref().map(|picker| PickerView { picker }),
             menu: self.menu.as_ref().map(|menu| ContextMenuView { menu }),
-            which_key: (self.popup && self.picker.is_none()).then_some(WhichKey {
-                entries: &self.which_key,
-                title: &self.opts.prefix_label,
+            review: self.review.as_ref().map(|state| ReviewView {
+                state,
+                theme: self.glyphs.theme(),
             }),
+            which_key: (self.popup && self.picker.is_none() && self.review.is_none()).then_some(
+                WhichKey {
+                    entries: &self.which_key,
+                    title: &self.opts.prefix_label,
+                },
+            ),
         };
         self.ui
             .draw(|frame| view.draw(frame))
             .map_err(|e| TuiError::io("drawing", e))?;
         Ok(())
+    }
+
+    /// Tells the review pane how many diff lines a page holds.
+    fn size_review(&mut self) {
+        if let Some(review) = self.review.as_mut() {
+            let rows = AttachView::pane_area(self.size, self.state.left()).rows;
+            review.set_page(ReviewView::diff_rows(rows));
+        }
+    }
+
+    /// The sidebar's groups with animated glyphs; none while it is hidden.
+    fn sidebar_rows(&mut self) -> Vec<SidebarGroup> {
+        let mut groups = if self.state.left() > 0 {
+            self.state.sidebar_groups()
+        } else {
+            Vec::new()
+        };
+        self.dress(&mut groups);
+        groups
     }
 }

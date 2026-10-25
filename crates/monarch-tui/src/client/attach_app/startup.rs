@@ -3,6 +3,7 @@
 
 use std::collections::VecDeque;
 use std::io::Write;
+use std::os::unix::net::UnixStream;
 use std::sync::Arc;
 use std::sync::mpsc::{self, Receiver};
 use std::time::Instant;
@@ -12,10 +13,60 @@ use ratatui::DefaultTerminal;
 
 use super::{WARNING, sidebar};
 use crate::client::{
-    AttachOptions, AttachView, ClientEvent, InputKeys, InputParams, InputThread, PROBE_TIMEOUT,
-    ServerLink, SharedFocus,
+    AttachOptions, AttachState, AttachView, ClientEvent, InputKeys, InputParams, InputThread,
+    PROBE_TIMEOUT, ServerLink, SharedFocus,
 };
-use crate::{HostModeMirror, TuiError};
+use crate::{HostModeMirror, HostProbe, TuiError};
+
+/// What an attach session has once it is connected and introduced.
+pub(super) struct Started {
+    pub ui: DefaultTerminal,
+    pub link: ServerLink,
+    pub events: Receiver<ClientEvent>,
+    pub backlog: VecDeque<ClientEvent>,
+    pub state: AttachState,
+    pub mirror: HostModeMirror,
+    pub host: HostInfo,
+    pub focus: Arc<SharedFocus>,
+    pub rekey: mpsc::Sender<InputKeys>,
+    pub out: Vec<u8>,
+    pub size: ScreenSize,
+}
+
+impl Started {
+    /// Starts the input and server threads, probes the host and
+    /// introduces this client to the server.
+    pub fn new(
+        mut ui: DefaultTerminal,
+        link: ServerLink,
+        reader: UnixStream,
+        opts: &AttachOptions,
+    ) -> Result<Self, TuiError> {
+        let (tx, events) = mpsc::channel();
+        ServerLink::spawn_reader(reader, tx.clone());
+        write_host(&mut ui, HostProbe::QUERY)?;
+        let focus = Arc::new(SharedFocus::default());
+        let rekey = spawn_input(&link, opts, Arc::clone(&focus), tx);
+        let (host, backlog) = wait_for_host(&events);
+        let size = introduce(&ui, &link, host, opts)?;
+        let (mirror, out) = enter_host(&host, opts);
+        let mut state = AttachState::new();
+        state.set_left(sidebar::sidebar_cols(opts, opts.sidebar, size));
+        Ok(Self {
+            ui,
+            link,
+            events,
+            backlog,
+            state,
+            mirror,
+            host,
+            focus,
+            rekey,
+            out,
+            size,
+        })
+    }
+}
 
 /// Starts the thread that reads the host terminal; returns where to send
 /// it new keys.

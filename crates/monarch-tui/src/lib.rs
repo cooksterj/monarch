@@ -14,8 +14,8 @@ pub use client::{
     ANIMATION_STEP, Applied, AttachApp, AttachOptions, AttachOutcome, AttachState, AttachView,
     CONFIG_POLL, ClickCounter, ClientEvent, ConfigWatch, ContextMenu, CopyMode, CopyStep,
     DRAG_STEP, DragScroll, FocusView, GlyphAnimator, InputKeys, MULTI_CLICK, MouseAction,
-    MouseRouter, PaneReplica, Picker, PickerItem, PickerStep, SelectEvent, SelectUnit, Selection,
-    ServerLink, SharedFocus, WHEEL_LINES, WindowTitle,
+    MouseRouter, PaneReplica, Picker, PickerItem, PickerStep, ReviewState, ReviewStep, SelectEvent,
+    SelectUnit, Selection, ServerLink, SharedFocus, WHEEL_LINES, WindowTitle,
 };
 pub use error::TuiError;
 pub use host::{HostClipboard, HostModeMirror, HostProbe, HostReply};
@@ -25,6 +25,7 @@ pub use input::{
 };
 pub use platform::{LocalClipboard, SystemClipboard};
 pub use widgets::{
-    ContextMenuView, GlyphLook, MouseOwner, PaneBorders, PaneView, PickerView, SelectionSpan,
-    Sidebar, SidebarGroup, SidebarRow, StatusLine, StyleConverter, WhichKey, WhichKeyEntry,
+    ContextMenuView, GlyphLook, MouseOwner, PaneBorders, PaneView, PickerView, ReviewView,
+    SelectionSpan, Sidebar, SidebarGroup, SidebarRow, StatusLine, StyleConverter, WhichKey,
+    WhichKeyEntry,
 };

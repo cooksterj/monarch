@@ -31,6 +31,12 @@ impl SessionState {
         true
     }
 
+    /// Where a pane works, as last probed.
+    #[must_use]
+    pub fn place(&self, id: PaneId) -> Option<PanePlace> {
+        self.panes.get(&id)?.place.clone()
+    }
+
     /// Records where a pane works and tells every client if it changed.
     /// Returns whether it did.
     pub fn set_place(&mut self, id: PaneId, place: Option<PanePlace>) -> bool {

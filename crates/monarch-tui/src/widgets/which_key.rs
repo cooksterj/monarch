@@ -134,9 +134,9 @@ mod tests {
         │ x          close pane     1-9        go to tab      g w        go to pane   │
         │ z          zoom           c          new tab        m          toggle mouse │
         │ hjkl ←↓↑→  focus          n          next tab       t          sidebar      │
-        │ o          focus next     p          prev tab       tab        next blocked │
-        │ {          swap prev      :          palette        d          detach       │
-        │ }          swap next      R          reload                                 │
+        │ o          focus next     p          prev tab       v          review       │
+        │ {          swap prev      :          palette        tab        next blocked │
+        │ }          swap next      R          reload         d          detach       │
         └─────────────────────────────────────────────────────────────────────────────┘
         "#);
     }

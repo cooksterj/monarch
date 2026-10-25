@@ -21,6 +21,7 @@ impl AttachApp {
             Action::GoToPane => self.open_picker(self.go_to()),
             Action::Inbox => self.open_picker(self.inbox()),
             Action::NextBlocked => self.next_blocked(),
+            Action::Review => self.open_review(),
             Action::CopyMode => self.open_copy(),
             Action::ToggleSidebar => self.toggle_sidebar(),
             Action::ReloadConfig => self.reload_config(),
@@ -36,6 +37,10 @@ impl AttachApp {
     pub(super) fn on_overlay_input(&mut self, bytes: &[u8]) -> Option<AttachOutcome> {
         if self.menu.is_some() {
             return self.menu_input(bytes);
+        }
+        if self.review.is_some() {
+            self.review_input(bytes);
+            return None;
         }
         if self.picker.is_none() {
             for key in OverlayKey::decode(bytes) {

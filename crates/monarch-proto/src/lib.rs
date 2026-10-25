@@ -10,6 +10,7 @@ mod attach;
 mod error;
 mod hello;
 mod hello_ack;
+mod review;
 mod screen;
 
 pub use api::{AgentReport, Request, Response, RpcError};
@@ -21,6 +22,7 @@ pub use attach::{
 pub use error::ProtoError;
 pub use hello::Hello;
 pub use hello_ack::HelloAck;
+pub use review::{DiffLine, DiffLineKind, FileChange, Review, ReviewFile};
 
 pub use screen::{
     Cell, CellAttrs, CellStyle, Cursor, CursorShape, GridPoint, ModeFlags, Rgb, Screen, ScreenSize,
