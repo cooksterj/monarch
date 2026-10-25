@@ -11,7 +11,8 @@ use std::process::ExitCode;
 use clap::Parser;
 
 pub use cli::{
-    AttachArgs, Cli, Command, ConfigCommand, HookCommand, KillArgs, NewArgs, ServerArgs, SetupArgs,
+    AgentCommand, AttachArgs, Cli, Command, ConfigCommand, ExplainArgs, HookCommand, KillArgs,
+    NewArgs, ServerArgs, SetupArgs,
 };
 
 /// Parses `std::env::args` and runs the selected command.

@@ -5,7 +5,7 @@ use std::path::Path;
 
 use monarch_core::{AgentKind, PaneId};
 use monarch_detect::OscSignal;
-use monarch_proto::{AgentReport, AgentStatus, ServerMsg};
+use monarch_proto::{AgentReport, AgentStatus, ServerMsg, StatusSource};
 
 use super::SessionState;
 
@@ -25,6 +25,19 @@ impl SessionState {
             self.broadcast(&ServerMsg::Agent { pane, status });
         }
         Some(pane)
+    }
+
+    /// Which signal `pane`'s status came from.
+    #[must_use]
+    pub fn agent_source(&self, pane: PaneId) -> StatusSource {
+        self.agents.source(pane)
+    }
+
+    /// Monarch started `kind` in `pane`; tells every client.
+    pub fn launched_agent(&mut self, pane: PaneId, kind: AgentKind) {
+        if let Some(status) = self.agents.launched(pane, kind) {
+            self.broadcast(&ServerMsg::Agent { pane, status });
+        }
     }
 
     /// Applies a notification from `pane`'s program (ignored where hooks

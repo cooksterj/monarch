@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use futures_util::{SinkExt, StreamExt};
 use monarch_proto::{
-    AgentReport, KillSession, NewWorktree, Request, Response, RpcError, SessionInfo,
+    AgentReport, ExplainPanes, KillSession, NewWorktree, Request, Response, RpcError, SessionInfo,
 };
 use serde::de::DeserializeOwned;
 use serde_json::Value;
@@ -75,23 +75,20 @@ fn dispatch(ctx: &ServerContext, request: Request) -> Result<Value, RpcError> {
             let created = ctx
                 .new_worktree(&params(request.params)?)
                 .map_err(|e| RpcError::new(RpcError::FAILED, e.to_string()))?;
-            serde_json::to_value(created)
-                .map_err(|e| RpcError::new(RpcError::FAILED, e.to_string()))
+            json(created)
         }
-        AgentReport::METHOD => {
-            let report: AgentReport = params(request.params)?;
-            let Some(pane) = ctx.lock().report_agent(&report) else {
-                let message = match report.pane {
-                    Some(pane) => format!("no pane {pane} in this session"),
-                    None => format!("no {} pane here for this report", report.agent.name()),
-                };
-                return Err(RpcError::new(RpcError::NO_SUCH_PANE, message));
-            };
-            ctx.record_session(pane, &report);
-            Ok(Value::Object(serde_json::Map::new()))
+        AgentReport::METHOD => report(ctx, &params(request.params)?),
+        ExplainPanes::METHOD => {
+            let ExplainPanes { pane } = params(request.params)?;
+            let pane_name = pane.map(|p| p.to_string()).unwrap_or_default();
+            json(ctx.explain(pane).ok_or_else(|| {
+                RpcError::new(
+                    RpcError::NO_SUCH_PANE,
+                    format!("no pane {pane_name} in this session"),
+                )
+            })?)
         }
-        SessionInfo::METHOD => serde_json::to_value(ctx.info())
-            .map_err(|e| RpcError::new(RpcError::FAILED, e.to_string())),
+        SessionInfo::METHOD => json(ctx.info()),
         KillSession::METHOD => {
             ctx.kill();
             Ok(Value::Object(serde_json::Map::new()))
@@ -101,6 +98,24 @@ fn dispatch(ctx: &ServerContext, request: Request) -> Result<Value, RpcError> {
             format!("unknown method {other:?}"),
         )),
     }
+}
+
+/// `agent.report`: applies a hook report to the pane it is about.
+fn report(ctx: &ServerContext, report: &AgentReport) -> Result<Value, RpcError> {
+    let Some(pane) = ctx.lock().report_agent(report) else {
+        let message = match report.pane {
+            Some(pane) => format!("no pane {pane} in this session"),
+            None => format!("no {} pane here for this report", report.agent.name()),
+        };
+        return Err(RpcError::new(RpcError::NO_SUCH_PANE, message));
+    };
+    ctx.record_session(pane, report);
+    Ok(Value::Object(serde_json::Map::new()))
+}
+
+/// A method's result as JSON.
+fn json(result: impl serde::Serialize) -> Result<Value, RpcError> {
+    serde_json::to_value(result).map_err(|e| RpcError::new(RpcError::FAILED, e.to_string()))
 }
 
 fn params<T: DeserializeOwned>(value: Value) -> Result<T, RpcError> {
@@ -169,6 +184,14 @@ mod tests {
             code(&ApiConnection::answer(&ctx, &line)),
             Some(RpcError::NO_SUCH_PANE)
         );
+        let explain = r#"{"id":5,"method":"agent.explain","params":{"pane":42}}"#;
+        assert_eq!(
+            code(&ApiConnection::answer(&ctx, explain)),
+            Some(RpcError::NO_SUCH_PANE)
+        );
+        let all = r#"{"id":6,"method":"agent.explain","params":{}}"#;
+        let listed = ApiConnection::answer(&ctx, all).result;
+        assert_eq!(listed, Some(serde_json::json!([])), "no panes yet");
         let unknown = r#"{"id":2,"method":"pane.explode"}"#;
         assert_eq!(
             code(&ApiConnection::answer(&ctx, unknown)),
