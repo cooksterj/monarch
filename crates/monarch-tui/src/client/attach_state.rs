@@ -122,10 +122,11 @@ impl AttachState {
     #[must_use]
     pub fn focused_title(&self) -> Option<&str> {
         let focus = self.focus()?;
-        if let Some(title) = self.titles.get(&focus) {
-            return Some(title.as_str());
-        }
-        self.layout.as_ref()?.focused()?.title.as_deref()
+        let title = match self.titles.get(&focus) {
+            Some(title) => title.as_str(),
+            None => self.layout.as_ref()?.focused()?.title.as_deref()?,
+        };
+        Some(PaneSummary::clean_title(title))
     }
 
     /// One label per tab (`1 vim`, `2 zsh [Z]`) and the shown tab's index,
