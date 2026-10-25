@@ -42,6 +42,7 @@ impl From<&AttachOptions> for InputKeys {
                     | Action::Review
                     | Action::NewWorktree
                     | Action::Projects
+                    | Action::Sessions
             )
         };
         Self {

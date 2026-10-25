@@ -5,6 +5,7 @@ use std::collections::VecDeque;
 use std::io::Write;
 use std::os::unix::net::UnixStream;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::{self, Receiver};
 use std::time::Instant;
 
@@ -23,12 +24,14 @@ pub(super) struct Started {
     pub ui: DefaultTerminal,
     pub link: ServerLink,
     pub events: Receiver<ClientEvent>,
+    pub post: mpsc::Sender<ClientEvent>,
     pub backlog: VecDeque<ClientEvent>,
     pub state: AttachState,
     pub mirror: HostModeMirror,
     pub host: HostInfo,
     pub focus: Arc<SharedFocus>,
     pub rekey: mpsc::Sender<InputKeys>,
+    pub input_stop: Arc<AtomicBool>,
     pub out: Vec<u8>,
     pub size: ScreenSize,
 }
@@ -44,9 +47,11 @@ impl Started {
     ) -> Result<Self, TuiError> {
         let (tx, events) = mpsc::channel();
         ServerLink::spawn_reader(reader, tx.clone());
+        let post = tx.clone();
         write_host(&mut ui, HostProbe::QUERY)?;
         let focus = Arc::new(SharedFocus::default());
-        let rekey = spawn_input(&link, opts, Arc::clone(&focus), tx);
+        let input_stop = Arc::new(AtomicBool::new(false));
+        let rekey = spawn_input(&link, opts, Arc::clone(&focus), tx, Arc::clone(&input_stop));
         let (host, backlog) = wait_for_host(&events);
         let size = introduce(&ui, &link, host, opts)?;
         let (mirror, out) = enter_host(&host, opts);
@@ -56,12 +61,14 @@ impl Started {
             ui,
             link,
             events,
+            post,
             backlog,
             state,
             mirror,
             host,
             focus,
             rekey,
+            input_stop,
             out,
             size,
         })
@@ -75,6 +82,7 @@ pub(super) fn spawn_input(
     opts: &AttachOptions,
     focus: Arc<SharedFocus>,
     events: mpsc::Sender<ClientEvent>,
+    stop: Arc<AtomicBool>,
 ) -> mpsc::Sender<InputKeys> {
     let (rekey_tx, rekey) = mpsc::channel();
     InputThread::spawn(InputParams {
@@ -83,6 +91,7 @@ pub(super) fn spawn_input(
         rekey,
         focus,
         events,
+        stop,
     });
     rekey_tx
 }

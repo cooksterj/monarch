@@ -6,6 +6,7 @@
 
 use std::io::Read;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -17,7 +18,7 @@ mod mouse_log;
 
 use mouse_log::MouseLog;
 
-use super::{ClientEvent, InputKeys, MouseAction, MouseRouter, ServerLink, SharedFocus};
+use super::{ClientEvent, InputKeys, MouseAction, MouseRouter, ServerLink, SharedFocus, TtyFeed};
 use crate::{
     HostInput, HostInputFilter, HostProbe, InputEvent, MouseButton, MouseEvent, MouseExtractor,
     MouseKind, PrefixParser,
@@ -41,6 +42,9 @@ pub struct InputParams {
     pub focus: Arc<SharedFocus>,
     /// Commands, probe results and end of input go to the main loop.
     pub events: Sender<ClientEvent>,
+    /// Set when the attach ends: the thread lets go of the terminal so
+    /// the next attach's thread reads it.
+    pub stop: Arc<AtomicBool>,
 }
 
 /// Scrolls to live output: more than any scrollback holds.
@@ -70,7 +74,7 @@ impl InputThread {
     pub fn spawn(params: InputParams) {
         let _ = thread::Builder::new()
             .name("monarch-input".into())
-            .spawn(move || run(&params, std::io::stdin().lock()));
+            .spawn(move || run(&params, TtyFeed::stdin(Arc::clone(&params.stop))));
     }
 }
 
@@ -257,6 +261,7 @@ mod tests {
             rekey,
             focus,
             events,
+            stop: Arc::default(),
         }
     }
 

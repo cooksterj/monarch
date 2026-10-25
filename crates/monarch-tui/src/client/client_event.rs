@@ -3,7 +3,7 @@
 use monarch_core::Key;
 use monarch_proto::{HostInfo, ServerMsg};
 
-use super::SelectEvent;
+use super::{SelectEvent, SessionEntry};
 
 /// One event for the main loop.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -31,6 +31,8 @@ pub enum ClientEvent {
     },
     /// Keys were sent to the focused pane (a selection ends).
     Typed,
+    /// The running sessions, listed for the session picker.
+    Sessions(Vec<SessionEntry>),
     /// The terminal's input closed.
     InputClosed,
 }

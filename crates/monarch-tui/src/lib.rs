@@ -15,8 +15,9 @@ pub use client::{
     CONFIG_POLL, ClickCounter, ClientEvent, ConfigWatch, ContextMenu, CopyMode, CopyStep,
     DRAG_STEP, DragScroll, FocusView, GlyphAnimator, InputKeys, MULTI_CLICK, MouseAction,
     MouseRouter, PaneReplica, Picker, PickerItem, PickerStep, ProjectPicker, ProjectStep,
-    ReviewState, ReviewStep, SelectEvent, SelectUnit, Selection, ServerLink, SharedFocus,
-    WHEEL_LINES, WORKTREE_CHOICES, WindowTitle, WorktreeForm, WorktreeStep,
+    ReviewState, ReviewStep, SelectEvent, SelectUnit, Selection, ServerLink, SessionEntry,
+    SessionLister, SessionPicker, SessionStep, SharedFocus, WHEEL_LINES, WORKTREE_CHOICES,
+    WindowTitle, WorktreeForm, WorktreeStep,
 };
 pub use error::TuiError;
 pub use host::{HostClipboard, HostModeMirror, HostProbe, HostReply};
