@@ -69,10 +69,10 @@ impl PickerView<'_> {
     fn draw_rows(&self, area: Rect, buf: &mut Buffer) {
         if self.picker.rows().len() == 0 {
             let dim = Style::new().add_modifier(Modifier::DIM);
-            let empty = if self.picker.is_list() {
-                "nothing needs you"
-            } else {
-                "no matches"
+            let empty = match (self.picker.text(), self.picker.is_list()) {
+                (Some((_, empty)), _) => empty,
+                (None, true) => "nothing needs you",
+                (None, false) => "no matches",
             };
             buf.set_stringn(area.x + 1, area.y, empty, usize::from(area.width), dim);
             return;
@@ -95,10 +95,10 @@ impl Widget for PickerView<'_> {
         }
         Clear.render(popup, buf);
         let dim = Style::new().add_modifier(Modifier::DIM);
-        let keys = if self.picker.is_list() {
-            LIST_KEYS
-        } else {
-            SEARCH_KEYS
+        let keys = match (self.picker.text(), self.picker.is_list()) {
+            (Some((keys, _)), _) => keys,
+            (None, true) => LIST_KEYS,
+            (None, false) => SEARCH_KEYS,
         };
         Block::new()
             .borders(Borders::ALL)

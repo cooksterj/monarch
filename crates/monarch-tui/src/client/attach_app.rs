@@ -11,10 +11,10 @@ use monarch_proto::{ClientMsg, HostInfo, ScreenSize};
 use ratatui::DefaultTerminal;
 
 use super::{
-    Applied, AttachOptions, AttachOutcome, AttachState, ClientEvent, ConfigWatch, ContextMenu,
-    CopyMode, DragScroll, InputKeys, Selection, ServerLink, SharedFocus,
+    Applied, AttachOptions, AttachOutcome, AttachState, ClientEvent, ConfigWatch, CopyMode,
+    DragScroll, InputKeys, Selection, ServerLink, SharedFocus,
 };
-use crate::{HostModeMirror, Picker, ReviewState, TuiError, WhichKeyEntry, WorktreeForm};
+use crate::{HostModeMirror, TuiError, WhichKeyEntry};
 
 mod animate;
 mod copy;
@@ -22,6 +22,8 @@ mod draw;
 mod inbox;
 mod menu;
 mod picker;
+mod popups;
+mod projects;
 mod reload;
 mod review;
 mod select;
@@ -30,6 +32,7 @@ mod startup;
 mod which_key;
 mod worktree;
 
+use popups::Popups;
 use startup::{Started, warnings_notice, write_host};
 
 /// Minimum time between frames drawn to the host.
@@ -58,16 +61,10 @@ pub struct AttachApp {
     /// The key popup is up.
     popup: bool,
     which_key: Vec<WhichKeyEntry>,
-    /// The open palette or go-to picker, which takes the keys.
-    picker: Option<Picker>,
+    /// The pop-ups open over the panes.
+    popups: Popups,
     /// Copy mode on the focused pane, which takes the keys.
     copy: Option<CopyMode>,
-    /// The right-click menu, which takes clicks and keys.
-    menu: Option<ContextMenu>,
-    /// The review pane, which takes the keys.
-    review: Option<ReviewState>,
-    /// The new-worktree form, which takes the keys.
-    form: Option<WorktreeForm>,
     selection: Option<Selection>,
     /// Scrolling while a selection drag is past the pane's edge.
     drag: Option<DragScroll>,
@@ -123,11 +120,8 @@ impl AttachApp {
             prefix_at: None,
             popup: false,
             which_key: WhichKeyEntry::from_keymap(&opts.keymap),
-            picker: None,
-            review: None,
-            form: None,
+            popups: Popups::default(),
             copy: None,
-            menu: None,
             selection: None,
             drag: None,
             sidebar: opts.sidebar,
@@ -208,6 +202,12 @@ impl AttachApp {
         }
         for made in applied.worktrees {
             self.worktree_made(made);
+        }
+        for list in applied.worktree_lists {
+            self.loaded_worktrees(list);
+        }
+        for removed in applied.removed {
+            self.worktree_removed(removed);
         }
         if applied.redraw && self.drag.is_some() {
             self.drag_extend();

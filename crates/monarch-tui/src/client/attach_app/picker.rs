@@ -23,6 +23,7 @@ impl AttachApp {
             Action::NextBlocked => self.next_blocked(),
             Action::Review => self.open_review(),
             Action::NewWorktree => self.open_worktree_form(),
+            Action::Projects => self.open_projects(),
             Action::CopyMode => self.open_copy(),
             Action::ToggleSidebar => self.toggle_sidebar(),
             Action::ReloadConfig => self.reload_config(),
@@ -36,14 +37,16 @@ impl AttachApp {
     /// Feeds host input to the open pop-up or copy mode; keys after the
     /// one that closes it are dropped.
     pub(super) fn on_overlay_input(&mut self, bytes: &[u8]) -> Option<AttachOutcome> {
-        if self.menu.is_some() {
+        if self.popups.menu.is_some() {
             return self.menu_input(bytes);
         }
-        if self.review.is_some() {
+        if self.popups.review.is_some() {
             self.review_input(bytes);
-        } else if self.form.is_some() {
+        } else if self.popups.form.is_some() {
             self.worktree_input(bytes);
-        } else if self.picker.is_some() {
+        } else if self.popups.projects.is_some() {
+            self.projects_input(bytes);
+        } else if self.popups.picker.is_some() {
             return self.picker_input(bytes);
         } else {
             for key in OverlayKey::decode(bytes) {
@@ -62,7 +65,7 @@ impl AttachApp {
     /// Keys while the palette, go-to picker or inbox is open.
     fn picker_input(&mut self, bytes: &[u8]) -> Option<AttachOutcome> {
         for key in OverlayKey::decode(bytes) {
-            let Some(picker) = self.picker.as_mut() else {
+            let Some(picker) = self.popups.picker.as_mut() else {
                 break;
             };
             self.dirty = true;
@@ -76,20 +79,20 @@ impl AttachApp {
                 }
             }
         }
-        if self.picker.is_none() && self.copy.is_none() {
+        if self.popups.picker.is_none() && self.copy.is_none() {
             self.focus.set_overlay(false);
         }
         None
     }
 
     pub(super) fn open_picker(&mut self, picker: Picker) {
-        self.picker = Some(picker);
+        self.popups.picker = Some(picker);
         self.focus.set_overlay(true);
         self.dirty = true;
     }
 
     fn close_picker(&mut self) {
-        self.picker = None;
+        self.popups.picker = None;
         self.focus.set_overlay(self.any_overlay());
         self.dirty = true;
     }

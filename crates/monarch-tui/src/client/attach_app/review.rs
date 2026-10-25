@@ -20,7 +20,7 @@ impl AttachApp {
             return;
         };
         let _ = self.link.send(&ClientMsg::Review(pane));
-        self.review = Some(ReviewState::new(pane));
+        self.popups.review = Some(ReviewState::new(pane));
         self.focus.set_overlay(true);
         self.dirty = true;
     }
@@ -28,7 +28,7 @@ impl AttachApp {
     /// The server's answer for `pane`, if the review is still waiting on
     /// it.
     pub(super) fn loaded_review(&mut self, pane: PaneId, review: Option<Review>) {
-        if let Some(state) = self.review.as_mut().filter(|s| s.pane() == pane) {
+        if let Some(state) = self.popups.review.as_mut().filter(|s| s.pane() == pane) {
             state.load(review);
             self.dirty = true;
         }
@@ -37,7 +37,7 @@ impl AttachApp {
     /// Keys while the review is open.
     pub(super) fn review_input(&mut self, bytes: &[u8]) {
         for key in OverlayKey::decode(bytes) {
-            let Some(state) = self.review.as_mut() else {
+            let Some(state) = self.popups.review.as_mut() else {
                 break;
             };
             self.dirty = true;
@@ -55,7 +55,7 @@ impl AttachApp {
     /// Opens the selected file in the user's editor, zoomed over the
     /// focused pane, and closes the review.
     fn edit_selected(&mut self) {
-        let Some(state) = self.review.as_ref() else {
+        let Some(state) = self.popups.review.as_ref() else {
             return;
         };
         let Some(path) = state.editable() else {
@@ -74,7 +74,7 @@ impl AttachApp {
     }
 
     fn close_review(&mut self) {
-        self.review = None;
+        self.popups.review = None;
         self.focus.set_overlay(self.any_overlay());
     }
 }

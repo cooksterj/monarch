@@ -11,10 +11,10 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{
     CliGitRunner, DiffReader, PaneEnv, PaneEvent, PaneRuntime, PaneSpec, PersistedPane, Placement,
-    ProcessProbe, ServerError, SessionState, SpawnParams, SystemProbe, WorktreeMaker,
+    ProcessProbe, ServerError, SessionState, SpawnParams, SystemProbe, WorktreeManager,
 };
 
-mod new_worktree;
+mod worktrees;
 
 /// The session state plus the wake-ups and channels around it.
 pub struct ServerContext {
@@ -32,7 +32,7 @@ pub struct ServerContext {
     scrollback: usize,
     probe: Box<dyn ProcessProbe>,
     diffs: DiffReader,
-    worktrees: WorktreeMaker,
+    worktrees: WorktreeManager,
 }
 
 impl ServerContext {
@@ -50,8 +50,16 @@ impl ServerContext {
             scrollback,
             probe: Box::new(SystemProbe::new()),
             diffs: DiffReader::new(Box::new(CliGitRunner)),
-            worktrees: WorktreeMaker::new(Box::new(CliGitRunner)),
+            worktrees: WorktreeManager::new(Box::new(CliGitRunner)),
         }
+    }
+
+    /// The same context managing worktrees with `worktrees` (tests use a
+    /// fake git).
+    #[must_use]
+    pub fn with_worktrees(mut self, worktrees: WorktreeManager) -> Self {
+        self.worktrees = worktrees;
+        self
     }
 
     /// The same context reading reviews with `diffs` (tests use a fake

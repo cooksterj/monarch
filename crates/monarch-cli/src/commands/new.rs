@@ -48,7 +48,9 @@ pub(crate) fn run(
     };
     let mut client = ApiClient::connect(&socket)?;
     client.set_timeout(GIT_TIMEOUT)?;
-    let created: WorktreeCreated = client.request(NewWorktree::METHOD, &request)?;
+    let created: WorktreeCreated = client
+        .request(NewWorktree::METHOD, &request)
+        .context("cannot create worktree")?;
     writeln!(out, "{}", summary(&created, &session))?;
     if args.detached || inside.is_some() {
         return Ok(ExitCode::SUCCESS);

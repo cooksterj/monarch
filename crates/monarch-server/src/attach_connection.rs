@@ -80,6 +80,9 @@ fn handle(ctx: &Arc<ServerContext>, id: ClientId, msg: ClientMsg) -> bool {
         ClientMsg::Review(pane) => review::request(ctx, id, pane),
         ClientMsg::Edit { pane, path, editor } => review::edit(ctx, pane, &path, &editor),
         ClientMsg::NewWorktree(request) => worktree::request(ctx, id, request),
+        ClientMsg::Worktrees => worktree::list(ctx, id),
+        ClientMsg::OpenWorktree(path) => worktree::open(ctx, &path),
+        ClientMsg::RemoveWorktree(path) => worktree::remove(ctx, id, path),
         msg => apply(ctx, id, msg),
     }
     true
