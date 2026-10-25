@@ -1,7 +1,7 @@
-//! Draws the welcome screen: a monarch beating its wings over the name,
-//! the keys a newcomer needs, and where to go next.
+//! Draws the welcome screen: a swarm of monarchs rising past a card with
+//! the name, the keys a newcomer needs, and where to go next.
 
-mod butterfly;
+mod swarm;
 
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
@@ -10,17 +10,19 @@ use ratatui::text::Line;
 use ratatui::widgets::{Block, Borders, Clear, Widget};
 
 use super::Chrome;
-use butterfly::Part;
+use swarm::{Depth, Flyer};
 
-/// Widest the box gets.
-const WIDTH: u16 = 78;
-/// The name, spelled out a letter per tick.
+/// Widest the card gets.
+const WIDTH: u16 = 76;
+/// The name, typed in two letters a tick.
 const TITLE: &str = "M O N A R C H";
 const TAGLINE: &str = "every agent in its own pane, and you always see which one needs you";
 const SETUP: &str = "`monarch setup` lets it see your agents · `monarch doctor` checks it all";
 const START: &str = "press any key to start";
 /// Keys column plus gap, then the text.
 const KEYS: usize = 13;
+/// The tick a still welcome shows the swarm at.
+const STILL: u32 = 0;
 
 /// The welcome screen as drawn at one tick of its animation.
 #[derive(Debug, Clone, Copy)]
@@ -29,56 +31,79 @@ pub struct WelcomeView<'a> {
     pub keys: &'a [(String, String)],
     /// Animation ticks since it opened.
     pub tick: u32,
-    /// Move; otherwise the open butterfly and the whole name, still.
+    /// Picks where the butterflies take off; each welcome gets its own.
+    pub seed: u64,
+    /// Move; otherwise the swarm holds still and the name is whole.
     pub animate: bool,
     /// The colours.
     pub chrome: Chrome<'a>,
 }
 
 impl WelcomeView<'_> {
-    /// Rows the butterfly takes, its rise included.
-    const ART: u16 = butterfly::ROWS as u16 + 1;
-
     /// Key rows for `cols` columns.
     fn key_rows(&self, cols: usize) -> u16 {
         u16::try_from(self.keys.len().div_ceil(cols)).unwrap_or(u16::MAX)
     }
 
-    /// Rows of everything but the butterfly: name, tagline, gap, keys,
-    /// gap, two hints, borders.
-    fn text_rows(&self, cols: usize) -> u16 {
-        2 + 1 + self.key_rows(cols) + 1 + 2 + 2
+    /// The card's rows: borders, a gap, name, tagline, gap, keys, gap,
+    /// two hints, a gap.
+    fn card_rows(&self, cols: usize) -> u16 {
+        2 + 1 + 2 + 1 + self.key_rows(cols) + 1 + 2 + 1
     }
 
-    fn style(&self, part: Part) -> Style {
-        let bold = Style::new().add_modifier(Modifier::BOLD);
-        match (self.chrome.theme, part) {
-            (Some(t), Part::Wing) => Style::new().fg(Chrome::color(t.accent)),
-            (Some(t), _) => bold.fg(Chrome::color(t.bar_text)),
-            (None, Part::Wing) => Style::new(),
-            (None, _) => bold,
+    /// The card, centred in `area`, and its key columns; `None` when
+    /// there is no room for it.
+    fn card(&self, area: Rect) -> Option<(Rect, usize)> {
+        let width = WIDTH.min(area.width.saturating_sub(4));
+        let cols = if width >= 72 { 2 } else { 1 };
+        let height = self.card_rows(cols).min(area.height);
+        if width < 30 || height < 5 {
+            return None;
+        }
+        let x = area.x + (area.width - width) / 2;
+        let y = area.y + (area.height - height) / 2;
+        Some((Rect::new(x, y, width, height), cols))
+    }
+
+    /// How a butterfly at `depth` looks: faded toward the bar colour with
+    /// distance, or dim, plain and bold without a theme.
+    fn wing(&self, depth: Depth) -> Style {
+        let near = depth == Depth::Near;
+        let style = match self.chrome.theme {
+            Some(t) => Style::new().fg(Chrome::color(t.accent.lerp(t.bar, depth.fade()))),
+            None if depth == Depth::Far => Style::new().add_modifier(Modifier::DIM),
+            None => Style::new(),
+        };
+        if near {
+            style.add_modifier(Modifier::BOLD)
+        } else {
+            style
         }
     }
 
-    /// The butterfly, centred at the top of `area`.
-    fn draw_art(&self, area: Rect, buf: &mut Buffer) {
-        let (rows, lift) = butterfly::frame(if self.animate { self.tick } else { 0 });
-        let width = u16::try_from(butterfly::WIDTH).unwrap_or(u16::MAX);
-        let x = area.x + area.width.saturating_sub(width) / 2;
-        let top = area.y + 1 - lift;
-        for (y, row) in (top..area.bottom()).zip(&rows) {
-            for (col, c) in row.chars().enumerate() {
-                let cx = x + u16::try_from(col).unwrap_or(u16::MAX);
-                if c != ' ' && cx < area.right() {
-                    buf[(cx, y)]
-                        .set_char(c)
-                        .set_style(self.style(butterfly::part(c, col)));
+    /// Draws `flyers` into `area`, clipped to it.
+    fn draw_flyers(&self, flyers: &[Flyer], area: Rect, buf: &mut Buffer) {
+        for flyer in flyers {
+            let style = self.wing(flyer.depth);
+            for (dy, row) in (0..).zip(flyer.depth.sprite(flyer.open)) {
+                for (dx, c) in (0..).zip(row.chars()) {
+                    let (x, y) = (flyer.x + dx, flyer.y + dy);
+                    if c == ' ' || x < 0 || y < 0 {
+                        continue;
+                    }
+                    let x = area.x.saturating_add(u16::try_from(x).unwrap_or(u16::MAX));
+                    let y = area.y.saturating_add(u16::try_from(y).unwrap_or(u16::MAX));
+                    if x < area.right() && y < area.bottom() {
+                        buf[(x, y)].set_char(c).set_style(style);
+                    }
                 }
             }
         }
     }
+}
 
-    /// The name, a letter a tick, then the tagline.
+impl WelcomeView<'_> {
+    /// The name, two letters a tick, then the tagline.
     fn draw_title(&self, area: Rect, y: u16, buf: &mut Buffer) {
         let shown = if self.animate {
             usize::try_from(self.tick).map_or(usize::MAX, |t| t.saturating_mul(2))
@@ -109,69 +134,40 @@ impl WelcomeView<'_> {
             buf.set_stringn(text_x, row, text, room, Style::new());
         }
     }
-}
 
-impl WelcomeView<'_> {
-    /// The box in `area`, the butterfly's rows (none when short) and the
-    /// key columns; `None` when there is no room at all.
-    fn layout(&self, area: Rect) -> Option<(Rect, u16, usize)> {
-        let width = WIDTH.min(area.width);
-        let cols = if width >= 72 { 2 } else { 1 };
-        let text = self.text_rows(cols);
-        let art = if area.height >= text + Self::ART {
-            Self::ART
-        } else {
-            0
-        };
-        let height = (text + art).min(area.height);
-        if width < 30 || height < 5 {
-            return None;
-        }
-        let x = area.x + (area.width - width) / 2;
-        let y = area.y + (area.height - height) / 2;
-        Some((Rect::new(x, y, width, height), art, cols))
-    }
-}
-
-impl Widget for WelcomeView<'_> {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        let Some((outer, art, cols)) = self.layout(area) else {
-            return;
-        };
+    /// The card's frame and everything in it.
+    fn draw_card(&self, outer: Rect, cols: usize, buf: &mut Buffer) {
         let block = Block::default()
             .borders(Borders::ALL)
             .border_style(Style::new().add_modifier(Modifier::DIM));
         let inner = block.inner(outer);
         Clear.render(outer, buf);
         block.render(outer, buf);
-        if art > 0 {
-            self.draw_art(
-                Rect {
-                    height: art,
-                    ..inner
-                },
-                buf,
-            );
-        }
-        let mut row = inner.y + art;
+        let mut row = inner.y + 1;
         self.draw_title(inner, row, buf);
         row += 3;
         self.draw_keys(inner, row, cols, buf);
         row += self.key_rows(cols) + 1;
-        centre(
-            buf,
-            inner,
-            row,
-            SETUP,
-            Style::new().add_modifier(Modifier::DIM),
-        );
-        centre(
-            buf,
-            inner,
-            row + 1,
-            START,
-            Style::new().add_modifier(Modifier::BOLD),
-        );
+        let dim = Style::new().add_modifier(Modifier::DIM);
+        centre(buf, inner, row, SETUP, dim);
+        let bold = Style::new().add_modifier(Modifier::BOLD);
+        centre(buf, inner, row + 1, START, bold);
+    }
+}
+
+impl Widget for WelcomeView<'_> {
+    /// Far and middle butterflies, then the card, then the near ones over
+    /// it, so the card sits in the middle of the swarm.
+    fn render(self, area: Rect, buf: &mut Buffer) {
+        Clear.render(area, buf);
+        let tick = if self.animate { self.tick } else { STILL };
+        let flyers = swarm::flyers(self.seed, tick, area.width, area.height);
+        let near = flyers.partition_point(|f| f.depth < Depth::Near);
+        self.draw_flyers(&flyers[..near], area, buf);
+        if let Some((card, cols)) = self.card(area) {
+            self.draw_card(card, cols, buf);
+        }
+        self.draw_flyers(&flyers[near..], area, buf);
     }
 }
 
@@ -218,6 +214,7 @@ mod tests {
         WelcomeView {
             keys,
             tick,
+            seed: 42,
             animate,
             chrome: Chrome::default(),
         }
@@ -230,25 +227,53 @@ mod tests {
     }
 
     #[test]
-    fn the_name_spells_itself_out_and_the_wings_beat() {
+    fn the_name_types_itself_in_and_the_swarm_flies() {
         let keys = keys();
         let early = draw(view(&keys, 2, true), 80, 24).join("\n");
         assert!(
             early.contains("M O") && !early.contains("M O N A"),
             "{early}"
         );
-        let folded = draw(view(&keys, 2, true), 80, 24);
-        assert_ne!(folded, draw(view(&keys, 0, true), 80, 24));
-        let short = draw(view(&keys, 99, true), 80, 12).join("\n");
-        assert!(
-            !short.contains('~') && short.contains("M O N A R C H"),
-            "no room for art: {short}"
+        assert_ne!(
+            draw(view(&keys, 30, true), 80, 24),
+            draw(view(&keys, 31, true), 80, 24),
+            "it moves"
         );
+        let still = draw(view(&keys, 30, false), 80, 24);
+        assert_eq!(still, draw(view(&keys, 31, false), 80, 24), "or holds");
+        assert!(still.join("\n").contains("press any key"));
+    }
+
+    #[test]
+    fn near_butterflies_fly_over_the_card() {
+        let keys = keys();
+        let v = view(&keys, 0, true);
+        let area = Rect::new(0, 0, 80, 24);
+        let (card, _) = v.card(area).expect("room");
+        let over = (0..400).any(|tick| {
+            swarm::flyers(v.seed, tick, 80, 24).iter().any(|f| {
+                f.depth == Depth::Near
+                    && f.y > i32::from(card.y) + 1
+                    && f.y < i32::from(card.bottom()) - 2
+                    && f.x > i32::from(card.x) + 2
+                    && f.x < i32::from(card.right()) - 6
+            })
+        });
+        assert!(over, "some near butterfly crosses the card");
+    }
+
+    #[test]
+    fn small_hosts_draw_what_fits() {
+        let keys = keys();
+        for (w, h) in [(20, 4), (1, 1), (34, 8), (200, 60)] {
+            let rows = draw(view(&keys, 99, true), w, h);
+            assert_eq!(rows.len(), usize::from(h));
+        }
         assert!(
-            draw(view(&keys, 0, true), 20, 4)
-                .iter()
-                .all(String::is_empty),
-            "too small"
+            !draw(view(&keys, 0, false), 20, 4)
+                .join("")
+                .contains("press"),
+            "no card when too small"
         );
     }
 }
