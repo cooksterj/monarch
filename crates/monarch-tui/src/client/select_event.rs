@@ -18,6 +18,9 @@ pub enum SelectEvent {
         col: u16,
         /// Pane row.
         row: u16,
+        /// Rows past the pane's top (negative) or bottom (positive); the
+        /// pane scrolls while this is not 0.
+        beyond: i16,
     },
     /// The button came up: copy what is selected.
     End,
@@ -30,6 +33,13 @@ mod tests {
     #[test]
     fn events_compare_by_value() {
         assert_eq!(SelectEvent::End, SelectEvent::End);
-        assert_ne!(SelectEvent::Extend { col: 1, row: 1 }, SelectEvent::End);
+        assert_ne!(
+            SelectEvent::Extend {
+                col: 1,
+                row: 1,
+                beyond: 0
+            },
+            SelectEvent::End
+        );
     }
 }

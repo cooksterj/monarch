@@ -22,11 +22,13 @@ const SHIFT: u8 = 4;
 pub const WHEEL_LINES: i32 = 3;
 
 /// Routing state: whether a button press went to the pane or started a
-/// selection, and recent clicks.
+/// selection, where it started, and recent clicks.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct MouseRouter {
     captured: bool,
     selecting: bool,
+    /// Host row of the press that started the selection.
+    press_row: u16,
     clicks: ClickCounter,
 }
 
@@ -64,10 +66,15 @@ impl MouseRouter {
         let gesture = match event.kind {
             MouseKind::Press(MouseButton::Left) => {
                 self.selecting = true;
+                self.press_row = event.row;
                 let clicks = self.clicks.press(col, row, now);
                 SelectEvent::Start { col, row, clicks }
             }
-            MouseKind::Drag(MouseButton::Left) => SelectEvent::Extend { col, row },
+            MouseKind::Drag(MouseButton::Left) => SelectEvent::Extend {
+                col,
+                row,
+                beyond: self.beyond(view, event.row),
+            },
             MouseKind::Release(MouseButton::Left) => {
                 self.selecting = false;
                 SelectEvent::End
@@ -75,6 +82,25 @@ impl MouseRouter {
             _ => return MouseAction::Ignore,
         };
         MouseAction::Select(gesture)
+    }
+
+    /// Rows host row `row` is past the focused pane's top (negative) or
+    /// bottom (positive). The pointer cannot go above the host's top row,
+    /// so on a pane touching it that row counts as one past once the drag
+    /// has left the row it started on.
+    fn beyond(&self, view: &FocusView, row: u16) -> i16 {
+        let (row, top) = (i32::from(row), i32::from(view.y));
+        let bottom = top + i32::from(view.rows) - 1;
+        let past = if row < top {
+            row - top
+        } else if row > bottom {
+            row - bottom
+        } else if row == 0 && self.press_row > 0 {
+            -1
+        } else {
+            0
+        };
+        i16::try_from(past).unwrap_or(0)
     }
 
     fn route_to_pane(
@@ -236,6 +262,31 @@ mod tests {
     }
 
     #[test]
+    fn drags_past_an_edge_say_how_far() {
+        let left = MouseButton::Left;
+        let beyond = |press_row, drag_row, v: &FocusView| {
+            let mut r = MouseRouter::new();
+            r.route_now(&ev(MouseKind::Press(left), 2, press_row), v);
+            match r.route_now(&ev(MouseKind::Drag(left), 2, drag_row), v) {
+                MouseAction::Select(SelectEvent::Extend { beyond, .. }) => beyond,
+                other => panic!("not a drag: {other:?}"),
+            }
+        };
+        let top = view(ModeFlags::empty());
+        assert_eq!(beyond(5, 3, &top), 0, "inside");
+        assert_eq!(beyond(5, 0, &top), -1, "the host's top row");
+        assert_eq!(beyond(0, 0, &top), 0, "a drag along the top row");
+        assert_eq!(beyond(5, 23, &top), 1, "the status line");
+        let lower = FocusView {
+            y: 10,
+            rows: 5,
+            ..top
+        };
+        assert_eq!(beyond(12, 7, &lower), -3);
+        assert_eq!(beyond(12, 12, &lower), 0);
+    }
+
+    #[test]
     fn plain_panes_select_with_the_left_button() {
         let mut r = MouseRouter::new();
         let v = view(ModeFlags::empty());
@@ -251,7 +302,11 @@ mod tests {
         );
         assert_eq!(
             r.route(&ev(MouseKind::Drag(left), 90, 40), &v, t),
-            MouseAction::Select(SelectEvent::Extend { col: 79, row: 22 })
+            MouseAction::Select(SelectEvent::Extend {
+                col: 79,
+                row: 22,
+                beyond: 18
+            })
         );
         assert_eq!(
             r.route(&ev(MouseKind::Release(left), 90, 40), &v, t),

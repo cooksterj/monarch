@@ -137,6 +137,28 @@ def selection_copies(host):
     print("  selection: double-click copies a word, drag copies a range (OSC 52), notice shown")
 
 
+def drag_scrolls_past_the_edge(host):
+    host.type(b"clear; seq 200\r")
+    host.wait_for(b"200", "seq output")
+    host.pump(0.5)
+    mark = len(host.seen)
+    # Press mid-screen, drag onto the top row and hold: the pane scrolls
+    # back while the selection follows; the release copies all of it.
+    host.type(b"\x1b[<0;1;12M\x1b[<32;1;1M")
+    host.pump(1.5)
+    host.type(b"\x1b[<0;1;1m")
+    deadline = time.time() + 5
+    while not (copies := re.findall(rb"\x1b\]52;c;([A-Za-z0-9+/=]+)", host.seen[mark:])):
+        assert time.time() < deadline, "no OSC 52 after the drag"
+        host.pump(0.05)
+    text = base64.b64decode(copies[-1]).decode()
+    lines = text.split("\n")
+    assert "165" in lines and "185" in lines, f"drag did not reach scrolled-off lines: {text[:80]!r}"
+    host.type(b"\x15")  # a key returns the pane to live output
+    host.pump(0.3)
+    print(f"  drag: holding past the top scrolled back; copied {len(lines)} lines from {lines[0]}")
+
+
 def copy_mode_copies(host):
     host.type(b"clear; echo copy-me-now\r")
     host.wait_for(b"now", "echo output")
@@ -216,6 +238,7 @@ def run_all(binary):
         host = Host(binary, run, "shell")
         wheel_scrolls_history(host)
         selection_copies(host)
+        drag_scrolls_past_the_edge(host)
         copy_mode_copies(host)
         pane_copy_reaches_host(host)
         passthrough_toggles(host)

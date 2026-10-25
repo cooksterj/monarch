@@ -12,9 +12,9 @@ mod widgets;
 
 pub use client::{
     Applied, AttachApp, AttachOptions, AttachOutcome, AttachState, AttachView, ClickCounter,
-    ClientEvent, CopyMode, CopyStep, FocusView, MULTI_CLICK, MouseAction, MouseRouter, PaneReplica,
-    Picker, PickerItem, PickerStep, SelectEvent, SelectUnit, Selection, ServerLink, SharedFocus,
-    WHEEL_LINES, WindowTitle,
+    ClientEvent, CopyMode, CopyStep, DRAG_STEP, DragScroll, FocusView, MULTI_CLICK, MouseAction,
+    MouseRouter, PaneReplica, Picker, PickerItem, PickerStep, SelectEvent, SelectUnit, Selection,
+    ServerLink, SharedFocus, WHEEL_LINES, WindowTitle,
 };
 pub use error::TuiError;
 pub use host::{HostClipboard, HostModeMirror, HostProbe, HostReply};

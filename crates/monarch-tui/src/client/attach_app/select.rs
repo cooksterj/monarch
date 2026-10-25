@@ -7,7 +7,7 @@ use monarch_proto::{ClientMsg, SelectShape};
 use std::time::{Duration, Instant};
 
 use super::AttachApp;
-use crate::client::{SelectEvent, SelectUnit, Selection};
+use crate::client::{DragScroll, SelectEvent, SelectUnit, Selection};
 use crate::{HostClipboard, LocalClipboard, SelectionSpan, SystemClipboard};
 
 /// How long a status-line notice stays up.
@@ -22,6 +22,9 @@ impl AttachApp {
         let Some(screen) = self.state.screen(pane) else {
             return;
         };
+        if !matches!(gesture, SelectEvent::Extend { .. }) {
+            self.drag = None;
+        }
         match gesture {
             SelectEvent::Start { col, row, clicks } => {
                 self.selection = Some(Selection::start(
@@ -31,9 +34,10 @@ impl AttachApp {
                     SelectUnit::from_clicks(clicks),
                 ));
             }
-            SelectEvent::Extend { col, row } => {
+            SelectEvent::Extend { col, row, beyond } => {
                 if let Some(selection) = &mut self.selection {
                     selection.extend(screen, row, col);
+                    self.drag = DragScroll::follow(self.drag, beyond, col, Instant::now());
                 }
             }
             SelectEvent::End => match self.selection.filter(|s| !s.is_empty()) {
@@ -51,6 +55,34 @@ impl AttachApp {
                 None => self.selection = None,
             },
         }
+        self.dirty = true;
+    }
+
+    /// While a drag holds the pointer past the pane's edge, scrolls one
+    /// step when due and keeps the selection's head on the edge row.
+    pub(super) fn drag_tick(&mut self) {
+        let Some(pane) = self.state.focus() else {
+            return;
+        };
+        let Some(lines) = self.drag.as_mut().and_then(|d| d.step(Instant::now())) else {
+            return;
+        };
+        let _ = self.link.send(&ClientMsg::Scroll { pane, lines });
+        self.drag_extend();
+    }
+
+    /// Moves the selection's head to the edge the drag is past, in the
+    /// pane's latest screen (so text scrolled in is selected).
+    pub(super) fn drag_extend(&mut self) {
+        let Some(screen) = self.state.focus().and_then(|p| self.state.screen(p)) else {
+            return;
+        };
+        let (Some(drag), Some(selection)) = (self.drag, self.selection.as_mut()) else {
+            return;
+        };
+        let rows = u16::try_from(screen.rows.len()).unwrap_or(u16::MAX);
+        let (row, col) = drag.head(rows);
+        selection.extend(screen, row, col);
         self.dirty = true;
     }
 
