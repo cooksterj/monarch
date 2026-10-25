@@ -52,6 +52,7 @@ mod tests {
         let status = AgentStatus {
             state: AgentState::Working,
             activity: Some("Bash cargo test".into()),
+            agent: Some(AgentKind::Claude),
         };
         let sent = rx.try_recv().expect("a message");
         assert_eq!(

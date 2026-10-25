@@ -4,7 +4,8 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard};
 
-use monarch_core::PaneId;
+use monarch_core::{AgentState, PaneId};
+use monarch_proto::AgentReport;
 use tokio::sync::Notify;
 use tokio::sync::mpsc::UnboundedSender;
 
@@ -120,7 +121,15 @@ impl ServerContext {
             events: self.events.clone(),
             wake: Arc::clone(&self.wake),
         })?;
-        self.lock().insert_pane_at(id, Box::new(runtime), placement);
+        let mut state = self.lock();
+        state.insert_pane_at(id, Box::new(runtime), placement);
+        if let Some(agent) = &spec.agent {
+            state.report_agent(&AgentReport {
+                state: Some(AgentState::Idle),
+                ..AgentReport::new(id, agent.kind)
+            });
+        }
+        drop(state);
         self.remember(id, spec.clone());
         self.wake();
         Ok(id)

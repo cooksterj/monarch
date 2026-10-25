@@ -6,7 +6,7 @@
 
 use std::collections::BTreeMap;
 
-use monarch_core::PaneId;
+use monarch_core::{AgentState, PaneId};
 use monarch_proto::{AgentReport, AgentStatus};
 
 /// Agent status per pane; panes never reported on are plain shells.
@@ -29,6 +29,8 @@ impl StateEngine {
         if let Some(state) = report.state {
             next.state = state;
         }
+        // An agent that ended leaves a plain shell behind.
+        next.agent = (next.state != AgentState::Unknown).then_some(report.agent);
         if let Some(text) = &report.activity {
             next.activity = AgentStatus::activity_line(text);
         }
@@ -47,7 +49,7 @@ impl StateEngine {
 
 #[cfg(test)]
 mod tests {
-    use monarch_core::{AgentKind, AgentState};
+    use monarch_core::AgentKind;
 
     use super::*;
 
@@ -69,6 +71,7 @@ mod tests {
             Some(AgentStatus {
                 state: AgentState::Working,
                 activity: Some("Edit a.rs".into()),
+                agent: Some(AgentKind::Claude),
             })
         );
         let blocked = engine.report(&report(Some(AgentState::Blocked), None));
@@ -87,6 +90,8 @@ mod tests {
             engine.report(&report(Some(AgentState::Done), Some("All done"))),
             None
         );
+        let ended = engine.report(&report(Some(AgentState::Unknown), None));
+        assert_eq!(ended.map(|s| s.agent), Some(None), "back to a shell");
         let cleared = engine.report(&report(None, Some("")));
         assert_eq!(cleared.map(|s| s.activity), Some(None));
         engine.forget(PaneId(1));

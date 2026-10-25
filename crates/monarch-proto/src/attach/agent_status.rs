@@ -1,6 +1,6 @@
 //! What an agent in a pane is doing, as clients show it.
 
-use monarch_core::AgentState;
+use monarch_core::{AgentKind, AgentState};
 use serde::{Deserialize, Serialize};
 
 /// A pane's agent state and its one-line activity (`Edit src/main.rs`,
@@ -12,6 +12,9 @@ pub struct AgentStatus {
     pub state: AgentState,
     /// What it is doing or last said, one line.
     pub activity: Option<String>,
+    /// Which agent it is, once it has reported or Monarch launched it;
+    /// panes are labelled by it.
+    pub agent: Option<AgentKind>,
 }
 
 impl AgentStatus {
