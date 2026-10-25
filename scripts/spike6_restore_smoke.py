@@ -184,7 +184,7 @@ def agents_resume_their_sessions(binary, env, run):
     uuid = saved["panes"][0]["agent"]["session_id"]
     assert lines(logs["claude"], 1, "claude") == [f"--session-id {uuid}"], "claude launch argv"
     assert lines(logs["codex"], 1, "codex") == [""], "codex launches bare"
-    assert saved["panes"][1]["agent"] == {"kind": "codex", "session_id": None}
+    assert saved["panes"][1]["agent"] == {"kind": "codex", "session_id": None, "history": "unknown"}
     print("  agents: claude starts with --session-id <uuid>, saved with the pane")
 
     kill_server(session)
