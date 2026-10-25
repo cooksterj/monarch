@@ -1,4 +1,5 @@
-//! A fuzzy-searched list: the command palette and the go-to picker.
+//! A fuzzy-searched list (the command palette and the go-to picker), or a
+//! plain list whose letter keys answer the highlighted row (the inbox).
 
 use nucleo_matcher::pattern::{CaseMatching, Normalization, Pattern};
 use nucleo_matcher::{Config, Matcher, Utf32Str};
@@ -22,6 +23,8 @@ pub struct Picker {
     query: String,
     matches: Vec<Match>,
     selected: usize,
+    /// No search: letters and digits answer the highlighted row.
+    list: bool,
 }
 
 impl Picker {
@@ -34,15 +37,53 @@ impl Picker {
             query: String::new(),
             matches: Vec::new(),
             selected: 0,
+            list: false,
         };
         picker.refilter();
         picker
+    }
+
+    /// A list over `items` without a search: `j`/`k` move as well as the
+    /// arrows, and other letters and digits answer the highlighted row.
+    #[must_use]
+    pub fn list(title: impl Into<String>, items: Vec<PickerItem>) -> Self {
+        Self {
+            list: true,
+            ..Self::new(title, items)
+        }
+    }
+
+    /// Whether this is a [`list`](Self::list).
+    #[must_use]
+    pub fn is_list(&self) -> bool {
+        self.list
+    }
+
+    /// Replaces the items, keeping the highlight on the same row if it is
+    /// still there.
+    pub fn refresh(&mut self, items: Vec<PickerItem>) {
+        let kept = self.selected_item().map(|item| item.action);
+        self.items = items;
+        self.refilter();
+        let items = &self.items;
+        if let Some(i) = self
+            .matches
+            .iter()
+            .position(|m| Some(items[m.item].action) == kept)
+        {
+            self.selected = i;
+        }
     }
 
     /// Applies one key: type to search, Backspace, Ctrl-w (word), Ctrl-u
     /// (clear), Up/Down/Tab/Shift-Tab/Ctrl-n/Ctrl-p to move, Enter to run,
     /// Esc/Ctrl-c/Ctrl-g to close.
     pub fn key(&mut self, key: OverlayKey) -> PickerStep {
+        if self.list
+            && let Some(step) = self.list_key(key)
+        {
+            return step;
+        }
         match key {
             OverlayKey::Char(c) => self.edit(|q| q.push(c)),
             OverlayKey::Backspace => self.edit(|q| {
@@ -99,6 +140,22 @@ impl Picker {
     pub fn selected_item(&self) -> Option<&PickerItem> {
         let m = self.matches.get(self.selected)?;
         self.items.get(m.item)
+    }
+
+    /// A list's own keys; `None` for the keys it shares with a search.
+    fn list_key(&mut self, key: OverlayKey) -> Option<PickerStep> {
+        let answer = |p: &Self, c| {
+            p.selected_item()
+                .map_or(PickerStep::Open, |item| PickerStep::Answer(item.action, c))
+        };
+        match key {
+            OverlayKey::Char('j') => self.step(1),
+            OverlayKey::Char('k') => self.step(self.matches.len().saturating_sub(1)),
+            OverlayKey::Char(c) if c.is_ascii_alphanumeric() => return Some(answer(self, c)),
+            OverlayKey::Char(_) | OverlayKey::Backspace | OverlayKey::Ctrl('w' | 'u') => {}
+            _ => return None,
+        }
+        Some(PickerStep::Open)
     }
 
     fn edit(&mut self, change: impl FnOnce(&mut String)) {
@@ -215,5 +272,40 @@ mod tests {
         p.key(OverlayKey::Down);
         assert_eq!(p.key(OverlayKey::Enter), PickerStep::Open);
         assert_eq!(p.key(OverlayKey::Esc), PickerStep::Close);
+    }
+
+    #[test]
+    fn lists_answer_instead_of_searching() {
+        let rows = [3, 4].map(|n| PickerItem {
+            label: format!("pane {n}"),
+            detail: String::new(),
+            action: Action::FocusPane(monarch_core::PaneId(n)),
+        });
+        let mut list = Picker::list("inbox", rows.to_vec());
+        assert!(list.is_list() && !palette().is_list());
+        assert_eq!(list.key(OverlayKey::Char('j')), PickerStep::Open);
+        let second = Action::FocusPane(monarch_core::PaneId(4));
+        assert_eq!(
+            list.key(OverlayKey::Char('y')),
+            PickerStep::Answer(second, 'y')
+        );
+        assert_eq!(
+            list.key(OverlayKey::Char('2')),
+            PickerStep::Answer(second, '2')
+        );
+        assert_eq!(list.query(), "", "nothing typed into a search");
+        assert_eq!(list.key(OverlayKey::Char('?')), PickerStep::Open, "ignored");
+        assert_eq!(list.key(OverlayKey::Enter), PickerStep::Run(second));
+        list.refresh(vec![rows[1].clone(), rows[0].clone()]);
+        assert_eq!(list.selected(), 0, "highlight follows its row");
+        list.refresh(vec![rows[0].clone()]);
+        assert_eq!(list.selected_item().map(|i| i.action), Some(rows[0].action));
+        list.refresh(Vec::new());
+        assert_eq!(
+            list.key(OverlayKey::Char('y')),
+            PickerStep::Open,
+            "nothing to answer"
+        );
+        assert_eq!(list.key(OverlayKey::Esc), PickerStep::Close);
     }
 }

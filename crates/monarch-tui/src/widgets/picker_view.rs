@@ -16,6 +16,8 @@ const ROWS: u16 = 12;
 /// Border, query line and border.
 const CHROME: u16 = 3;
 const PROMPT: &str = "> ";
+const SEARCH_KEYS: &str = " ↑↓ move · enter run · esc close ";
+const LIST_KEYS: &str = " ↑↓ move · enter jump · y/n/1-9 answer · esc close ";
 
 /// A picker as drawn over the panes.
 #[derive(Debug, Clone, Copy)]
@@ -29,7 +31,7 @@ impl PickerView<'_> {
     #[must_use]
     pub fn placement(&self, area: Rect) -> Rect {
         let rows = u16::try_from(self.picker.rows().len()).unwrap_or(u16::MAX);
-        let height = (rows.clamp(1, ROWS) + CHROME).min(area.height);
+        let height = (rows.clamp(1, ROWS) + self.chrome()).min(area.height);
         let width = WIDTH.min(area.width);
         let top = (area.height - height) / 5;
         Rect::new(
@@ -40,25 +42,39 @@ impl PickerView<'_> {
         )
     }
 
-    /// Where the cursor sits: after the query.
+    /// Where the cursor sits: after the query; a list has none.
     #[must_use]
-    pub fn cursor(&self, area: Rect) -> Position {
+    pub fn cursor(&self, area: Rect) -> Option<Position> {
+        if self.picker.is_list() {
+            return None;
+        }
         let inner = inner(self.placement(area));
         let typed = Line::from(format!("{PROMPT}{}", self.picker.query())).width();
         let x = inner.x + 1 + u16::try_from(typed).unwrap_or(u16::MAX);
-        Position::new(x.min(inner.right().saturating_sub(1)), inner.y)
+        Some(Position::new(
+            x.min(inner.right().saturating_sub(1)),
+            inner.y,
+        ))
+    }
+
+    /// Rows taken by the border and, in a search, the query line.
+    fn chrome(&self) -> u16 {
+        if self.picker.is_list() {
+            CHROME - 1
+        } else {
+            CHROME
+        }
     }
 
     fn draw_rows(&self, area: Rect, buf: &mut Buffer) {
         if self.picker.rows().len() == 0 {
             let dim = Style::new().add_modifier(Modifier::DIM);
-            buf.set_stringn(
-                area.x + 1,
-                area.y,
-                "no matches",
-                usize::from(area.width),
-                dim,
-            );
+            let empty = if self.picker.is_list() {
+                "nothing needs you"
+            } else {
+                "no matches"
+            };
+            buf.set_stringn(area.x + 1, area.y, empty, usize::from(area.width), dim);
             return;
         }
         let shown = usize::from(area.height);
@@ -74,18 +90,27 @@ impl PickerView<'_> {
 impl Widget for PickerView<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let popup = self.placement(area);
-        if popup.width < 8 || popup.height < CHROME + 1 {
+        if popup.width < 8 || popup.height < self.chrome() + 1 {
             return;
         }
         Clear.render(popup, buf);
         let dim = Style::new().add_modifier(Modifier::DIM);
+        let keys = if self.picker.is_list() {
+            LIST_KEYS
+        } else {
+            SEARCH_KEYS
+        };
         Block::new()
             .borders(Borders::ALL)
             .border_style(dim)
             .title(format!(" {} ", self.picker.title()))
-            .title_bottom(Line::styled(" ↑↓ move · enter run · esc close ", dim))
+            .title_bottom(Line::styled(keys, dim))
             .render(popup, buf);
         let inner = inner(popup);
+        if self.picker.is_list() {
+            self.draw_rows(inner, buf);
+            return;
+        }
         let width = usize::from(inner.width.saturating_sub(1));
         let bold = Style::new().add_modifier(Modifier::BOLD);
         let x = buf.set_stringn(inner.x + 1, inner.y, PROMPT, width, bold).0;
@@ -222,12 +247,31 @@ mod tests {
         let area = Rect::new(0, 0, 40, 8);
         let view = PickerView { picker: &p };
         let inner = inner(view.placement(area));
-        assert_eq!(view.cursor(area), Position::new(inner.x + 6, inner.y));
+        assert_eq!(view.cursor(area), Some(Position::new(inner.x + 6, inner.y)));
     }
 
     #[test]
     fn tiny_hosts_draw_nothing() {
         let (text, _) = draw(&picker(0), 6, 3);
         assert_eq!(text.trim(), "");
+    }
+
+    #[test]
+    fn lists_have_no_query_line_or_cursor() {
+        let rows = vec![PickerItem {
+            label: "◆ 2 codex · Approve cargo test?".into(),
+            detail: "blocked".into(),
+            action: Action::FocusPane(monarch_core::PaneId(4)),
+        }];
+        let list = Picker::list("inbox", rows);
+        insta::assert_snapshot!(draw(&list, 60, 6).0, @r"
+        ┌ inbox ───────────────────────────────────────────────────┐
+        │ ◆ 2 codex · Approve cargo test?                  blocked │
+        └ ↑↓ move · enter jump · y/n/1-9 answer · esc close ───────┘
+        ");
+        let area = Rect::new(0, 0, 60, 6);
+        assert_eq!(PickerView { picker: &list }.cursor(area), None);
+        let empty = Picker::list("inbox", Vec::new());
+        assert!(draw(&empty, 60, 6).0.contains("nothing needs you"));
     }
 }

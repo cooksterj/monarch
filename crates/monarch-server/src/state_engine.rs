@@ -74,6 +74,23 @@ impl StateEngine {
         Some(next)
     }
 
+    /// The user looked at `pane`: a Done agent is now Idle (keeping its
+    /// summary), and a plain program that finished is a shell again.
+    /// Returns the new status if it changed.
+    pub fn seen(&mut self, pane: PaneId) -> Option<AgentStatus> {
+        let status = self.panes.get_mut(&pane)?;
+        if status.state != AgentState::Done {
+            return None;
+        }
+        if status.agent.is_none() {
+            self.panes.remove(&pane);
+            self.guessed.remove(&pane);
+            return Some(AgentStatus::default());
+        }
+        status.state = AgentState::Idle;
+        Some(status.clone())
+    }
+
     /// Drops a pane that exited.
     pub fn forget(&mut self, pane: PaneId) {
         self.panes.remove(&pane);
@@ -138,6 +155,28 @@ mod tests {
         assert_eq!(cleared.map(|s| s.activity), Some(None));
         engine.forget(PaneId(1));
         assert_eq!(engine.status(PaneId(1)), AgentStatus::default());
+    }
+
+    #[test]
+    fn seen_done_becomes_idle_with_its_summary() {
+        let mut engine = StateEngine::default();
+        engine.report(
+            PaneId(1),
+            &report(Some(AgentState::Done), Some("Added tests")),
+        );
+        let idle = engine.seen(PaneId(1)).expect("changed");
+        assert_eq!(
+            (idle.state, idle.activity.as_deref()),
+            (AgentState::Idle, Some("Added tests"))
+        );
+        assert_eq!(engine.seen(PaneId(1)), None, "only Done decays");
+        engine.report(PaneId(1), &report(Some(AgentState::Blocked), None));
+        assert_eq!(
+            engine.seen(PaneId(1)),
+            None,
+            "Blocked still needs an answer"
+        );
+        assert_eq!(engine.seen(PaneId(9)), None);
     }
 
     #[test]

@@ -35,7 +35,7 @@ impl From<&AttachOptions> for InputKeys {
         let pop_up = |a: &Action| {
             matches!(
                 a,
-                Action::CommandPalette | Action::GoToPane | Action::CopyMode
+                Action::CommandPalette | Action::GoToPane | Action::CopyMode | Action::Inbox
             )
         };
         Self {

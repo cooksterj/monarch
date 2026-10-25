@@ -77,7 +77,9 @@ impl AttachView<'_> {
         }
         if let Some(picker) = self.picker {
             frame.render_widget(picker, pane_rect);
-            frame.set_cursor_position(picker.cursor(pane_rect));
+            if let Some(cursor) = picker.cursor(pane_rect) {
+                frame.set_cursor_position(cursor);
+            }
         }
         if let Some(menu) = self.menu {
             frame.render_widget(menu, area);

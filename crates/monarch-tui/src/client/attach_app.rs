@@ -19,6 +19,7 @@ use crate::{HostModeMirror, HostProbe, Picker, TuiError, WhichKeyEntry};
 mod animate;
 mod copy;
 mod draw;
+mod inbox;
 mod menu;
 mod picker;
 mod reload;
@@ -207,6 +208,7 @@ impl AttachApp {
             self.drag_extend();
         }
         if applied.redraw {
+            self.refresh_inbox();
             self.publish_panes();
         } else {
             self.focus.set(&self.state.focus_view());

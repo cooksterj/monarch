@@ -9,6 +9,7 @@ use monarch_proto::{
 
 use super::{Applied, FocusView, PaneReplica};
 
+mod attention;
 mod facts;
 mod sidebar;
 

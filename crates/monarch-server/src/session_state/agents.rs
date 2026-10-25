@@ -39,6 +39,14 @@ impl SessionState {
         }
     }
 
+    /// Focus moved to `pane`: the user has seen it, so a Done agent there
+    /// is Idle now.
+    pub fn saw(&mut self, pane: PaneId) {
+        if let Some(status) = self.agents.seen(pane) {
+            self.broadcast(&ServerMsg::Agent { pane, status });
+        }
+    }
+
     /// The user typed `bytes` into `pane`: a reply (Enter, or a key that
     /// isn't an escape sequence) ends a guessed Blocked or Done.
     pub fn answered(&mut self, pane: PaneId, bytes: &[u8]) {

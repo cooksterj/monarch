@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use futures_util::{SinkExt, StreamExt};
-use monarch_core::{Action, ClientId};
+use monarch_core::{Action, ClientId, PaneId};
 use monarch_proto::{ClientMsg, FrameCodec, ServerMsg};
 use monarch_term::ScrollRequest;
 use tokio::net::UnixStream;
@@ -11,7 +11,7 @@ use tokio::net::unix::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::sync::mpsc::{self, Receiver};
 use tokio_util::codec::{FramedRead, FramedWrite};
 
-use crate::{ActionEffect, RENDER_LANE, ServerContext, ServerError};
+use crate::{ActionEffect, RENDER_LANE, ServerContext, ServerError, SessionState};
 
 mod history;
 
@@ -93,7 +93,9 @@ fn apply(ctx: &ServerContext, id: ClientId, msg: ClientMsg) {
         ClientMsg::Resize(size) => state.resize_client(id, size),
         ClientMsg::HostInfo(info) => state.set_host(info),
         ClientMsg::Focus(pane) => {
+            let before = state.focus();
             state.set_focus(pane);
+            saw_new_focus(&mut state, before);
         }
         ClientMsg::Scroll { pane, lines } => scroll(&state, pane, ScrollRequest::Lines(lines)),
         ClientMsg::ScrollTo { pane, top } => scroll(&state, pane, ScrollRequest::TopLine(top)),
@@ -122,8 +124,21 @@ fn scroll(state: &crate::SessionState, pane: monarch_core::PaneId, request: Scro
 }
 
 /// Applies a session command, starting a shell when it asks for one.
+/// Focus moved from `before`: the pane now focused has been seen.
+fn saw_new_focus(state: &mut SessionState, before: Option<PaneId>) {
+    if let Some(now) = state.focus().filter(|p| Some(*p) != before) {
+        state.saw(now);
+    }
+}
+
 fn run_action(ctx: &ServerContext, action: Action) {
-    let effect = ctx.lock().apply_action(action);
+    let effect = {
+        let mut state = ctx.lock();
+        let before = state.focus();
+        let effect = state.apply_action(action);
+        saw_new_focus(&mut state, before);
+        effect
+    };
     if let ActionEffect::Spawn(placement) = effect
         && let Err(e) = ctx.spawn_shell_at(placement)
     {
