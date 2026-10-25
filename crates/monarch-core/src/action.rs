@@ -62,6 +62,11 @@ pub enum Action {
     /// Read the config file again and apply it (it is also re-read
     /// whenever it changes).
     ReloadConfig,
+    /// Open the attention inbox: every agent that is blocked, done or
+    /// failed, to jump to or answer.
+    Inbox,
+    /// Focus the next blocked agent, in tab order after the focused pane.
+    NextBlocked,
     /// Focus this pane, showing its tab (what the go-to picker runs; not
     /// bindable).
     FocusPane(PaneId),
@@ -80,6 +85,8 @@ impl Action {
                 | Self::CopyMode
                 | Self::ToggleSidebar
                 | Self::ReloadConfig
+                | Self::Inbox
+                | Self::NextBlocked
         )
     }
 
@@ -106,6 +113,7 @@ mod tests {
         assert!(Action::CopyMode.is_local());
         assert!(Action::ToggleSidebar.is_local());
         assert!(Action::ReloadConfig.is_local());
+        assert!(Action::Inbox.is_local() && Action::NextBlocked.is_local());
         assert!(!Action::FocusPane(PaneId(1)).is_local());
         assert!(!Action::Split(SplitAxis::Rows).is_local());
         assert!(!Action::SelectTab(1).is_local());

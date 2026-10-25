@@ -11,6 +11,9 @@ pub enum PickerStep {
     Close,
     /// Closed by choosing a row: run this.
     Run(Action),
+    /// Still open: send this key to the pane the highlighted row is about
+    /// (a quick answer from the inbox).
+    Answer(Action, char),
 }
 
 #[cfg(test)]

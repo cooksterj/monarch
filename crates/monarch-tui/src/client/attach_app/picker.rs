@@ -19,6 +19,8 @@ impl AttachApp {
             Action::ToggleMouse => self.toggle_mouse(),
             Action::CommandPalette => self.open_picker(self.palette()),
             Action::GoToPane => self.open_picker(self.go_to()),
+            Action::Inbox => self.open_picker(self.inbox()),
+            Action::NextBlocked => self.next_blocked(),
             Action::CopyMode => self.open_copy(),
             Action::ToggleSidebar => self.toggle_sidebar(),
             Action::ReloadConfig => self.reload_config(),
@@ -54,6 +56,7 @@ impl AttachApp {
             self.dirty = true;
             match picker.key(key) {
                 PickerStep::Open => {}
+                PickerStep::Answer(row, key) => self.answer(row, key),
                 PickerStep::Close => self.close_picker(),
                 PickerStep::Run(action) => {
                     self.close_picker();
@@ -67,7 +70,7 @@ impl AttachApp {
         None
     }
 
-    fn open_picker(&mut self, picker: Picker) {
+    pub(super) fn open_picker(&mut self, picker: Picker) {
         self.picker = Some(picker);
         self.focus.set_overlay(true);
         self.dirty = true;

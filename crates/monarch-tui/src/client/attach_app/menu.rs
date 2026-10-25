@@ -42,7 +42,8 @@ impl AttachApp {
             };
             for step in steps {
                 match step {
-                    PickerStep::Open => self.dirty = true,
+                    // The menu is no list: nothing to answer.
+                    PickerStep::Open | PickerStep::Answer(..) => self.dirty = true,
                     PickerStep::Close => self.close_menu(),
                     PickerStep::Run(action) => {
                         self.close_menu();
