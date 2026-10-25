@@ -185,8 +185,35 @@ def run_all(binary):
         second.finish()
         assert not os.path.exists(os.path.join(run, "monarch", f"{SESSION}.sock")), "socket left behind"
         print("  reattach: screen restored; exiting every shell ends the session")
+        two_clients_share_a_session(binary, env)
         sidebar_groups_and_focuses(binary, env, run)
     print("spike4 attach smoke: ok")
+
+
+def two_clients_share_a_session(binary, env):
+    """Two terminals on one session see the same panes; the window fits
+    the latest one, and fits the other again when it detaches."""
+    session = f"{SESSION}-two"
+    small = Client(binary, env, session=session, cols=80)
+    os.write(small.fd, b"echo one-$((0+1))\r")
+    small.wait_for(b"one-1", "output in the first client")
+    big = Client(binary, env, session=session, cols=120)
+    big.wait_for(b"one-1", "the same screen in the second client")
+    mark_small, mark_big = len(small.seen), len(big.seen)
+    os.write(small.fd, b"echo cols-$(tput cols)\r")
+    big.wait_since(mark_big, b"cols-88", "typing in one client shows in the other")
+    small.wait_since(mark_small, b"cols-", "the first client's own copy")
+    os.write(big.fd, b"\x02d")
+    big.wait_for(b"[detached", "second client detached")
+    big.finish()
+    small.idle(0.5)
+    mark_small = len(small.seen)
+    os.write(small.fd, b"echo cols-$(tput cols)\r")
+    small.wait_since(mark_small, b"cols-80", "the window fits the client left")
+    os.write(small.fd, b"exit\r")
+    small.wait_for(b"ended]", "session end message")
+    small.finish()
+    print("  two clients: shared screen and input; the window followed the latest, then the one left")
 
 
 def sidebar_groups_and_focuses(binary, env, run):
