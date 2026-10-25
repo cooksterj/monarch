@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc f7a855d43f2f9af9b8624444d4d7368b146fcfe4097a73dd453f83d23ac74507 # repeated row splits leave a zero-row pane whose split put its second child past the area

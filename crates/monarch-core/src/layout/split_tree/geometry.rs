@@ -82,15 +82,17 @@ pub(super) fn first_length(total: u16, ratio: u16) -> u16 {
 pub(super) fn divide(area: Rect, axis: SplitAxis, ratio: u16) -> (Rect, Rect) {
     let total = length(area, axis);
     let a = first_length(total, ratio);
-    let b = total.saturating_sub(a + 1);
+    // Past the divider, but never past the area when there's no room for one.
+    let skip = (a + 1).min(total);
+    let b = total - skip;
     match axis {
         SplitAxis::Columns => (
             Rect::new(area.x, area.y, a, area.rows),
-            Rect::new(area.x + a + 1, area.y, b, area.rows),
+            Rect::new(area.x + skip, area.y, b, area.rows),
         ),
         SplitAxis::Rows => (
             Rect::new(area.x, area.y, area.cols, a),
-            Rect::new(area.x, area.y + a + 1, area.cols, b),
+            Rect::new(area.x, area.y + skip, area.cols, b),
         ),
     }
 }
@@ -178,7 +180,11 @@ mod tests {
     fn tiny_areas_never_underflow() {
         let tree = tree();
         for (cols, rows) in [(0, 0), (1, 1), (2, 2), (3, 1)] {
-            let _ = tree.layout(Rect::new(0, 0, cols, rows));
+            let area = Rect::new(4, 4, cols, rows);
+            for (_, r) in tree.layout(area) {
+                assert!(r.right() <= area.right() && r.bottom() <= area.bottom());
+                assert!(r.x >= area.x && r.y >= area.y, "{r:?} in {area:?}");
+            }
         }
     }
 
