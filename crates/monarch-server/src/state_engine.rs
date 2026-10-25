@@ -1,20 +1,28 @@
 //! Each pane's agent state, fused from what its agent reports.
 //!
-//! Hooks are the only source so far, and they are authoritative: a
-//! reported state replaces the current one. OSC notifications, screen
-//! manifests and quiescence join later as weaker signals.
+//! Hooks are authoritative: a reported state replaces the current one,
+//! and once a pane's agent has reported, weaker signals are ignored there.
+//! OSC notifications are the fallback for agents without hooks (see
+//! `guesses`); screen manifests and quiescence join later.
 
-use std::collections::BTreeMap;
+mod guesses;
+
+use std::collections::{BTreeMap, BTreeSet};
 
 use monarch_core::{AgentState, PaneId};
 use monarch_proto::{AgentReport, AgentStatus};
 
-/// Agent status per pane (panes never reported on are plain shells), and
-/// which pane each agent session id was seen in.
+/// Agent status per pane (panes never reported on are plain shells),
+/// which pane each agent session id was seen in, and where each status
+/// came from.
 #[derive(Debug, Clone, Default)]
 pub struct StateEngine {
     panes: BTreeMap<PaneId, AgentStatus>,
     sessions: BTreeMap<String, PaneId>,
+    /// Panes whose agent reports through hooks.
+    hooked: BTreeSet<PaneId>,
+    /// Panes whose status was guessed from a weaker signal.
+    guessed: BTreeSet<PaneId>,
 }
 
 impl StateEngine {
@@ -43,6 +51,7 @@ impl StateEngine {
             self.sessions.retain(|_, p| *p != pane);
             self.sessions.insert(id.clone(), pane);
         }
+        self.guessed.remove(&pane);
         let current = self.panes.entry(pane).or_default();
         let mut next = current.clone();
         if let Some(state) = report.state {
@@ -50,6 +59,11 @@ impl StateEngine {
         }
         // An agent that ended leaves a plain shell behind.
         next.agent = (next.state != AgentState::Unknown).then_some(report.agent);
+        if next.agent.is_some() {
+            self.hooked.insert(pane);
+        } else {
+            self.hooked.remove(&pane);
+        }
         if let Some(text) = &report.activity {
             next.activity = AgentStatus::activity_line(text);
         }
@@ -64,6 +78,8 @@ impl StateEngine {
     pub fn forget(&mut self, pane: PaneId) {
         self.panes.remove(&pane);
         self.sessions.retain(|_, p| *p != pane);
+        self.hooked.remove(&pane);
+        self.guessed.remove(&pane);
     }
 }
 
