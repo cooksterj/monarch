@@ -120,9 +120,27 @@ impl SplitTree {
             root.equalize();
         }
     }
+
+    /// Renames every pane through `rename`, keeping the shape and ratios
+    /// (restored panes come back with new ids).
+    pub fn rename(&mut self, rename: &dyn Fn(PaneId) -> PaneId) {
+        if let Some(root) = &mut self.root {
+            root.rename(rename);
+        }
+    }
 }
 
 impl Node {
+    fn rename(&mut self, rename: &dyn Fn(PaneId) -> PaneId) {
+        match self {
+            Self::Pane(p) => *p = rename(*p),
+            Self::Split { first, second, .. } => {
+                first.rename(rename);
+                second.rename(rename);
+            }
+        }
+    }
+
     fn collect(&self, out: &mut Vec<PaneId>) {
         match self {
             Self::Pane(p) => out.push(*p),
@@ -274,5 +292,20 @@ mod tests {
             serde_json::from_str::<SplitTree>(&json).expect("parse"),
             tree
         );
+    }
+
+    #[test]
+    fn renaming_keeps_the_shape() {
+        let mut tree = SplitTree::new(PaneId(1));
+        tree.split(PaneId(1), PaneId(2), SplitAxis::Columns);
+        tree.split(PaneId(2), PaneId(3), SplitAxis::Rows);
+        let mut renamed = tree.clone();
+        renamed.rename(&|p| PaneId(p.0 + 10));
+        assert_eq!(renamed.panes(), [PaneId(11), PaneId(12), PaneId(13)]);
+        renamed.rename(&|p| PaneId(p.0 - 10));
+        assert_eq!(renamed, tree, "same splits and ratios");
+        let mut empty = SplitTree::default();
+        empty.rename(&|p| p);
+        assert!(empty.is_empty());
     }
 }

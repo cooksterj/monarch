@@ -60,7 +60,7 @@ impl Persister {
     /// without holding the session lock.
     #[must_use]
     pub fn capture(&self, ctx: &ServerContext) -> PersistedSession {
-        let (panes, focus) = {
+        let (panes, focus, tabs, active) = {
             let state = ctx.lock();
             let ids = state.pane_ids();
             let focus = ids.iter().position(|id| Some(*id) == state.focus());
@@ -68,20 +68,21 @@ impl Persister {
                 .iter()
                 .map(|id| (*id, state.pane(*id).and_then(|io| io.process_id())))
                 .collect();
-            (pids, focus)
+            (pids, focus, state.tabs().to_vec(), state.active_tab())
         };
         let specs = ctx.specs();
         let panes = panes
             .into_iter()
             .filter_map(|(id, pid)| {
                 let spec = specs.get(&id)?;
-                Some(PersistedPane::new(
-                    spec,
-                    pid.and_then(|p| self.probe.cwd(p)),
-                ))
+                let cwd = pid.and_then(|p| self.probe.cwd(p));
+                Some(PersistedPane {
+                    id: Some(id),
+                    ..PersistedPane::new(spec, cwd)
+                })
             })
             .collect();
-        PersistedSession::new(panes, focus)
+        PersistedSession::new(panes, focus).with_tabs(tabs, active)
     }
 }
 

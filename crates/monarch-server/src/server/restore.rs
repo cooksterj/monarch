@@ -1,6 +1,10 @@
 //! Starting a session's panes: from its saved state after a crash, or
 //! fresh from the config.
 
+use std::collections::BTreeMap;
+
+use monarch_core::PaneId;
+
 use crate::{PersistedSession, ServerConfig, ServerContext, ServerError};
 
 /// Restores the saved session when asked and one exists, else starts
@@ -18,9 +22,7 @@ pub(super) fn start_panes(ctx: &ServerContext, config: &ServerConfig) -> Result<
             })
             .collect();
         if ids.iter().any(Option::is_some) {
-            if let Some(&Some(id)) = saved.focus.and_then(|i| ids.get(i)) {
-                ctx.lock().set_focus(id);
-            }
+            arrange_restored(ctx, &saved, &ids);
             return Ok(());
         }
     }
@@ -28,6 +30,24 @@ pub(super) fn start_panes(ctx: &ServerContext, config: &ServerConfig) -> Result<
         ctx.spawn_pane(spec)?;
     }
     Ok(())
+}
+
+/// Puts the panes that came back (`ids`, one per saved pane) in their
+/// saved tabs and focuses the pane that had focus.
+fn arrange_restored(ctx: &ServerContext, saved: &PersistedSession, ids: &[Option<PaneId>]) {
+    let renamed: BTreeMap<PaneId, PaneId> = saved
+        .panes
+        .iter()
+        .zip(ids)
+        .filter_map(|(pane, new)| Some((pane.id?, (*new)?)))
+        .collect();
+    let mut state = ctx.lock();
+    if !saved.tabs.is_empty() {
+        state.adopt_tabs(saved.tabs.clone(), saved.active_tab, &renamed);
+    }
+    if let Some(&Some(id)) = saved.focus.and_then(|i| ids.get(i)) {
+        state.set_focus(id);
+    }
 }
 
 /// The session to restore, if restoring is on and the file holds one this

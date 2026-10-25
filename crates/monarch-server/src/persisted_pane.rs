@@ -2,6 +2,7 @@
 
 use std::path::PathBuf;
 
+use monarch_core::PaneId;
 use serde::{Deserialize, Serialize};
 
 use crate::{PaneAgent, PaneSpec};
@@ -10,6 +11,10 @@ use crate::{PaneAgent, PaneSpec};
 /// died.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PersistedPane {
+    /// Its id when saved, which the saved tabs name it by; `None` in
+    /// version 1 files.
+    #[serde(default)]
+    pub id: Option<PaneId>,
     /// Program and arguments as started; empty for the user's shell.
     pub argv: Vec<String>,
     /// The program's working directory when last seen.
@@ -24,6 +29,7 @@ impl PersistedPane {
     #[must_use]
     pub fn new(spec: &PaneSpec, cwd: Option<PathBuf>) -> Self {
         Self {
+            id: None,
             argv: spec.argv.clone(),
             cwd: cwd.or_else(|| spec.cwd.clone()),
             agent: spec.agent.clone(),

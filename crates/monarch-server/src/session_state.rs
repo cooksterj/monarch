@@ -6,6 +6,7 @@
 //! `arrange`, session commands in `actions`, frames in `render`.
 
 mod actions;
+mod adopt;
 mod agents;
 mod arrange;
 mod commands;
