@@ -113,6 +113,7 @@ impl Client {
                 pending: false,
                 message: None,
                 mouse: monarch_tui::MouseOwner::Monarch,
+                chrome: monarch_tui::Chrome::default(),
             },
             sidebar: None,
             selection: None,

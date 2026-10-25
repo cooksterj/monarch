@@ -4,7 +4,7 @@
 use std::path::PathBuf;
 use std::time::Duration;
 
-use monarch_core::{Keymap, LoadedConfig, MouseMode};
+use monarch_core::{Keymap, LoadedConfig, MouseMode, ThemeConfig};
 
 use crate::TuiError;
 
@@ -33,6 +33,8 @@ pub struct AttachOptions {
     pub sidebar_min_columns: u16,
     /// `[ui].animations`: animate agent-state glyphs.
     pub animations: bool,
+    /// `[theme]`, resolved against the host's background once it is known.
+    pub theme: ThemeConfig,
     /// What each key after the prefix does.
     pub keymap: Keymap,
     /// How long the prefix waits before the key popup appears.
@@ -64,6 +66,7 @@ impl AttachOptions {
             sidebar_width: ui.sidebar_width,
             sidebar_min_columns: ui.sidebar_min_columns,
             animations: ui.animations,
+            theme: ThemeConfig::default(),
             keymap: Keymap::default(),
             which_key_delay: Duration::ZERO,
             repeat: Duration::ZERO,
@@ -93,6 +96,7 @@ impl AttachOptions {
                 .iter()
                 .map(|k| format!("unknown key `{k}`")),
         );
+        warnings.extend(config.theme.warnings());
         self.prefix = prefix;
         self.prefix_label.clone_from(&config.keys.prefix);
         self.window_title.clone_from(&config.ui.window_title);
@@ -101,6 +105,7 @@ impl AttachOptions {
         self.sidebar_width = config.ui.sidebar_width;
         self.sidebar_min_columns = config.ui.sidebar_min_columns;
         self.animations = config.ui.animations;
+        self.theme.clone_from(&config.theme);
         self.worktree_root =
             (config.projects.worktree_root.as_ref()).map(|r| r.to_string_lossy().into_owned());
         self.keymap = keymap;
@@ -132,12 +137,16 @@ mod tests {
         config.keys.prefix = "ctrl+a".into();
         config.keys.preset = "tmux".into();
         config.ui.sidebar_width = 40;
+        config.theme.colors.insert("acent".into(), "#000000".into());
         let opts = AttachOptions::new("/tmp/m.sock".into(), "main".into(), &loaded(config))
             .expect("valid");
         assert_eq!((opts.prefix, opts.prefix_label.as_str()), (0x01, "ctrl+a"));
         assert_eq!(opts.keymap.action(Key::Char('w')), Some(Action::GoToPane));
         assert_eq!(opts.sidebar_width, 40);
-        assert_eq!(opts.warnings, ["unknown key `ui.sidebar_widht`"]);
+        assert_eq!(opts.warnings.len(), 2, "{:?}", opts.warnings);
+        assert_eq!(opts.warnings[0], "unknown key `ui.sidebar_widht`");
+        assert!(opts.warnings[1].contains("\"acent\""));
+        assert!(opts.theme.colors.contains_key("acent"));
         assert!(opts.config_path.is_some_and(|p| p.ends_with("config.toml")));
     }
 

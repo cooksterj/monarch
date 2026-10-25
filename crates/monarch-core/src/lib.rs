@@ -29,4 +29,4 @@ pub use keymap::{Key, Keymap, KeymapPreset};
 pub use layout::{Direction, Rect, SplitAxis, SplitTree, Tab};
 pub use rgb::Rgb;
 pub use session_name::is_session_name;
-pub use theme::Theme;
+pub use theme::{THEME_TOKENS, Theme};

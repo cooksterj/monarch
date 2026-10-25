@@ -142,7 +142,7 @@ impl AttachApp {
             drag: None,
             sidebar: opts.sidebar,
             passthrough: false,
-            glyphs: animate::Glyphs::new(s.host.background),
+            glyphs: animate::Glyphs::new(s.host.background, &opts.theme),
             notice: warnings_notice(opts),
             out: s.out,
             size: s.size,

@@ -2,10 +2,12 @@
 //! the scroll position, coloured by line kind.
 
 use monarch_core::{Rgb, Theme};
+
+use crate::Chrome;
 use monarch_proto::{DiffLineKind, ReviewFile};
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
-use ratatui::style::{Color, Modifier, Style};
+use ratatui::style::{Modifier, Style};
 
 /// Draws `file` into `area`, its diff starting at line `scroll`.
 pub(super) fn draw(
@@ -27,10 +29,7 @@ pub(super) fn draw(
 
 fn style(kind: DiffLineKind, theme: Option<&Theme>) -> Style {
     let fg = |pick: fn(&Theme) -> Rgb| {
-        theme.map_or(Style::new(), |t| {
-            let c = pick(t);
-            Style::new().fg(Color::Rgb(c.r, c.g, c.b))
-        })
+        theme.map_or(Style::new(), |t| Style::new().fg(Chrome::color(pick(t))))
     };
     match kind {
         DiffLineKind::Added => fg(|t| t.added),
@@ -65,10 +64,7 @@ mod tests {
     fn colours_come_from_the_theme_or_not_at_all() {
         let theme = Theme::dark();
         let added = style(DiffLineKind::Added, Some(&theme));
-        assert_eq!(
-            added.fg,
-            Some(Color::Rgb(theme.added.r, theme.added.g, theme.added.b))
-        );
+        assert_eq!(added.fg, Some(Chrome::color(theme.added)));
         assert_eq!(style(DiffLineKind::Added, None).fg, None, "NO_COLOR");
         assert_eq!(style(DiffLineKind::Context, Some(&theme)), Style::new());
     }

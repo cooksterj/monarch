@@ -6,11 +6,11 @@ use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::widgets::Widget;
 
-use super::MouseOwner;
+use super::{Chrome, MouseOwner};
 
-/// Session, tab bar and the key hint. Drawn in reverse video so it follows
-/// the host's own colours until theme tokens land (M6); the shown tab is
-/// the one cell run that is not reversed.
+/// Session, tab bar and the key hint, on the theme's bar colour with the
+/// shown tab and a waiting prefix in its accent. Without a theme the bar
+/// is reverse video and the shown tab the one run that is not.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StatusLine<'a> {
     /// Session name.
@@ -31,6 +31,8 @@ pub struct StatusLine<'a> {
     /// Who has the mouse, always shown (room permitting) so clicks that
     /// do nothing in Monarch make sense.
     pub mouse: MouseOwner,
+    /// The colours.
+    pub chrome: Chrome<'a>,
 }
 
 impl StatusLine<'_> {
@@ -70,7 +72,7 @@ impl StatusLine<'_> {
 
     /// Session name then tabs, from the row's start up to `end`.
     fn draw_left(&self, row: Rect, end: u16, buf: &mut Buffer) {
-        let base = Style::new().add_modifier(Modifier::REVERSED);
+        let base = self.chrome.bar();
         let mut x = row.x;
         let mut put = |text: &str, style: Style| {
             let room = usize::from(end.saturating_sub(x));
@@ -82,9 +84,7 @@ impl StatusLine<'_> {
         );
         for (i, label) in self.tabs.iter().enumerate() {
             let style = if i == self.active_tab {
-                Style::new()
-                    .add_modifier(Modifier::BOLD)
-                    .remove_modifier(Modifier::REVERSED)
+                self.chrome.accent()
             } else {
                 base
             };
@@ -99,7 +99,7 @@ impl Widget for StatusLine<'_> {
         if area.is_empty() {
             return;
         }
-        let base = Style::new().add_modifier(Modifier::REVERSED);
+        let base = self.chrome.bar();
         let row = Rect { height: 1, ..area };
         buf.set_style(row, base);
         let right = self.right(row.width);
@@ -109,7 +109,7 @@ impl Widget for StatusLine<'_> {
         let right_x = row.right() - right_width;
         self.draw_left(row, right_x, buf);
         let hint = if self.pending {
-            base.add_modifier(Modifier::BOLD)
+            self.chrome.accent()
         } else {
             base
         };
@@ -144,6 +144,7 @@ mod tests {
             pending,
             message: None,
             mouse: MouseOwner::Monarch,
+            chrome: Chrome::default(),
         }
     }
 
@@ -239,5 +240,23 @@ mod tests {
             .expect("draw");
         let cell = &term.backend().buffer()[(15, 0)];
         assert!(cell.modifier.contains(Modifier::REVERSED));
+    }
+
+    #[test]
+    fn a_theme_colours_the_bar_and_the_shown_tab() {
+        let theme = monarch_core::Theme::light();
+        let tabs = tabs();
+        let mut buf = Buffer::empty(Rect::new(0, 0, 80, 1));
+        let themed = StatusLine {
+            active_tab: 1,
+            chrome: Chrome::new(Some(&theme)),
+            ..line(&tabs, true)
+        };
+        themed.render(buf.area, &mut buf);
+        let bar = Chrome::color(theme.bar);
+        assert_eq!(buf[(20, 0)].bg, bar, "tab 1");
+        assert_eq!(buf[(28, 0)].bg, Chrome::color(theme.accent), "tab 2");
+        assert_eq!(buf[(79, 0)].bg, Chrome::color(theme.accent), "PREFIX");
+        assert!(!buf[(20, 0)].modifier.contains(Modifier::REVERSED));
     }
 }

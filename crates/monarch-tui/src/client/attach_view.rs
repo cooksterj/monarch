@@ -115,6 +115,7 @@ impl AttachView<'_> {
         let borders = PaneBorders {
             panes: &rects,
             focused: layout.focused().map(rect_of),
+            chrome: self.status.chrome,
         };
         frame.render_widget(borders, window.intersection(pane_rect));
         for pane in &layout.panes {
@@ -156,6 +157,7 @@ mod tests {
             pending: false,
             message: None,
             mouse: crate::MouseOwner::Monarch,
+            chrome: crate::Chrome::default(),
         }
     }
 
@@ -295,7 +297,10 @@ mod tests {
         let view = AttachView {
             state: &state,
             status: status(),
-            sidebar: Some(Sidebar { groups: &groups }),
+            sidebar: Some(Sidebar {
+                groups: &groups,
+                chrome: crate::Chrome::default(),
+            }),
             selection: None,
             matches: &[],
             copy_cursor: None,

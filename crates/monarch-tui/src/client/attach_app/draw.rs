@@ -10,7 +10,9 @@ use ratatui::crossterm::{execute, queue};
 
 use super::AttachApp;
 use crate::client::{AttachOptions, AttachView, WindowTitle};
-use crate::{MouseOwner, ReviewView, Sidebar, SidebarGroup, StatusLine, TuiError, WhichKey};
+use crate::{
+    Chrome, MouseOwner, ReviewView, Sidebar, SidebarGroup, StatusLine, TuiError, WhichKey,
+};
 
 impl AttachApp {
     /// Mirrors the focused pane onto the host, then draws every visible
@@ -51,6 +53,7 @@ impl AttachApp {
         let copy = self.copy_view();
         let notice = self.notice.as_ref().map(|(text, _)| text.as_str());
         let (picker, menu, review, form) = self.popups.views(self.glyphs.theme());
+        let chrome = Chrome::new(self.glyphs.theme());
         let view = AttachView {
             state: &self.state,
             status: StatusLine {
@@ -59,9 +62,13 @@ impl AttachApp {
                 pending: self.prefix_pending,
                 message: notice.or(copy.as_ref().map(|c| c.status.as_str())),
                 mouse: MouseOwner::new(self.mirror.captures_mouse()),
+                chrome,
                 ..session_status(&self.opts)
             },
-            sidebar: Some(Sidebar { groups: &groups }),
+            sidebar: Some(Sidebar {
+                groups: &groups,
+                chrome,
+            }),
             selection: copy
                 .as_ref()
                 .map_or_else(|| self.selection_span(), |c| c.selection),
@@ -114,5 +121,6 @@ fn session_status(opts: &AttachOptions) -> StatusLine<'_> {
         pending: false,
         message: None,
         mouse: MouseOwner::new(false),
+        chrome: Chrome::default(),
     }
 }

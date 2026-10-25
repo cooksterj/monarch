@@ -1,5 +1,6 @@
 //! ratatui widgets. Each widget is a pure function of its inputs.
 
+mod chrome;
 mod context_menu_view;
 mod glyph_look;
 mod mouse_owner;
@@ -17,6 +18,7 @@ mod which_key;
 mod which_key_entry;
 mod worktree_form_view;
 
+pub use chrome::Chrome;
 pub use context_menu_view::ContextMenuView;
 pub use glyph_look::GlyphLook;
 pub use mouse_owner::MouseOwner;

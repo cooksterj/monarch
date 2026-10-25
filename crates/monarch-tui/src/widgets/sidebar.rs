@@ -4,11 +4,11 @@
 use monarch_core::PaneId;
 use ratatui::buffer::{Buffer, Cell};
 use ratatui::layout::Rect;
-use ratatui::style::{Color, Modifier, Style};
+use ratatui::style::{Modifier, Style};
 use ratatui::text::Span;
 use ratatui::widgets::Widget;
 
-use super::{SidebarGroup, SidebarRow};
+use super::{Chrome, SidebarGroup, SidebarRow};
 
 /// What one sidebar line shows.
 enum Line<'a> {
@@ -22,6 +22,8 @@ enum Line<'a> {
 pub struct Sidebar<'a> {
     /// The groups, in order.
     pub groups: &'a [SidebarGroup],
+    /// The colours; headings take the accent.
+    pub chrome: Chrome<'a>,
 }
 
 impl<'a> Sidebar<'a> {
@@ -62,7 +64,7 @@ impl Widget for Sidebar<'_> {
         for (y, line) in self.lines(area) {
             let row = Rect::new(area.x, y, width, 1);
             match line {
-                Line::Heading(group) => heading(group, row, buf),
+                Line::Heading(group) => heading(group, self.chrome, row, buf),
                 Line::Pane(pane) => pane_line(pane, row, buf),
                 Line::Gap => {}
             }
@@ -72,8 +74,8 @@ impl Widget for Sidebar<'_> {
 
 /// `▾ project  branch`, the branch dim and shortened so the checkout's
 /// badge (`±3 ↑2`) fits at the right.
-fn heading(group: &SidebarGroup, row: Rect, buf: &mut Buffer) {
-    let bold = Style::new().add_modifier(Modifier::BOLD);
+fn heading(group: &SidebarGroup, chrome: Chrome<'_>, row: Rect, buf: &mut Buffer) {
+    let bold = chrome.highlight();
     let title = format!("▾ {}", group.title);
     let (x, _) = buf.set_stringn(row.x, row.y, &title, usize::from(row.width), bold);
     let badge = group.status.map(|s| s.to_string()).unwrap_or_default();
@@ -126,7 +128,7 @@ fn pane_line(pane: &SidebarRow, row: Rect, buf: &mut Buffer) {
 fn paint_glyph(row: &SidebarRow, cell: &mut Cell) {
     match row.look.and_then(|l| Some((l.color?, l.bold))) {
         Some((c, bold)) => {
-            cell.set_fg(Color::Rgb(c.r, c.g, c.b));
+            cell.set_fg(Chrome::color(c));
             if bold {
                 cell.modifier.insert(Modifier::BOLD);
             }
@@ -187,8 +189,16 @@ mod tests {
 
     fn draw(groups: &[SidebarGroup], width: u16, height: u16) -> (String, Buffer) {
         let mut term = Terminal::new(TestBackend::new(width, height)).expect("terminal");
-        term.draw(|f| f.render_widget(Sidebar { groups }, f.area()))
-            .expect("draw");
+        term.draw(|f| {
+            f.render_widget(
+                Sidebar {
+                    groups,
+                    chrome: Chrome::default(),
+                },
+                f.area(),
+            );
+        })
+        .expect("draw");
         let buf = term.backend().buffer().clone();
         let text = (0..height)
             .map(|y| (0..width).map(|x| buf[(x, y)].symbol()).collect::<String>())
@@ -212,6 +222,14 @@ mod tests {
         assert!(buf[(2, 1)].modifier.contains(Modifier::BOLD), "focused");
         assert!(buf[(4, 5)].modifier.contains(Modifier::DIM), "hidden tab");
         assert!(!buf[(4, 2)].modifier.contains(Modifier::DIM), "shown tab");
+        let theme = monarch_core::Theme::dark();
+        let mut themed = Buffer::empty(Rect::new(0, 0, 24, 7));
+        Sidebar {
+            groups: &groups(),
+            chrome: Chrome::new(Some(&theme)),
+        }
+        .render(themed.area, &mut themed);
+        assert_eq!(themed[(2, 0)].fg, Chrome::color(theme.accent), "heading");
     }
 
     #[test]
@@ -274,7 +292,7 @@ mod tests {
         let (text, buf) = draw(&groups, 24, 6);
         assert!(text.contains("  • 2 htop"), "{text}");
         let cell = &buf[(2, 2)];
-        assert_eq!(cell.fg, Color::Rgb(200, 160, 0));
+        assert_eq!(cell.fg, ratatui::style::Color::Rgb(200, 160, 0));
         assert!(cell.modifier.contains(Modifier::BOLD));
         assert!(
             !cell.modifier.contains(Modifier::REVERSED),
@@ -285,7 +303,10 @@ mod tests {
     #[test]
     fn clicks_land_on_pane_rows_only_and_what_fits() {
         let groups = groups();
-        let sidebar = Sidebar { groups: &groups };
+        let sidebar = Sidebar {
+            groups: &groups,
+            chrome: Chrome::default(),
+        };
         let targets = sidebar.targets(Rect::new(0, 0, 24, 5));
         assert_eq!(
             targets,

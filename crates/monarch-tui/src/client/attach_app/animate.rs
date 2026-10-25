@@ -3,7 +3,7 @@
 
 use std::time::Instant;
 
-use monarch_core::{Rgb, Theme};
+use monarch_core::{Rgb, Theme, ThemeConfig};
 
 use super::AttachApp;
 use crate::SidebarGroup;
@@ -25,14 +25,19 @@ impl Glyphs {
         self.theme.as_ref()
     }
 
-    /// Colours chosen for a host with `background`.
-    pub(super) fn new(background: Option<Rgb>) -> Self {
+    /// Colours chosen by `config` for a host with `background`.
+    pub(super) fn new(background: Option<Rgb>, config: &ThemeConfig) -> Self {
         let now = Instant::now();
         Self {
             animator: GlyphAnimator::new(now),
-            theme: theme_for(background),
+            theme: theme_for(background, config),
             next_frame: now,
         }
+    }
+
+    /// Switches to the colours `config` now chooses.
+    pub(super) fn retheme(&mut self, background: Option<Rgb>, config: &ThemeConfig) {
+        self.theme = theme_for(background, config);
     }
 }
 
@@ -70,10 +75,11 @@ impl AttachApp {
     }
 }
 
-/// The theme for a host with `background`, or none under `NO_COLOR`.
-fn theme_for(background: Option<Rgb>) -> Option<Theme> {
+/// The theme `config` picks for a host with `background`, or none under
+/// `NO_COLOR`. Its warnings were shown when the config was read.
+fn theme_for(background: Option<Rgb>, config: &ThemeConfig) -> Option<Theme> {
     let no_color = std::env::var_os("NO_COLOR").is_some_and(|v| !v.is_empty());
-    (!no_color).then(|| Theme::for_background(background))
+    (!no_color).then(|| config.resolve(background).0)
 }
 
 #[cfg(test)]
@@ -85,8 +91,15 @@ mod tests {
         if std::env::var_os("NO_COLOR").is_some() {
             return;
         }
-        let light = theme_for(Some(Rgb::new(255, 255, 255)));
+        let config = ThemeConfig::default();
+        let light = theme_for(Some(Rgb::new(255, 255, 255)), &config);
         assert_eq!(light, Some(Theme::light()));
-        assert_eq!(theme_for(None), Some(Theme::dark()));
+        assert_eq!(theme_for(None, &config), Some(Theme::dark()));
+        let fixed = ThemeConfig {
+            auto_switch: false,
+            name: "catppuccin-latte".into(),
+            ..config
+        };
+        assert_eq!(theme_for(None, &fixed), Theme::named("catppuccin-latte"));
     }
 }
