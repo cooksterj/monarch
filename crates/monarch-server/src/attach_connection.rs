@@ -85,6 +85,7 @@ fn apply(ctx: &ServerContext, id: ClientId, msg: ClientMsg) {
     let mut state = ctx.lock();
     match msg {
         ClientMsg::Input { pane, bytes } => {
+            state.answered(pane, &bytes);
             if let Some(io) = state.pane(pane) {
                 io.send(bytes);
             }

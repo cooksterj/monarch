@@ -29,6 +29,7 @@ impl EventLoop {
     fn handle(ctx: &Arc<ServerContext>, event: PaneEvent) {
         match event {
             PaneEvent::Title { pane, title } => ctx.lock().set_title(pane, title),
+            PaneEvent::Signal { pane, signal } => ctx.lock().signal_agent(pane, &signal),
             PaneEvent::Bell(pane) => {
                 let mut state = ctx.lock();
                 if state.visible_panes().contains(&pane) {

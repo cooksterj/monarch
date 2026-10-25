@@ -3,6 +3,7 @@
 use std::time::Instant;
 
 use monarch_core::PaneId;
+use monarch_detect::OscSignal;
 
 /// Low-volume pane happenings (output itself only sets the dirty flag).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -13,6 +14,14 @@ pub enum PaneEvent {
         pane: PaneId,
         /// New title.
         title: Option<String>,
+    },
+    /// The program sent a notification or progress report that says
+    /// what its agent is doing.
+    Signal {
+        /// The pane.
+        pane: PaneId,
+        /// What it implies.
+        signal: OscSignal,
     },
     /// The program rang the bell.
     Bell(PaneId),
@@ -46,6 +55,7 @@ impl PaneEvent {
     pub fn pane(&self) -> PaneId {
         match self {
             Self::Title { pane, .. }
+            | Self::Signal { pane, .. }
             | Self::Bell(pane)
             | Self::Clipboard { pane, .. }
             | Self::SyncPending { pane, .. }

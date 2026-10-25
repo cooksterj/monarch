@@ -3,7 +3,8 @@
 
 use std::path::Path;
 
-use monarch_core::PaneId;
+use monarch_core::{AgentKind, PaneId};
+use monarch_detect::OscSignal;
 use monarch_proto::{AgentReport, AgentStatus, ServerMsg};
 
 use super::SessionState;
@@ -24,6 +25,28 @@ impl SessionState {
             self.broadcast(&ServerMsg::Agent { pane, status });
         }
         Some(pane)
+    }
+
+    /// Applies a notification from `pane`'s program (ignored where hooks
+    /// report) and tells every client if its status changed.
+    pub fn signal_agent(&mut self, pane: PaneId, signal: &OscSignal) {
+        let command = self.panes.get(&pane).and_then(|e| e.command.as_deref());
+        let agent = AgentKind::ALL
+            .into_iter()
+            .find(|k| Some(k.program()) == command);
+        if let Some(status) = self.agents.signal(pane, signal, agent) {
+            self.broadcast(&ServerMsg::Agent { pane, status });
+        }
+    }
+
+    /// The user typed `bytes` into `pane`: a reply (Enter, or a key that
+    /// isn't an escape sequence) ends a guessed Blocked or Done.
+    pub fn answered(&mut self, pane: PaneId, bytes: &[u8]) {
+        let reply = bytes.iter().any(|b| matches!(b, b'\r' | b'\n'))
+            || (!bytes.contains(&0x1b) && bytes.iter().any(u8::is_ascii_graphic));
+        if reply && let Some(status) = self.agents.answered(pane) {
+            self.broadcast(&ServerMsg::Agent { pane, status });
+        }
     }
 
     /// The pane a report is about: the one it names; else the one its
@@ -157,5 +180,31 @@ mod tests {
             None,
             "only panes running that agent"
         );
+    }
+
+    #[test]
+    fn notifications_reach_clients_until_answered() {
+        let mut state = SessionState::default();
+        codex_in(&mut state, 1, "/w");
+        let (lane, mut rx) = mpsc::channel(64);
+        state.add_client(lane);
+        while rx.try_recv().is_ok() {}
+        let signal = OscSignal::parse(9, "Approval requested: rm").expect("signal");
+        state.signal_agent(PaneId(1), &signal);
+        let status = state.agent_status(PaneId(1));
+        assert_eq!(
+            (status.state, status.agent),
+            (AgentState::Blocked, Some(AgentKind::Codex))
+        );
+        assert!(rx.try_recv().is_ok(), "clients told");
+        state.answered(PaneId(1), b"\x1b[A");
+        state.answered(PaneId(1), b"\x1b[I");
+        assert_eq!(
+            state.agent_status(PaneId(1)).state,
+            AgentState::Blocked,
+            "keys that aren't replies"
+        );
+        state.answered(PaneId(1), b"y");
+        assert_eq!(state.agent_status(PaneId(1)).state, AgentState::Idle);
     }
 }
