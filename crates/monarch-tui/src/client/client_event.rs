@@ -22,6 +22,13 @@ pub enum ClientEvent {
     OverlayInput(Vec<u8>),
     /// A mouse selection gesture.
     Select(SelectEvent),
+    /// A right-click asked for the context menu at this host cell.
+    Menu {
+        /// Host column.
+        col: u16,
+        /// Host row.
+        row: u16,
+    },
     /// Keys were sent to the focused pane (a selection ends).
     Typed,
     /// The terminal's input closed.

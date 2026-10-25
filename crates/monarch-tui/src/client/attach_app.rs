@@ -1,7 +1,6 @@
 //! The attached client's main loop: apply frames, mirror modes, draw.
 
 use std::collections::VecDeque;
-use std::io::Write;
 use std::os::unix::net::UnixStream;
 use std::sync::Arc;
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
@@ -12,19 +11,22 @@ use monarch_proto::{ClientMsg, HostInfo, ScreenSize};
 use ratatui::DefaultTerminal;
 
 use super::{
-    Applied, AttachOptions, AttachOutcome, AttachState, AttachView, ClientEvent, ConfigWatch,
-    CopyMode, DragScroll, InputKeys, InputParams, InputThread, PROBE_TIMEOUT, Selection,
-    ServerLink, SharedFocus,
+    Applied, AttachOptions, AttachOutcome, AttachState, ClientEvent, ConfigWatch, ContextMenu,
+    CopyMode, DragScroll, InputKeys, Selection, ServerLink, SharedFocus,
 };
 use crate::{HostModeMirror, HostProbe, Picker, TuiError, WhichKeyEntry};
 
 mod copy;
 mod draw;
+mod menu;
 mod picker;
 mod reload;
 mod select;
 mod sidebar;
+mod startup;
 mod which_key;
+
+use startup::{enter_host, introduce, spawn_input, wait_for_host, warnings_notice, write_host};
 
 /// Minimum time between frames drawn to the host.
 const FRAME: Duration = Duration::from_millis(16);
@@ -56,6 +58,8 @@ pub struct AttachApp {
     picker: Option<Picker>,
     /// Copy mode on the focused pane, which takes the keys.
     copy: Option<CopyMode>,
+    /// The right-click menu, which takes clicks and keys.
+    menu: Option<ContextMenu>,
     selection: Option<Selection>,
     /// Scrolling while a selection drag is past the pane's edge.
     drag: Option<DragScroll>,
@@ -102,8 +106,6 @@ impl AttachApp {
         let (mirror, out) = enter_host(&host, opts);
         let mut state = AttachState::new();
         state.set_left(sidebar::sidebar_cols(opts, opts.sidebar, size));
-        let notice = (!opts.warnings.is_empty())
-            .then(|| (opts.warnings.join("; "), Instant::now() + WARNING));
         Ok(Self {
             ui,
             link,
@@ -122,11 +124,12 @@ impl AttachApp {
             which_key: WhichKeyEntry::from_keymap(&opts.keymap),
             picker: None,
             copy: None,
+            menu: None,
             selection: None,
             drag: None,
             sidebar: opts.sidebar,
             passthrough: false,
-            notice,
+            notice: warnings_notice(opts),
             out,
             size,
             dirty: true,
@@ -172,6 +175,7 @@ impl AttachApp {
             ClientEvent::InputClosed => return Some(AttachOutcome::Detached),
             ClientEvent::Prefix(pending) => self.on_prefix(pending),
             ClientEvent::Select(gesture) => self.on_select(gesture),
+            ClientEvent::Menu { col, row } => self.open_menu(col, row),
             ClientEvent::Typed => self.on_typed(),
             ClientEvent::Host(_) => {}
         }
@@ -224,107 +228,5 @@ impl AttachApp {
         self.mirror.leave(&mut self.out);
         let out = std::mem::take(&mut self.out);
         write_host(&mut self.ui, &out)
-    }
-}
-
-/// Starts the thread that reads the host terminal; returns where to send
-/// it new keys.
-fn spawn_input(
-    link: &ServerLink,
-    opts: &AttachOptions,
-    focus: Arc<SharedFocus>,
-    events: mpsc::Sender<ClientEvent>,
-) -> mpsc::Sender<InputKeys> {
-    let (rekey_tx, rekey) = mpsc::channel();
-    InputThread::spawn(InputParams {
-        link: link.clone(),
-        keys: InputKeys::from(opts),
-        rekey,
-        focus,
-        events,
-    });
-    rekey_tx
-}
-
-/// The host-mode mirror for `host`, and the bytes that put the host in
-/// Monarch's modes.
-fn enter_host(host: &HostInfo, opts: &AttachOptions) -> (HostModeMirror, Vec<u8>) {
-    let mut mirror = HostModeMirror::new(host).with_mouse(opts.mouse);
-    let mut out = Vec::new();
-    mirror.enter(&mut out);
-    (mirror, out)
-}
-
-/// Tells the server what the host can do and how big the panes are.
-fn introduce(
-    ui: &DefaultTerminal,
-    link: &ServerLink,
-    host: HostInfo,
-    opts: &AttachOptions,
-) -> Result<ScreenSize, TuiError> {
-    let area = ui
-        .size()
-        .map_err(|e| TuiError::io("reading terminal size", e))?;
-    let size = ScreenSize::new(area.width, area.height);
-    link.send(&ClientMsg::HostInfo(host))?;
-    let left = sidebar::sidebar_cols(opts, opts.sidebar, size);
-    link.send(&ClientMsg::Resize(AttachView::pane_area(size, left)))?;
-    Ok(size)
-}
-
-/// Waits for the host probe, keeping every other event for later.
-fn wait_for_host(events: &Receiver<ClientEvent>) -> (HostInfo, VecDeque<ClientEvent>) {
-    let mut backlog = VecDeque::new();
-    let deadline = Instant::now() + PROBE_TIMEOUT;
-    while let Some(left) = deadline.checked_duration_since(Instant::now()) {
-        match events.recv_timeout(left) {
-            Ok(ClientEvent::Host(info)) => return (info, backlog),
-            Ok(other) => backlog.push_back(other),
-            Err(_) => break,
-        }
-    }
-    (HostInfo::default(), backlog)
-}
-
-fn write_host(ui: &mut DefaultTerminal, bytes: &[u8]) -> Result<(), TuiError> {
-    let backend = ui.backend_mut();
-    backend
-        .write_all(bytes)
-        .and_then(|()| backend.flush())
-        .map_err(|e| TuiError::io("writing to terminal", e))
-}
-
-#[cfg(test)]
-mod tests {
-    use std::sync::mpsc;
-
-    use monarch_proto::ServerMsg;
-
-    use super::*;
-
-    #[test]
-    fn events_before_the_probe_answer_are_kept_in_order() {
-        let (tx, rx) = mpsc::channel();
-        tx.send(ClientEvent::Server(ServerMsg::Pong(1)))
-            .expect("send");
-        tx.send(ClientEvent::Command(Key::Char('x'))).expect("send");
-        tx.send(ClientEvent::Host(HostInfo::default()))
-            .expect("send");
-        let (_, backlog) = wait_for_host(&rx);
-        assert_eq!(
-            Vec::from(backlog),
-            [
-                ClientEvent::Server(ServerMsg::Pong(1)),
-                ClientEvent::Command(Key::Char('x'))
-            ]
-        );
-    }
-
-    #[test]
-    fn a_silent_host_gets_defaults() {
-        let (_tx, rx) = mpsc::channel();
-        let (host, backlog) = wait_for_host(&rx);
-        assert_eq!(host, HostInfo::default());
-        assert!(backlog.is_empty());
     }
 }

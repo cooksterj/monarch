@@ -15,7 +15,8 @@ use monarch_proto::ClientMsg;
 
 use super::{ClientEvent, InputKeys, MouseAction, MouseRouter, ServerLink, SharedFocus};
 use crate::{
-    HostInput, HostInputFilter, HostProbe, InputEvent, MouseEvent, MouseExtractor, MouseKind,
+    HostInput, HostInputFilter, HostProbe, InputEvent, MouseButton, MouseEvent, MouseExtractor,
+    MouseKind,
 };
 
 /// How long to wait for the host to answer the startup probe.
@@ -143,8 +144,19 @@ fn route_mouse(p: &InputParams, pipe: &mut Pipeline, event: &MouseEvent) {
         && view.local(event.col, event.row).is_none()
         && let Some(other) = p.focus.pane_at(event.col, event.row)
     {
-        pipe.focusing = true;
         let _ = p.link.send(&ClientMsg::Focus(other));
+        if matches!(event.kind, MouseKind::Press(MouseButton::Right)) {
+            // The menu acts on the focused pane: the one just clicked.
+            send_mouse(
+                p,
+                MouseAction::Menu {
+                    col: event.col,
+                    row: event.row,
+                },
+            );
+        } else {
+            pipe.focusing = true;
+        }
         return;
     }
     let action = pipe.router.route(event, &view, Instant::now());
@@ -182,6 +194,12 @@ fn send_mouse(p: &InputParams, action: MouseAction) {
         MouseAction::Scroll(lines) => ClientMsg::Scroll { pane, lines },
         MouseAction::Select(gesture) => {
             let _ = p.events.send(ClientEvent::Select(gesture));
+            return;
+        }
+        MouseAction::Menu { col, row } => {
+            // Like a pop-up key: what follows goes to the menu.
+            p.focus.set_overlay(true);
+            let _ = p.events.send(ClientEvent::Menu { col, row });
             return;
         }
         MouseAction::Ignore => return,

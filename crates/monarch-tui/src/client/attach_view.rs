@@ -6,7 +6,10 @@ use ratatui::Frame;
 use ratatui::layout::{Position, Rect};
 
 use super::AttachState;
-use crate::{PaneBorders, PaneView, PickerView, SelectionSpan, Sidebar, StatusLine, WhichKey};
+use crate::{
+    ContextMenuView, PaneBorders, PaneView, PickerView, SelectionSpan, Sidebar, StatusLine,
+    WhichKey,
+};
 
 /// Rows the client keeps for itself at the bottom of the host terminal.
 const STATUS_ROWS: u16 = 1;
@@ -31,6 +34,8 @@ pub struct AttachView<'a> {
     /// The palette or go-to picker, drawn over everything; the cursor
     /// sits in its query.
     pub picker: Option<PickerView<'a>>,
+    /// The right-click menu, drawn over everything at the pointer.
+    pub menu: Option<ContextMenuView<'a>>,
 }
 
 impl AttachView<'_> {
@@ -73,6 +78,9 @@ impl AttachView<'_> {
         if let Some(picker) = self.picker {
             frame.render_widget(picker, pane_rect);
             frame.set_cursor_position(picker.cursor(pane_rect));
+        }
+        if let Some(menu) = self.menu {
+            frame.render_widget(menu, area);
         }
     }
 
@@ -171,6 +179,7 @@ mod tests {
             copy_cursor: None,
             which_key: None,
             picker: None,
+            menu: None,
         };
         term.draw(|f| view.draw(f)).expect("draw");
         let buf = term.backend().buffer();
@@ -214,6 +223,7 @@ mod tests {
             copy_cursor: None,
             which_key: None,
             picker: None,
+            menu: None,
         };
         term.draw(|f| view.draw(f)).expect("draw");
         let buf = term.backend().buffer();
@@ -272,6 +282,7 @@ mod tests {
             copy_cursor: None,
             which_key: None,
             picker: None,
+            menu: None,
         };
         term.draw(|f| view.draw(f)).expect("draw");
         let buf = term.backend().buffer();

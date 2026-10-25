@@ -196,6 +196,41 @@ def passthrough_toggles(host):
     print("  prefix m: mouse handed to the host terminal and taken back")
 
 
+def wait_since(host, mark, needle, what):
+    deadline = time.time() + 10
+    while needle not in host.seen[mark:]:
+        assert time.time() < deadline, f"timed out waiting for {what}: {host.seen[-200:]!r}"
+        host.pump(0.05)
+
+
+def context_menu_runs_commands(host):
+    host.type(b"clear\r")
+    host.pump(0.5)
+    # Right-click at host cell (9, 4): the menu opens one cell right of
+    # and below it, so its first row ("split right") is on row 6.
+    host.type(b"\x1b[<2;10;5M\x1b[<2;10;5m")
+    host.wait_for(b"palette", "the context menu")
+    host.type(b"\x1b")
+    host.pump(0.3)
+    mark = len(host.seen)
+    host.type(b"echo menu-$((2+5))\r")
+    wait_since(host, mark, b"menu-7", "typing after Esc closed the menu")
+    host.type(b"\x1b[<2;10;5M\x1b[<2;10;5m")
+    host.pump(0.3)
+    host.type(b"\x1b[<0;14;7M\x1b[<0;14;7m")
+    host.pump(0.5)
+    mark = len(host.seen)
+    host.type(b"echo cols-$(tput cols)\r")
+    wait_since(host, mark, b"cols-", "output in the split pane")
+    deadline = time.time() + 5
+    while not re.search(rb"cols-(39|40)", host.seen[mark:]):
+        assert time.time() < deadline, f"not split: {host.seen[mark:][-200:]!r}"
+        host.pump(0.05)
+    host.type(b"exit\r")
+    host.pump(0.5)
+    print("  context menu: right-click opened it, Esc closed it, a click on split right split the pane")
+
+
 def recorder(host, run, name, setup):
     dump = os.path.join(run, name)
     open(dump, "wb").close()
@@ -243,6 +278,7 @@ def run_all(binary):
         copy_mode_copies(host)
         pane_copy_reaches_host(host)
         passthrough_toggles(host)
+        context_menu_runs_commands(host)
         host.end()
 
         tracking_pane(binary, run, "sgr", b"\x1b[?1000h\x1b[?1006h",

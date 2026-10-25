@@ -119,6 +119,7 @@ impl Client {
             copy_cursor: None,
             which_key: None,
             picker: None,
+            menu: None,
         };
         term.draw(|frame| view.draw(frame)).expect("draw");
         term.backend().buffer().clone()

@@ -12,9 +12,10 @@ mod widgets;
 
 pub use client::{
     Applied, AttachApp, AttachOptions, AttachOutcome, AttachState, AttachView, CONFIG_POLL,
-    ClickCounter, ClientEvent, ConfigWatch, CopyMode, CopyStep, DRAG_STEP, DragScroll, FocusView,
-    InputKeys, MULTI_CLICK, MouseAction, MouseRouter, PaneReplica, Picker, PickerItem, PickerStep,
-    SelectEvent, SelectUnit, Selection, ServerLink, SharedFocus, WHEEL_LINES, WindowTitle,
+    ClickCounter, ClientEvent, ConfigWatch, ContextMenu, CopyMode, CopyStep, DRAG_STEP, DragScroll,
+    FocusView, InputKeys, MULTI_CLICK, MouseAction, MouseRouter, PaneReplica, Picker, PickerItem,
+    PickerStep, SelectEvent, SelectUnit, Selection, ServerLink, SharedFocus, WHEEL_LINES,
+    WindowTitle,
 };
 pub use error::TuiError;
 pub use host::{HostClipboard, HostModeMirror, HostProbe, HostReply};
@@ -24,6 +25,6 @@ pub use input::{
 };
 pub use platform::{LocalClipboard, SystemClipboard};
 pub use widgets::{
-    PaneBorders, PaneView, PickerView, SelectionSpan, Sidebar, SidebarGroup, SidebarRow,
-    StatusLine, StyleConverter, WhichKey, WhichKeyEntry,
+    ContextMenuView, PaneBorders, PaneView, PickerView, SelectionSpan, Sidebar, SidebarGroup,
+    SidebarRow, StatusLine, StyleConverter, WhichKey, WhichKeyEntry,
 };
