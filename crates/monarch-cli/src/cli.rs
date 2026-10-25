@@ -2,6 +2,7 @@
 
 mod attach_args;
 mod hook_command;
+mod new_args;
 mod server_args;
 mod setup_args;
 
@@ -9,6 +10,7 @@ use clap::{Parser, Subcommand};
 
 pub use attach_args::AttachArgs;
 pub use hook_command::HookCommand;
+pub use new_args::NewArgs;
 pub use server_args::ServerArgs;
 pub use setup_args::SetupArgs;
 
@@ -26,6 +28,9 @@ pub struct Cli {
 pub enum Command {
     /// Attach to a session, starting its server if needed.
     Attach(AttachArgs),
+    /// Make a git worktree for a branch and open a tab in it, optionally
+    /// running an agent.
+    New(NewArgs),
     /// Run a session server (normally started for you by `monarch`).
     Server(ServerArgs),
     /// List what each key after the prefix does.

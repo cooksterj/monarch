@@ -12,20 +12,29 @@ pub struct CliGitRunner;
 
 impl GitRunner for CliGitRunner {
     fn run(&self, dir: &Path, args: &[&str]) -> Option<String> {
+        self.try_run(dir, args).ok()
+    }
+
+    fn try_run(&self, dir: &Path, args: &[&str]) -> Result<String, String> {
         let output = Command::new("git")
             .arg("-C")
             .arg(dir)
             .args(args)
-            // Reading never takes the index lock a user's git may want.
             .env("GIT_OPTIONAL_LOCKS", "0")
             .stdin(Stdio::null())
-            .stderr(Stdio::null())
             .output()
-            .ok()?;
-        output
-            .status
-            .success()
-            .then(|| String::from_utf8_lossy(&output.stdout).trim().to_owned())
+            .map_err(|e| format!("cannot run git: {e}"))?;
+        if output.status.success() {
+            Ok(String::from_utf8_lossy(&output.stdout).trim().to_owned())
+        } else {
+            let why = String::from_utf8_lossy(&output.stderr);
+            let why = why.trim().trim_start_matches("fatal: ");
+            Err(if why.is_empty() {
+                "git failed".to_owned()
+            } else {
+                why.to_owned()
+            })
+        }
     }
 }
 
@@ -39,5 +48,7 @@ mod tests {
         let missing = Path::new("/nonexistent/monarch-test-dir");
         assert_eq!(git.run(missing, &["rev-parse", "--show-toplevel"]), None);
         assert_eq!(git.run(Path::new("/"), &["no-such-subcommand"]), None);
+        let why = git.try_run(missing, &["status"]).expect_err("fails");
+        assert!(why.contains("monarch-test-dir"), "git's own message: {why}");
     }
 }

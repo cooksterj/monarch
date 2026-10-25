@@ -13,7 +13,7 @@ mod hello_ack;
 mod review;
 mod screen;
 
-pub use api::{AgentReport, Request, Response, RpcError};
+pub use api::{AgentReport, NewWorktree, Request, Response, RpcError, WorktreeCreated};
 pub use attach::{
     AgentStatus, ClientMsg, Delta, FrameCodec, HostInfo, LayoutMsg, PaneLayout, PanePlace,
     PaneState, PaneSummary, RowCodec, RowDelta, Run, SelectShape, ServerMsg, Snapshot, StyleCache,

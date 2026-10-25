@@ -45,7 +45,13 @@ monarch config path     # where the config file lives
 monarch config default  # print the default config
 monarch config check    # validate your config and flag unknown keys
 monarch setup           # let Claude Code and Codex report their state to Monarch
+monarch new feat/x --agent claude   # worktree for branch feat/x, Claude Code working in it
 ```
+
+`monarch new <branch>` adds a git worktree for the branch (created from the current commit, or
+`--base <ref>`, unless it exists) beside the repository as `<repo>-worktrees/<branch>` (or under
+`[projects].worktree_root`), and opens a tab there running `--agent claude|codex` or a shell. Run
+it inside Monarch and the tab just appears; outside, it attaches.
 
 `monarch setup` adds Monarch's hooks to `~/.claude/settings.json` and `~/.codex/config.toml`
 (honouring `CLAUDE_CONFIG_DIR` and `CODEX_HOME`), touching nothing else and backing each file up

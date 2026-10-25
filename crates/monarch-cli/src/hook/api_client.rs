@@ -45,14 +45,30 @@ impl ApiClient {
 
     /// Calls `method` and waits for its answer.
     pub fn call(&mut self, method: &str, params: &impl Serialize) -> anyhow::Result<()> {
+        self.request::<serde_json::Value>(method, params).map(drop)
+    }
+
+    /// Calls `method` and returns its result.
+    pub fn request<T: DeserializeOwned>(
+        &mut self,
+        method: &str,
+        params: &impl Serialize,
+    ) -> anyhow::Result<T> {
         let request = Request::new(self.next_id, method, params)?;
         self.next_id += 1;
         self.send(&request)?;
         let response: Response = self.receive()?;
-        match response.error {
-            Some(error) => bail!("{method}: {}", error.message),
-            None => Ok(()),
+        if let Some(error) = response.error {
+            bail!("{}", error.message);
         }
+        Ok(serde_json::from_value(response.result.unwrap_or_default())?)
+    }
+
+    /// Waits up to `timeout` for answers (methods that run git take longer
+    /// than hooks).
+    pub fn set_timeout(&mut self, timeout: Duration) -> anyhow::Result<()> {
+        self.writer.set_read_timeout(Some(timeout))?;
+        Ok(())
     }
 
     fn send(&mut self, value: &impl Serialize) -> anyhow::Result<()> {
@@ -129,6 +145,11 @@ mod tests {
         let mut client = ApiClient::connect(&path).expect("connect");
         let err = client.call("agent.report", &()).expect_err("refused");
         assert!(err.to_string().contains("no pane p9"), "{err}");
+        let (_dir, path, _server) = serve("{\"id\":1,\"result\":{\"n\":3}}\n");
+        let mut client = ApiClient::connect(&path).expect("connect");
+        client.set_timeout(Duration::from_secs(5)).expect("timeout");
+        let answer: serde_json::Value = client.request("x.y", &()).expect("answer");
+        assert_eq!(answer["n"], 3);
         assert!(ApiClient::connect(Path::new("/nonexistent/monarch.sock")).is_err());
     }
 }

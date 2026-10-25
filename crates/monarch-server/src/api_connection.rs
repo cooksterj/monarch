@@ -3,7 +3,8 @@
 use std::sync::Arc;
 
 use futures_util::{SinkExt, StreamExt};
-use monarch_proto::{AgentReport, Request, Response, RpcError};
+use monarch_proto::{AgentReport, NewWorktree, Request, Response, RpcError};
+use serde::de::DeserializeOwned;
 use serde_json::Value;
 use tokio::net::UnixStream;
 use tokio_util::codec::{FramedRead, FramedWrite, LinesCodec, LinesCodecError};
@@ -29,7 +30,14 @@ impl ApiConnection {
         let mut out = FramedWrite::new(wr, LinesCodec::new());
         while let Some(line) = lines.next().await {
             let response = match line {
-                Ok(line) => Self::answer(&ctx, &line),
+                // Methods may run git or start programs: keep them off
+                // the async threads.
+                Ok(line) => {
+                    let ctx = Arc::clone(&ctx);
+                    tokio::task::spawn_blocking(move || Self::answer(&ctx, &line))
+                        .await
+                        .map_err(|e| io(std::io::Error::other(e)))?
+                }
                 Err(LinesCodecError::MaxLineLengthExceeded) => {
                     Response::err(None, RpcError::new(RpcError::PARSE, "request too long"))
                 }
@@ -61,9 +69,15 @@ impl ApiConnection {
 
 fn dispatch(ctx: &ServerContext, request: Request) -> Result<Value, RpcError> {
     match request.method.as_str() {
+        NewWorktree::METHOD => {
+            let created = ctx
+                .new_worktree(&params(request.params)?)
+                .map_err(|e| RpcError::new(RpcError::FAILED, e.to_string()))?;
+            serde_json::to_value(created)
+                .map_err(|e| RpcError::new(RpcError::FAILED, e.to_string()))
+        }
         AgentReport::METHOD => {
-            let report: AgentReport = serde_json::from_value(request.params)
-                .map_err(|e| RpcError::new(RpcError::INVALID_PARAMS, e.to_string()))?;
+            let report: AgentReport = params(request.params)?;
             let Some(pane) = ctx.lock().report_agent(&report) else {
                 let message = match report.pane {
                     Some(pane) => format!("no pane {pane} in this session"),
@@ -79,6 +93,11 @@ fn dispatch(ctx: &ServerContext, request: Request) -> Result<Value, RpcError> {
             format!("unknown method {other:?}"),
         )),
     }
+}
+
+fn params<T: DeserializeOwned>(value: Value) -> Result<T, RpcError> {
+    serde_json::from_value(value)
+        .map_err(|e| RpcError::new(RpcError::INVALID_PARAMS, e.to_string()))
 }
 
 #[cfg(test)]
@@ -151,6 +170,14 @@ mod tests {
         assert_eq!(
             code(&ApiConnection::answer(&ctx, params)),
             Some(RpcError::INVALID_PARAMS)
+        );
+        let outside = r#"{"id":4,"method":"worktree.create","params":{"dir":"/nonexistent-monarch","name":"x"}}"#;
+        let failed = ApiConnection::answer(&ctx, outside);
+        assert_eq!(code(&failed), Some(RpcError::FAILED));
+        assert!(
+            failed
+                .error
+                .is_some_and(|e| e.message.contains("not in a git repository"))
         );
         let garbage = ApiConnection::answer(&ctx, "{");
         assert_eq!((garbage.id, code(&garbage)), (None, Some(RpcError::PARSE)));

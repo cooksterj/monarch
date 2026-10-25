@@ -11,8 +11,10 @@ use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{
     CliGitRunner, DiffReader, PaneEnv, PaneEvent, PaneRuntime, PaneSpec, PersistedPane, Placement,
-    ProcessProbe, ServerError, SessionState, SpawnParams, SystemProbe,
+    ProcessProbe, ServerError, SessionState, SpawnParams, SystemProbe, WorktreeMaker,
 };
+
+mod new_worktree;
 
 /// The session state plus the wake-ups and channels around it.
 pub struct ServerContext {
@@ -30,6 +32,7 @@ pub struct ServerContext {
     scrollback: usize,
     probe: Box<dyn ProcessProbe>,
     diffs: DiffReader,
+    worktrees: WorktreeMaker,
 }
 
 impl ServerContext {
@@ -47,6 +50,7 @@ impl ServerContext {
             scrollback,
             probe: Box::new(SystemProbe::new()),
             diffs: DiffReader::new(Box::new(CliGitRunner)),
+            worktrees: WorktreeMaker::new(Box::new(CliGitRunner)),
         }
     }
 
