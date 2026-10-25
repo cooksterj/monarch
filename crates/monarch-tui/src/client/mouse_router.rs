@@ -6,7 +6,8 @@
 //! wheel scrolls history on the primary screen and becomes arrow keys on
 //! the alternate screen when the pane allows it (1007), as in a bare
 //! terminal. The left button without tracking, or with Shift held over a
-//! tracking pane, selects text (tmux's convention).
+//! tracking pane, selects text (tmux's convention); the right button the
+//! same way opens the context menu.
 
 use std::time::Instant;
 
@@ -48,6 +49,13 @@ impl MouseRouter {
         let tracking = view.modes.intersects(ModeFlags::ANY_MOUSE);
         let shift = event.mods & SHIFT != 0;
         let left_press = matches!(event.kind, MouseKind::Press(MouseButton::Left));
+        let right_press = matches!(event.kind, MouseKind::Press(MouseButton::Right));
+        if right_press && !self.selecting && local.is_some() && (!tracking || shift) {
+            return MouseAction::Menu {
+                col: event.col,
+                row: event.row,
+            };
+        }
         if self.selecting || (left_press && local.is_some() && (!tracking || shift)) {
             return self.select(event, view, now);
         }
@@ -259,6 +267,32 @@ mod tests {
             MouseAction::Ignore,
             "outside"
         );
+    }
+
+    #[test]
+    fn right_clicks_open_the_menu_unless_the_pane_wants_them() {
+        let right = MouseKind::Press(MouseButton::Right);
+        let mut r = MouseRouter::new();
+        let plain = view(ModeFlags::empty());
+        assert_eq!(
+            r.route_now(&ev(right, 4, 2), &plain),
+            MouseAction::Menu { col: 4, row: 2 }
+        );
+        let tracking = view(ModeFlags::MOUSE_CLICK | ModeFlags::SGR_MOUSE);
+        assert!(matches!(
+            r.route_now(&ev(right, 4, 2), &tracking),
+            MouseAction::Forward(_)
+        ));
+        let shifted = MouseEvent {
+            mods: SHIFT,
+            ..ev(right, 4, 2)
+        };
+        assert_eq!(
+            r.route_now(&shifted, &tracking),
+            MouseAction::Menu { col: 4, row: 2 },
+            "Shift reaches Monarch over a tracking pane"
+        );
+        assert_eq!(r.route_now(&ev(right, 90, 40), &plain), MouseAction::Ignore);
     }
 
     #[test]

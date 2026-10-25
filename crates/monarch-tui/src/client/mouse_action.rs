@@ -11,6 +11,13 @@ pub enum MouseAction {
     Scroll(i32),
     /// A selection gesture for the main loop.
     Select(SelectEvent),
+    /// Open the context menu at this host cell.
+    Menu {
+        /// Host column.
+        col: u16,
+        /// Host row.
+        row: u16,
+    },
     /// Nothing to do.
     Ignore,
 }

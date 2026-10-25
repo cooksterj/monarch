@@ -32,6 +32,9 @@ impl AttachApp {
     /// Feeds host input to the open pop-up or copy mode; keys after the
     /// one that closes it are dropped.
     pub(super) fn on_overlay_input(&mut self, bytes: &[u8]) -> Option<AttachOutcome> {
+        if self.menu.is_some() {
+            return self.menu_input(bytes);
+        }
         if self.picker.is_none() {
             for key in OverlayKey::decode(bytes) {
                 if self.copy.is_none() {
@@ -72,7 +75,8 @@ impl AttachApp {
 
     fn close_picker(&mut self) {
         self.picker = None;
-        self.focus.set_overlay(self.copy.is_some());
+        self.focus
+            .set_overlay(self.copy.is_some() || self.menu.is_some());
         self.dirty = true;
     }
 

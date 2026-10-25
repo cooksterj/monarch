@@ -10,7 +10,7 @@ use ratatui::crossterm::{execute, queue};
 
 use super::AttachApp;
 use crate::client::{AttachView, WindowTitle};
-use crate::{PickerView, Sidebar, StatusLine, TuiError, WhichKey};
+use crate::{ContextMenuView, PickerView, Sidebar, StatusLine, TuiError, WhichKey};
 
 impl AttachApp {
     /// Mirrors the focused pane onto the host, then draws every visible
@@ -72,6 +72,7 @@ impl AttachApp {
             matches: copy.as_ref().map_or(&[][..], |c| &c.matches),
             copy_cursor: copy.as_ref().and_then(|c| c.cursor),
             picker: self.picker.as_ref().map(|picker| PickerView { picker }),
+            menu: self.menu.as_ref().map(|menu| ContextMenuView { menu }),
             which_key: (self.popup && self.picker.is_none()).then_some(WhichKey {
                 entries: &self.which_key,
                 title: &self.opts.prefix_label,
