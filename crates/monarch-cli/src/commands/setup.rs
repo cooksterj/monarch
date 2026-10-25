@@ -52,7 +52,7 @@ impl SetupEnv {
     }
 
     /// `agent`'s settings directory and file.
-    fn files(&self, agent: HookCommand) -> (&Path, PathBuf) {
+    pub(crate) fn files(&self, agent: HookCommand) -> (&Path, PathBuf) {
         match agent {
             HookCommand::Claude => (&self.claude, self.claude.join("settings.json")),
             HookCommand::Codex => (&self.codex, self.codex.join("config.toml")),
@@ -131,6 +131,22 @@ fn setup_agent(
         }
     }
     Ok(())
+}
+
+/// What `monarch setup` would change for `agent`, without writing:
+/// `None` when the agent isn't installed.
+///
+/// # Errors
+/// Its settings file can't be read or parsed.
+pub(crate) fn plan(agent: HookCommand, env: &SetupEnv) -> anyhow::Result<Option<Vec<Change>>> {
+    let (dir, path) = env.files(agent);
+    if !dir.is_dir() {
+        return Ok(None);
+    }
+    let file = ConfigFile::read(&path)?;
+    let mut config =
+        parse(agent, file.text.as_deref()).with_context(|| path.display().to_string())?;
+    Ok(Some(config.install(&HookLine::new(&env.program, agent))))
 }
 
 fn parse(agent: HookCommand, text: Option<&str>) -> anyhow::Result<Box<dyn HookConfig>> {

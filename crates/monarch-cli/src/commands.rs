@@ -7,6 +7,7 @@ mod agent;
 mod attach;
 mod auto_start;
 mod config;
+mod doctor;
 mod hook;
 mod keys;
 mod kill;
@@ -35,6 +36,13 @@ pub(crate) fn dispatch(cli: Cli, out: &mut dyn Write) -> anyhow::Result<ExitCode
     match cli.command {
         Some(Command::Hook(_)) => Ok(ExitCode::SUCCESS),
         Some(Command::Config(cmd)) => config::run(&cmd, &loader, out),
+        Some(Command::Doctor) => {
+            let loaded = loader.load();
+            let exe = std::env::current_exe().unwrap_or_default();
+            let env = doctor::DoctorEnv::from_env();
+            let found = doctor::findings(&env, loaded.as_ref().map_err(ToString::to_string), &exe);
+            doctor::run(&found, out)
+        }
         Some(Command::Setup(args)) => setup::run(args, &setup::SetupEnv::from_env(), out),
         Some(Command::Ls) => ls::run(out),
         Some(Command::Kill(args)) => kill::run(&args, out),
