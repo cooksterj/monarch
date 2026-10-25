@@ -31,9 +31,7 @@ impl SessionState {
     /// report) and tells every client if its status changed.
     pub fn signal_agent(&mut self, pane: PaneId, signal: &OscSignal) {
         let command = self.panes.get(&pane).and_then(|e| e.command.as_deref());
-        let agent = AgentKind::ALL
-            .into_iter()
-            .find(|k| Some(k.program()) == command);
+        let agent = command.and_then(AgentKind::for_program);
         if let Some(status) = self.agents.signal(pane, signal, agent) {
             self.broadcast(&ServerMsg::Agent { pane, status });
         }

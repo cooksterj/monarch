@@ -5,14 +5,15 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 use std::sync::Arc;
 
+use monarch_detect::ManifestRegistry;
 use tokio::net::UnixListener;
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 
 use crate::{
     CliGitRunner, CommandWatcher, Connection, EventLoop, FrameCoalescer, PaneEnv, PaneEvent,
-    Persister, PlaceWatcher, RepoProbe, ServerConfig, ServerContext, ServerError, SocketPath,
-    SystemProbe,
+    Persister, PlaceWatcher, RepoProbe, ScreenWatcher, ServerConfig, ServerContext, ServerError,
+    SocketPath, SystemProbe,
 };
 
 mod restore;
@@ -89,6 +90,7 @@ fn background(
         tokio::spawn(EventLoop::run(Arc::clone(ctx), events)),
         tokio::spawn(CommandWatcher::new(Box::new(SystemProbe::new())).run(Arc::clone(ctx))),
         tokio::spawn(places.run(Arc::clone(ctx))),
+        tokio::spawn(ScreenWatcher::new(ManifestRegistry::bundled()).run(Arc::clone(ctx))),
     ];
     if let Some(file) = config.state.clone() {
         let persister = Persister::new(file, Box::new(SystemProbe::new()));

@@ -71,8 +71,9 @@ pub trait Engine: Send {
     /// Updates the host colours and cell size used to answer queries.
     fn set_host_profile(&mut self, profile: HostProfile);
 
-    /// Every visible row as plain text; used by detection and `pane.read`.
-    /// Engines may override this with something cheaper than `screen()`.
+    /// The live screen (the bottom of the buffer, wherever the viewport
+    /// is scrolled) as plain text, one line per row; used by detection.
+    /// Engines with scrollback must override this.
     fn text(&self) -> String {
         self.screen().text()
     }

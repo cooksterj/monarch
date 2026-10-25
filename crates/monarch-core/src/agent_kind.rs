@@ -42,6 +42,12 @@ impl AgentKind {
         self.name()
     }
 
+    /// The kind whose program is `command`, if any.
+    #[must_use]
+    pub fn for_program(command: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|k| k.program() == command)
+    }
+
     /// How the agent calls itself, for notices.
     #[must_use]
     pub fn display_name(self) -> &'static str {
@@ -72,6 +78,12 @@ impl FromStr for AgentKind {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn programs_name_their_kind() {
+        assert_eq!(AgentKind::for_program("codex"), Some(AgentKind::Codex));
+        assert_eq!(AgentKind::for_program("zsh"), None);
+    }
 
     #[test]
     fn names_round_trip() {

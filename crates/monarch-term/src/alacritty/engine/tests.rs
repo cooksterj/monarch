@@ -226,3 +226,13 @@ fn scrolling_to_a_top_line_is_absolute_and_clamped() {
     e.scroll(ScrollRequest::TopLine(99));
     assert_eq!(e.pane_state().display_offset, 0, "clamped to live output");
 }
+
+#[test]
+fn text_is_the_live_screen_even_when_scrolled_back() {
+    let mut e = engine(4, 2);
+    feed(&mut e, "1\r\n2\r\n3\r\n界x".as_bytes());
+    assert_eq!(e.text(), "3\n界x");
+    e.scroll(ScrollRequest::Top);
+    assert_eq!(e.screen().text(), "1\n2", "the viewport moved");
+    assert_eq!(e.text(), "3\n界x", "detection still reads the bottom");
+}

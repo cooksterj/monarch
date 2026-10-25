@@ -204,6 +204,18 @@ impl Engine for AlacrittyEngine {
         self.host = profile;
     }
 
+    fn text(&self) -> String {
+        let grid = self.term.grid();
+        let mut screen = Screen::blank(self.size());
+        for (line, row) in (0..).zip(screen.rows.iter_mut()) {
+            let cells = &grid[Line(line)];
+            for (column, cell) in row.iter_mut().enumerate() {
+                *cell = CellConverter::cell(&cells[Column(column)]);
+            }
+        }
+        screen.text()
+    }
+
     fn text_range(&mut self, start: GridPoint, end: GridPoint, shape: SelectShape) -> String {
         history::text_range(&mut self.term, start, end, shape)
     }

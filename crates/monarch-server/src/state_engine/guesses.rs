@@ -53,22 +53,21 @@ impl StateEngine {
         if !matches!(current.state, AgentState::Blocked | AgentState::Done) {
             return None;
         }
-        let next = match current.agent {
-            Some(agent) => AgentStatus {
+        let next = if current.agent.is_some() || self.screened.contains(&pane) {
+            AgentStatus {
                 state: AgentState::Idle,
                 activity: None,
-                agent: Some(agent),
-            },
-            None => {
-                self.guessed.remove(&pane);
-                AgentStatus::default()
+                agent: current.agent,
             }
+        } else {
+            self.guessed.remove(&pane);
+            AgentStatus::default()
         };
         self.replace(pane, &current, next)
     }
 
     /// Stores `next` for `pane` if it differs from `current`.
-    fn replace(
+    pub(super) fn replace(
         &mut self,
         pane: PaneId,
         current: &AgentStatus,

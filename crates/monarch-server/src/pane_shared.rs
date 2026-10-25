@@ -5,12 +5,14 @@ use std::sync::{Mutex, MutexGuard};
 
 use monarch_term::Terminal;
 
-/// A pane's emulator plus its "has new output" flag. The reader thread
-/// feeds the terminal and sets the flag; the frame coalescer clears the flag
-/// and captures damaged rows. The lock is held only for those two steps.
+/// A pane's emulator plus its "has new output" flags. The reader thread
+/// feeds the terminal and sets them; the frame coalescer clears one and
+/// captures damaged rows, the screen watcher clears the other and reads
+/// the text. The lock is held only for those steps.
 pub struct PaneShared {
     term: Mutex<Terminal>,
     dirty: AtomicBool,
+    unread: AtomicBool,
 }
 
 impl PaneShared {
@@ -20,6 +22,7 @@ impl PaneShared {
         Self {
             term: Mutex::new(term),
             dirty: AtomicBool::new(true),
+            unread: AtomicBool::new(true),
         }
     }
 
@@ -34,12 +37,19 @@ impl PaneShared {
     /// Marks new output; returns `true` if the pane was clean, i.e. the
     /// coalescer needs waking.
     pub fn mark_dirty(&self) -> bool {
+        self.unread.store(true, Ordering::Release);
         !self.dirty.swap(true, Ordering::AcqRel)
     }
 
     /// Clears the flag, returning whether it was set.
     pub fn take_dirty(&self) -> bool {
         self.dirty.swap(false, Ordering::AcqRel)
+    }
+
+    /// Clears the screen watcher's flag, returning whether there was
+    /// output since it last read the screen.
+    pub fn take_unread(&self) -> bool {
+        self.unread.swap(false, Ordering::AcqRel)
     }
 }
 
@@ -57,6 +67,17 @@ mod tests {
         assert!(!shared.mark_dirty(), "already dirty: no second wake-up");
         assert!(shared.take_dirty());
         assert!(!shared.take_dirty());
+    }
+
+    #[test]
+    fn the_screen_watcher_has_its_own_flag() {
+        let shared = PaneShared::new(Terminal::new(ScreenSize::new(4, 2), 0));
+        assert!(shared.take_unread(), "new panes are unread");
+        assert!(!shared.take_unread());
+        shared.take_dirty();
+        shared.mark_dirty();
+        assert!(shared.take_dirty(), "frames still see it");
+        assert!(shared.take_unread());
     }
 
     #[test]
