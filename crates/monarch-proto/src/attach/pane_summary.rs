@@ -30,16 +30,51 @@ impl PaneSummary {
         PaneSummary::pick(self.title.as_deref(), self.command.as_deref())
     }
 
-    /// A non-blank `title`, else `command`.
+    /// A non-blank `title` (without its status decoration), else
+    /// `command`.
     #[must_use]
     pub fn pick<'a>(title: Option<&'a str>, command: Option<&'a str>) -> Option<&'a str> {
-        title.map(str::trim).filter(|t| !t.is_empty()).or(command)
+        title
+            .map(Self::clean_title)
+            .filter(|t| !t.is_empty())
+            .or(command)
+    }
+
+    /// `title` without the status symbols programs put in front of it,
+    /// such as Claude Code's spinner (`✳`, `⠂`, `◐`): leading characters
+    /// that are neither letters, digits nor ASCII are dropped, then the
+    /// rest is trimmed. Monarch's sidebar shows agent state itself, and a
+    /// spinner in a name makes tab labels flicker. ASCII titles
+    /// (`[1] vim`, `~/src`) are kept whole.
+    #[must_use]
+    pub fn clean_title(title: &str) -> &str {
+        title
+            .trim_start_matches(|c: char| {
+                c.is_whitespace() || !(c.is_alphanumeric() || c.is_ascii())
+            })
+            .trim_end()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn spinners_are_dropped_from_titles() {
+        for spun in [
+            "✳ Claude Code",
+            "⠂ Claude Code",
+            "◐ Claude Code",
+            " ✻  Claude Code ",
+        ] {
+            assert_eq!(PaneSummary::clean_title(spun), "Claude Code", "{spun:?}");
+        }
+        assert_eq!(PaneSummary::clean_title("[1] vim"), "[1] vim");
+        assert_eq!(PaneSummary::clean_title("~/src"), "~/src");
+        assert_eq!(PaneSummary::clean_title("été"), "été", "letters are kept");
+        assert_eq!(PaneSummary::clean_title("⠂"), "");
+    }
 
     #[test]
     fn a_title_wins_over_the_command_unless_blank() {
@@ -55,6 +90,8 @@ mod tests {
         assert_eq!(pane.name(), Some("vim"));
         pane.command = None;
         assert_eq!(pane.name(), None);
+        pane.title = Some("✳".into());
+        assert_eq!(pane.name(), None, "decoration alone is blank");
         let bytes = postcard::to_allocvec(&pane).expect("encode");
         assert_eq!(postcard::from_bytes::<PaneSummary>(&bytes).ok(), Some(pane));
     }
