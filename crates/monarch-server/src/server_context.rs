@@ -263,6 +263,7 @@ mod tests {
             project: Some("repo".into()),
             worktree: Some("/repo".into()),
             branch: Some("main".into()),
+            status: None,
         };
         ctx.lock().set_place(id, Some(place));
         let spec = ctx.edit_spec(id, "src/a.rs", "vi").expect("inside");

@@ -5,6 +5,7 @@ use monarch_core::PaneId;
 use ratatui::buffer::{Buffer, Cell};
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style};
+use ratatui::text::Span;
 use ratatui::widgets::Widget;
 
 use super::{SidebarGroup, SidebarRow};
@@ -59,34 +60,64 @@ impl Widget for Sidebar<'_> {
             buf.set_string(area.x + width, y, "│", dim);
         }
         for (y, line) in self.lines(area) {
-            let (text, style, detail) = match line {
-                Line::Heading(g) => (
-                    format!("▾ {}", g.title),
-                    Style::new().add_modifier(Modifier::BOLD),
-                    g.detail.as_deref(),
-                ),
-                Line::Pane(row) => {
-                    let marker = if row.focused { "▸" } else { " " };
-                    let glyph = row.look.map_or(row.state.glyph(), |l| l.symbol);
-                    (
-                        format!("{marker} {glyph} {}", row.label),
-                        row_style(row),
-                        row.detail.as_deref(),
-                    )
-                }
-                Line::Gap => continue,
-            };
-            let (x, _) = buf.set_stringn(area.x, y, &text, usize::from(width), style);
-            if let Line::Pane(row) = line
-                && width > 2
-            {
-                paint_glyph(row, &mut buf[(area.x + 2, y)]);
-            }
-            let left = usize::from(area.x + width - x);
-            if let Some(detail) = detail.filter(|_| left > 2) {
-                buf.set_stringn(x + 2, y, detail, left - 2, dim);
+            let row = Rect::new(area.x, y, width, 1);
+            match line {
+                Line::Heading(group) => heading(group, row, buf),
+                Line::Pane(pane) => pane_line(pane, row, buf),
+                Line::Gap => {}
             }
         }
+    }
+}
+
+/// `▾ project  branch`, the branch dim and shortened so the checkout's
+/// badge (`±3 ↑2`) fits at the right.
+fn heading(group: &SidebarGroup, row: Rect, buf: &mut Buffer) {
+    let bold = Style::new().add_modifier(Modifier::BOLD);
+    let title = format!("▾ {}", group.title);
+    let (x, _) = buf.set_stringn(row.x, row.y, &title, usize::from(row.width), bold);
+    let badge = group.status.map(|s| s.to_string()).unwrap_or_default();
+    let badge_width = u16::try_from(Span::raw(badge.as_str()).width()).unwrap_or(u16::MAX);
+    let left = row.right().saturating_sub(x);
+    let room = left
+        .checked_sub(badge_width + 1)
+        .filter(|_| !badge.is_empty());
+    let detail_room = room.unwrap_or(left);
+    if let Some(detail) = group.detail.as_deref().filter(|_| detail_room > 2) {
+        let dim = Style::new().add_modifier(Modifier::DIM);
+        let detail = shorten(detail, usize::from(detail_room - 2));
+        buf.set_string(x + 2, row.y, detail, dim);
+    }
+    if room.is_some() {
+        let x = row.right() - badge_width;
+        buf.set_string(x, row.y, &badge, Style::new());
+    }
+}
+
+/// `text` cut to `max` characters, ending in `…` when cut.
+fn shorten(text: &str, max: usize) -> String {
+    if text.chars().count() <= max {
+        return text.to_owned();
+    }
+    let kept: String = text.chars().take(max.saturating_sub(1)).collect();
+    format!("{kept}…")
+}
+
+/// `▸ ● label  detail`: the focus marker, the state's glyph and the
+/// pane's activity or directory, dim.
+fn pane_line(pane: &SidebarRow, row: Rect, buf: &mut Buffer) {
+    let marker = if pane.focused { "▸" } else { " " };
+    let glyph = pane.look.map_or(pane.state.glyph(), |l| l.symbol);
+    let text = format!("{marker} {glyph} {}", pane.label);
+    let width = usize::from(row.width);
+    let (x, _) = buf.set_stringn(row.x, row.y, &text, width, row_style(pane));
+    if row.width > 2 {
+        paint_glyph(pane, &mut buf[(row.x + 2, row.y)]);
+    }
+    let left = usize::from(row.right() - x);
+    if let Some(detail) = pane.detail.as_deref().filter(|_| left > 2) {
+        let dim = Style::new().add_modifier(Modifier::DIM);
+        buf.set_stringn(x + 2, row.y, detail, left - 2, dim);
     }
 }
 
@@ -121,6 +152,7 @@ mod tests {
     use ratatui::backend::TestBackend;
 
     use monarch_core::AgentState;
+    use monarch_proto::CheckoutStatus;
 
     use super::*;
     use crate::GlyphLook;
@@ -143,6 +175,7 @@ mod tests {
                 worktree: Some("/w/monarch".into()),
                 title: "monarch".into(),
                 detail: Some("feat/sidebar".into()),
+                status: None,
                 rows: vec![row(1, "1 claude", None), row(2, "1 zsh", Some("src"))],
             },
             SidebarGroup {
@@ -179,6 +212,35 @@ mod tests {
         assert!(buf[(2, 1)].modifier.contains(Modifier::BOLD), "focused");
         assert!(buf[(4, 5)].modifier.contains(Modifier::DIM), "hidden tab");
         assert!(!buf[(4, 2)].modifier.contains(Modifier::DIM), "shown tab");
+    }
+
+    #[test]
+    fn the_checkout_badge_sits_at_the_right_and_shortens_the_branch() {
+        let mut groups = groups();
+        groups[0].status = Some(CheckoutStatus {
+            changed: 3,
+            ahead: 2,
+            behind: 0,
+        });
+        let (text, buf) = draw(&groups, 28, 2);
+        insta::assert_snapshot!(text, @r"
+        ▾ monarch  feat/side… ±3 ↑2│
+        ▸ $ 1 claude               │
+        ");
+        assert!(
+            !buf[(24, 0)].modifier.contains(Modifier::DIM),
+            "badge stands out"
+        );
+        assert!(
+            buf[(11, 0)].modifier.contains(Modifier::DIM),
+            "branch is dim"
+        );
+        let (narrow, _) = draw(&groups, 22, 1);
+        assert_eq!(narrow, "▾ monarch  fea… ±3 ↑2│");
+        let (tight, _) = draw(&groups, 15, 1);
+        assert_eq!(tight, "▾ monarch  fe…│", "no room for the badge");
+        let (tiny, _) = draw(&groups, 11, 1);
+        assert_eq!(tiny, "▾ monarch │");
     }
 
     #[test]

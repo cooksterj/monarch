@@ -62,6 +62,9 @@ Configuration lives at `~/.config/monarch/config.toml` (override with `MONARCH_C
 
 ## Keys
 
+The sidebar groups panes by repository and worktree, with a badge for uncommitted files and
+commits ahead of or behind upstream (`±3 ↑2 ↓1`).
+
 Monarch uses a tmux-style prefix, `Ctrl-b` by default, so it never takes keys away from the
 programs running inside it. Press the prefix and wait briefly to see every available key.
 
