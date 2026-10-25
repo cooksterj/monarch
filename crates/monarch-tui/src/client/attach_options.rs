@@ -43,6 +43,8 @@ pub struct AttachOptions {
     pub repeat: Duration,
     /// Problems with the config, shown once the client is up.
     pub warnings: Vec<String>,
+    /// Open the welcome screen on attach (the first run).
+    pub welcome: bool,
     /// `[projects].worktree_root`, sent with new-worktree requests.
     pub worktree_root: Option<String>,
 }
@@ -71,6 +73,7 @@ impl AttachOptions {
             which_key_delay: Duration::ZERO,
             repeat: Duration::ZERO,
             warnings: Vec::new(),
+            welcome: false,
             worktree_root: None,
         };
         opts.configure(loaded)?;

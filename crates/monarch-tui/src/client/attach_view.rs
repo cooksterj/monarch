@@ -5,11 +5,8 @@ use monarch_proto::ScreenSize;
 use ratatui::Frame;
 use ratatui::layout::{Position, Rect};
 
-use super::AttachState;
-use crate::{
-    ContextMenuView, HelpView, PaneBorders, PaneView, PickerView, ReviewView, SelectionSpan,
-    Sidebar, StatusLine, WhichKey, WorktreeFormView,
-};
+use super::{AttachState, PopupViews};
+use crate::{PaneBorders, PaneView, SelectionSpan, Sidebar, StatusLine, WhichKey};
 
 /// Rows the client keeps for itself at the bottom of the host terminal.
 const STATUS_ROWS: u16 = 1;
@@ -31,17 +28,8 @@ pub struct AttachView<'a> {
     pub copy_cursor: Option<(u16, u16)>,
     /// The key popup, drawn over the panes while it is up.
     pub which_key: Option<WhichKey<'a>>,
-    /// The palette or go-to picker, drawn over everything; the cursor
-    /// sits in its query.
-    pub picker: Option<PickerView<'a>>,
-    /// The right-click menu, drawn over everything at the pointer.
-    pub menu: Option<ContextMenuView<'a>>,
-    /// The review pane, drawn over the panes.
-    pub review: Option<ReviewView<'a>>,
-    /// The new-worktree form, drawn over the panes with the cursor in it.
-    pub form: Option<WorktreeFormView<'a>>,
-    /// The help page, drawn over the panes.
-    pub help: Option<HelpView<'a>>,
+    /// The pop-ups open, drawn over the panes.
+    pub popups: PopupViews<'a>,
 }
 
 impl AttachView<'_> {
@@ -81,25 +69,7 @@ impl AttachView<'_> {
         if let Some(popup) = self.which_key {
             frame.render_widget(popup, pane_rect);
         }
-        if let Some(review) = self.review {
-            frame.render_widget(review, pane_rect);
-        }
-        if let Some(help) = self.help {
-            frame.render_widget(help, pane_rect);
-        }
-        if let Some(form) = self.form {
-            frame.render_widget(form, pane_rect);
-            frame.set_cursor_position(form.cursor(pane_rect));
-        }
-        if let Some(picker) = self.picker {
-            frame.render_widget(picker, pane_rect);
-            if let Some(cursor) = picker.cursor(pane_rect) {
-                frame.set_cursor_position(cursor);
-            }
-        }
-        if let Some(menu) = self.menu {
-            frame.render_widget(menu, area);
-        }
+        self.popups.draw(frame, pane_rect);
     }
 
     fn draw_panes(&self, frame: &mut Frame<'_>, pane_rect: Rect) {
@@ -199,11 +169,7 @@ mod tests {
             matches: &[],
             copy_cursor: None,
             which_key: None,
-            picker: None,
-            review: None,
-            form: None,
-            help: None,
-            menu: None,
+            popups: PopupViews::default(),
         };
         term.draw(|f| view.draw(f)).expect("draw");
         let buf = term.backend().buffer();
@@ -246,11 +212,7 @@ mod tests {
             matches: &[],
             copy_cursor: None,
             which_key: None,
-            picker: None,
-            review: None,
-            form: None,
-            help: None,
-            menu: None,
+            popups: PopupViews::default(),
         };
         term.draw(|f| view.draw(f)).expect("draw");
         let buf = term.backend().buffer();
@@ -312,11 +274,7 @@ mod tests {
             matches: &[],
             copy_cursor: None,
             which_key: None,
-            picker: None,
-            review: None,
-            form: None,
-            help: None,
-            menu: None,
+            popups: PopupViews::default(),
         };
         term.draw(|f| view.draw(f)).expect("draw");
         let buf = term.backend().buffer();

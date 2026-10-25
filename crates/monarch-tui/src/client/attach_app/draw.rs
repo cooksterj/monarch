@@ -53,8 +53,8 @@ impl AttachApp {
         let (tabs, active_tab) = self.state.tab_labels();
         let copy = self.copy_view();
         let notice = self.notice.as_ref().map(|(text, _)| text.as_str());
-        let (picker, menu, review, form) = self.popups.views(self.glyphs.theme());
         let chrome = Chrome::new(self.glyphs.theme());
+        let popups = (self.popups).views(chrome, &self.opts.prefix_label, self.opts.animations);
         let view = AttachView {
             state: &self.state,
             status: StatusLine {
@@ -75,11 +75,7 @@ impl AttachApp {
                 .map_or_else(|| self.selection_span(), |c| c.selection),
             matches: copy.as_ref().map_or(&[][..], |c| &c.matches),
             copy_cursor: copy.as_ref().and_then(|c| c.cursor),
-            picker,
-            menu,
-            review,
-            form,
-            help: self.popups.help_view(&self.opts.prefix_label, chrome),
+            popups,
             which_key: (self.popup && !self.any_overlay()).then_some(WhichKey {
                 entries: &self.which_key,
                 title: &self.opts.prefix_label,

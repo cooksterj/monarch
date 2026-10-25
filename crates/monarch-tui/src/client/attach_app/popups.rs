@@ -1,11 +1,12 @@
 //! The pop-ups that can be open over the panes, kept together so drawing
 //! can borrow them apart from the terminal.
 
-use monarch_core::Theme;
+use std::time::Instant;
 
 use crate::{
-    Chrome, ContextMenu, ContextMenuView, HelpState, HelpView, Picker, PickerView, ProjectPicker,
-    ReviewState, ReviewView, SessionPicker, WorktreeForm, WorktreeFormView,
+    Chrome, ContextMenu, ContextMenuView, HelpState, HelpView, Picker, PickerView, PopupViews,
+    ProjectPicker, ReviewState, ReviewView, SessionPicker, WelcomeState, WelcomeView, WorktreeForm,
+    WorktreeFormView,
 };
 
 /// Every pop-up; each takes the keys while open.
@@ -25,16 +26,9 @@ pub(super) struct Popups {
     pub form: Option<WorktreeForm>,
     /// The help page.
     pub help: Option<HelpState>,
+    /// The welcome screen.
+    pub welcome: Option<WelcomeState>,
 }
-
-/// What [`Popups::views`] draws: a picker, the menu, the review and the
-/// form.
-type Views<'a> = (
-    Option<PickerView<'a>>,
-    Option<ContextMenuView<'a>>,
-    Option<ReviewView<'a>>,
-    Option<WorktreeFormView<'a>>,
-);
 
 impl Popups {
     /// Whether any is open.
@@ -46,32 +40,45 @@ impl Popups {
             || self.review.is_some()
             || self.form.is_some()
             || self.help.is_some()
+            || self.welcome.is_some()
     }
 
-    /// The help as drawn, when open; `prefix` is named in its title.
-    pub fn help_view<'a>(&'a self, prefix: &'a str, chrome: Chrome<'a>) -> Option<HelpView<'a>> {
-        self.help.as_ref().map(|state| HelpView {
-            state,
-            prefix,
-            chrome,
-        })
-    }
-
-    /// The widgets for those open, coloured by `theme`.
-    pub fn views<'a>(&'a self, theme: Option<&'a Theme>) -> Views<'a> {
+    /// The widgets for those open, coloured by `chrome`; the help names
+    /// `prefix` and the welcome is drawn at `now`, still unless `animate`.
+    pub fn views<'a>(
+        &'a self,
+        chrome: Chrome<'a>,
+        prefix: &'a str,
+        animate: bool,
+    ) -> PopupViews<'a> {
+        let theme = chrome.theme;
         let picker = (self.picker.as_ref())
             .or(self.projects.as_ref().map(ProjectPicker::picker))
             .or(self.sessions.as_ref().map(SessionPicker::picker));
-        (
-            picker.map(|picker| PickerView { picker }),
-            self.menu.as_ref().map(|menu| ContextMenuView { menu }),
-            self.review
+        let now = Instant::now();
+        PopupViews {
+            picker: picker.map(|picker| PickerView { picker }),
+            menu: self.menu.as_ref().map(|menu| ContextMenuView { menu }),
+            review: self
+                .review
                 .as_ref()
                 .map(|state| ReviewView { state, theme }),
-            self.form
+            form: self
+                .form
                 .as_ref()
                 .map(|form| WorktreeFormView { form, theme }),
-        )
+            help: self.help.as_ref().map(|state| HelpView {
+                state,
+                prefix,
+                chrome,
+            }),
+            welcome: self.welcome.as_ref().map(|state| WelcomeView {
+                keys: state.keys(),
+                tick: state.tick(now),
+                animate,
+                chrome,
+            }),
+        }
     }
 }
 
@@ -82,15 +89,13 @@ mod tests {
     #[test]
     fn views_follow_what_is_open() {
         let mut popups = Popups::default();
-        assert!(!popups.any());
-        assert!(popups.views(None).0.is_none());
+        let views = |p: &Popups| p.views(Chrome::default(), "ctrl+b", false).picker.is_some();
+        assert!(!popups.any() && !views(&popups));
         popups.projects = Some(ProjectPicker::default());
         assert!(popups.any());
-        let (picker, menu, review, form) = popups.views(None);
-        assert!(picker.is_some(), "the project picker draws as a picker");
-        assert!(menu.is_none() && review.is_none() && form.is_none());
-        assert!(popups.help_view("ctrl+b", Chrome::default()).is_none());
+        assert!(views(&popups), "the project picker draws as a picker");
         popups.help = Some(HelpState::new(&monarch_core::Keymap::default()));
-        assert!(popups.help_view("ctrl+b", Chrome::default()).is_some());
+        let drawn = popups.views(Chrome::default(), "ctrl+b", false);
+        assert!(drawn.help.is_some() && drawn.menu.is_none() && drawn.welcome.is_none());
     }
 }

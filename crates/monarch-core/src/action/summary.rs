@@ -39,6 +39,7 @@ impl Action {
             Self::Projects => "jump to, open or remove worktrees",
             Self::Sessions => "switch to another session, or start one",
             Self::Help => "this help",
+            Self::Welcome => "the welcome screen",
             Self::FocusPane(_) => "focus a pane",
         }
     }
@@ -70,7 +71,8 @@ impl Action {
             | Self::ToggleSidebar
             | Self::ReloadConfig
             | Self::Sessions
-            | Self::Help => ActionGroup::Session,
+            | Self::Help
+            | Self::Welcome => ActionGroup::Session,
         }
     }
 }

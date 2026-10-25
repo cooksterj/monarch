@@ -44,6 +44,7 @@ impl From<&AttachOptions> for InputKeys {
                     | Action::Projects
                     | Action::Sessions
                     | Action::Help
+                    | Action::Welcome
             )
         };
         Self {

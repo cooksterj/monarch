@@ -60,6 +60,9 @@ class Host:
         # the clipboard of whoever runs the tests.
         env = dict(os.environ, XDG_RUNTIME_DIR=run, XDG_STATE_HOME=run, SHELL="/bin/sh", PS1="$ ",
                    MONARCH_CONFIG=os.path.join(run, "none.toml"), SSH_CONNECTION="smoke")
+        # Not a first run: the welcome would take the first key.
+        os.makedirs(os.path.join(run, "monarch"), exist_ok=True)
+        open(os.path.join(run, "monarch", "welcomed"), "w").close()
         for var in ("MONARCH_PANE", "MONARCH_SESSION", "TMUX"):
             env.pop(var, None)
         self.pid, self.fd = pty.fork()

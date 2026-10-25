@@ -29,14 +29,21 @@ impl StateFile {
     /// known.
     pub fn for_session(session: &str) -> Result<Self, ServerError> {
         SocketPath::validate(session)?;
+        Ok(Self::new(Self::root()?.join(session).join("state.json")))
+    }
+
+    /// Monarch's state directory: `$XDG_STATE_HOME/monarch`, else
+    /// `~/.local/state/monarch`.
+    ///
+    /// # Errors
+    /// Neither variable is set.
+    pub fn root() -> Result<PathBuf, ServerError> {
         let base = std::env::var_os("XDG_STATE_HOME")
             .filter(|v| !v.is_empty())
             .map(PathBuf::from)
             .or_else(|| std::env::var_os("HOME").map(|h| Path::new(&h).join(".local/state")))
             .ok_or_else(|| ServerError::io("finding the state directory", no_home()))?;
-        Ok(Self::new(
-            base.join("monarch").join(session).join("state.json"),
-        ))
+        Ok(base.join("monarch"))
     }
 
     /// The file's path.

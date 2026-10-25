@@ -1,11 +1,12 @@
 //! `monarch attach` (and a bare `monarch`): connect to a session.
 
 use std::io::Write;
+use std::path::Path;
 use std::process::ExitCode;
 use std::sync::Arc;
 
 use monarch_core::{Action, Config, Keymap, LoadedConfig};
-use monarch_server::SocketPath;
+use monarch_server::{SocketPath, StateFile};
 use monarch_tui::{AttachApp, AttachOptions, AttachOutcome, SessionLister};
 
 use super::auto_start::ensure_server;
@@ -29,10 +30,12 @@ pub(crate) fn run(
         config,
     )?;
     let lister: Arc<dyn SessionLister> = Arc::new(SocketSessions);
+    let mut welcome = StateFile::root().is_ok_and(|root| first_run(&root));
     loop {
         let socket = SocketPath::for_session(&session)?;
         // Checked before a server is started for nothing.
-        let opts = AttachOptions::new(socket.clone(), session.clone(), loaded)?;
+        let mut opts = AttachOptions::new(socket.clone(), session.clone(), loaded)?;
+        opts.welcome = std::mem::take(&mut welcome);
         ensure_server(&session, &socket, &args.agents)?;
         match AttachApp::attach(&opts, Arc::clone(&lister))? {
             AttachOutcome::Switch(next) => session = next,
@@ -43,6 +46,17 @@ pub(crate) fn run(
         }
     }
     Ok(ExitCode::SUCCESS)
+}
+
+/// Whether this is the first attach on this machine, judged by a marker
+/// in Monarch's state directory, which it then writes. Any error counts
+/// as not first: a welcome every time would be worse than none.
+fn first_run(root: &Path) -> bool {
+    let marker = root.join("welcomed");
+    if marker.exists() {
+        return false;
+    }
+    std::fs::create_dir_all(root).is_ok() && std::fs::write(&marker, "").is_ok()
 }
 
 /// Panes carry `MONARCH_PANE`. A client started inside one reads the very
@@ -79,6 +93,20 @@ fn farewell(session: &str, outcome: &AttachOutcome) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_welcome_shows_once() {
+        let dir = tempfile::tempdir().expect("dir");
+        let root = dir.path().join("state/monarch");
+        assert!(first_run(&root), "first attach");
+        assert!(!first_run(&root), "never again");
+        let file = dir.path().join("file");
+        std::fs::write(&file, "").expect("write");
+        assert!(
+            !first_run(&file.join("monarch")),
+            "an unwritable root shows nothing"
+        );
+    }
 
     #[test]
     fn farewell_names_the_session() {

@@ -222,6 +222,9 @@ def run_all(binary):
             f.write("[ui]\nsidebar = false\n")
         env = dict(os.environ, XDG_RUNTIME_DIR=run, XDG_STATE_HOME=run, SHELL="/bin/sh",
                    PS1="$ ", MONARCH_CONFIG=config)
+        # Not a first run: the welcome would take the first key.
+        os.makedirs(os.path.join(run, "monarch"), exist_ok=True)
+        open(os.path.join(run, "monarch", "welcomed"), "w").close()
         for var in ("MONARCH_PANE", "MONARCH_SESSION", "TMUX"):
             env.pop(var, None)
         shell_comes_back_in_its_directory(binary, env, run)
