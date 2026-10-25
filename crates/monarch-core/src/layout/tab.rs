@@ -117,6 +117,12 @@ impl Tab {
         other != at && self.tree.swap(self.focus, panes[other])
     }
 
+    /// Renames every pane, the focused one too; see [`SplitTree::rename`].
+    pub fn rename(&mut self, rename: &dyn Fn(PaneId) -> PaneId) {
+        self.tree.rename(rename);
+        self.focus = rename(self.focus);
+    }
+
     /// Removes `pane`. When it had focus, focus goes to the pane that took
     /// its space. Returns `true` when the tab is now empty.
     pub fn remove(&mut self, area: Rect, pane: PaneId) -> bool {
@@ -213,5 +219,15 @@ mod tests {
         assert!(!tab.remove(AREA, A));
         assert!(tab.remove(AREA, B), "now empty");
         assert!(!Tab::new(A).remove(AREA, B), "unknown pane");
+    }
+
+    #[test]
+    fn renaming_moves_focus_and_keeps_zoom() {
+        let mut tab = Tab::new(A);
+        tab.split(B, SplitAxis::Columns);
+        tab.zoomed = true;
+        tab.rename(&|p| PaneId(p.0 * 10));
+        assert_eq!((tab.focus, tab.zoomed), (PaneId(20), true));
+        assert_eq!(tab.tree.panes(), [PaneId(10), PaneId(20)]);
     }
 }
