@@ -3,7 +3,7 @@
 use std::io::Write;
 use std::process::ExitCode;
 
-use monarch_core::{Config, ConfigLoader, Keymap};
+use monarch_core::{Config, ConfigLoader, Keymap, LoadedConfig};
 
 use crate::ConfigCommand;
 
@@ -28,15 +28,23 @@ fn check(loader: &ConfigLoader, out: &mut dyn Write) -> anyhow::Result<ExitCode>
         writeln!(out, "No config at {path}; using defaults.")?;
         return Ok(ExitCode::SUCCESS);
     }
-    for key in &loaded.unknown_keys {
-        writeln!(out, "warning: unknown key `{key}` in {path}")?;
-    }
-    let keys = Keymap::from_config(&loaded.config.keys).1;
-    for warning in keys.iter().chain(&loaded.config.theme.warnings()) {
+    for warning in warnings(&loaded) {
         writeln!(out, "warning: {warning}")?;
     }
     writeln!(out, "{path}: ok")?;
     Ok(ExitCode::SUCCESS)
+}
+
+/// Every problem in a config that loaded: unknown keys, bad bindings and
+/// bad theme values (each falls back to a default).
+pub(crate) fn warnings(loaded: &LoadedConfig) -> Vec<String> {
+    let path = loaded.path.display();
+    let mut warnings: Vec<String> = (loaded.unknown_keys.iter())
+        .map(|key| format!("unknown key `{key}` in {path}"))
+        .collect();
+    warnings.extend(Keymap::from_config(&loaded.config.keys).1);
+    warnings.extend(loaded.config.theme.warnings());
+    warnings
 }
 
 #[cfg(test)]

@@ -69,6 +69,8 @@ Install it for yourself with
 
 Configuration lives at `~/.config/monarch/config.toml` (override with `MONARCH_CONFIG`).
 `monarch config default` prints every setting; `monarch config check` validates your file.
+`monarch doctor` checks the whole setup (config, agent hooks, git, the terminal, running
+sessions) and prints a fix for anything missing.
 
 ### Themes
 

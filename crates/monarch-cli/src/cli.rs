@@ -54,6 +54,9 @@ pub enum Command {
     Keys,
     /// Install Monarch's hooks into Claude Code and Codex (safe to re-run).
     Setup(SetupArgs),
+    /// Check Monarch's setup: config, agent hooks, git, the terminal and
+    /// running sessions, with a fix for each problem.
+    Doctor,
     /// Report an agent's hook event to its pane (called by agents' hooks).
     #[command(subcommand)]
     Hook(HookCommand),
