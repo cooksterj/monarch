@@ -88,6 +88,14 @@ impl MouseLog {
         }
     }
 
+    /// Bytes as read from the terminal: control sequences shown, typed
+    /// text (and the key after a lone `ESC`) replaced by a count.
+    pub(super) fn raw(&mut self, bytes: &[u8]) {
+        if self.out.is_some() {
+            self.line(format_args!("read {}: {}", bytes.len(), redact(bytes)));
+        }
+    }
+
     /// Input handed to an open pop-up, by length only.
     pub(super) fn overlay(&mut self, len: usize) {
         self.line(format_args!("{len} bytes -> pop-up"));
@@ -104,6 +112,68 @@ impl MouseLog {
         {
             self.out = None;
         }
+    }
+}
+
+/// `bytes` with each escape sequence spelled out and every run of other
+/// bytes shown only as its length, e.g. `\e[<0;5;3M ‹2›`.
+fn redact(bytes: &[u8]) -> String {
+    let mut out = String::new();
+    let (mut i, mut text) = (0, 0);
+    while i < bytes.len() {
+        let byte = bytes[i];
+        i += 1;
+        if byte != 0x1b && byte != 0x02 {
+            text += 1;
+            continue;
+        }
+        if text > 0 {
+            out.push_str(&format!("‹{text}› "));
+            text = 0;
+        }
+        if byte == 0x02 {
+            out.push_str("^B ");
+            continue;
+        }
+        let end = sequence_end(bytes, i);
+        out.push_str("\\e");
+        match end {
+            Some(end) => {
+                out.extend(bytes[i..end].iter().map(|&b| shown(b)));
+                i = end;
+            }
+            None if i < bytes.len() => {
+                out.push_str("‹alt›");
+                i += 1;
+            }
+            None => {}
+        }
+        out.push(' ');
+    }
+    if text > 0 {
+        out.push_str(&format!("‹{text}›"));
+    }
+    out
+}
+
+/// Where the CSI (`[`) or SS3 (`O`) sequence starting at `start` ends.
+fn sequence_end(bytes: &[u8], start: usize) -> Option<usize> {
+    match bytes.get(start)? {
+        b'O' => Some((start + 2).min(bytes.len())),
+        b'[' => {
+            let body = &bytes[start + 1..];
+            let last = body.iter().position(|b| (0x40..=0x7e).contains(b));
+            Some(last.map_or(bytes.len(), |n| start + 2 + n))
+        }
+        _ => None,
+    }
+}
+
+fn shown(byte: u8) -> char {
+    if byte.is_ascii_graphic() {
+        char::from(byte)
+    } else {
+        '?'
     }
 }
 
@@ -169,6 +239,17 @@ mod tests {
         assert!(text.contains("7 bytes -> pop-up"), "{text}");
         assert!(!text.contains("3 key bytes"), "plain keys stay private");
         assert!(text.contains("6 key bytes with a mouse prefix"), "{text}");
+    }
+
+    #[test]
+    fn raw_input_shows_sequences_but_not_text() {
+        assert_eq!(
+            redact(b"\x1b[<0;5;3Mhi\x02%\x1bx\x1bOA"),
+            "\\e[<0;5;3M ‹2› ^B ‹1› \\e‹alt› \\eOA "
+        );
+        assert_eq!(redact(b"secret"), "‹6›");
+        assert_eq!(redact(b"\x1b[1"), "\\e[1 ", "cut short");
+        assert_eq!(redact(b"\x1b"), "\\e ");
     }
 
     #[test]

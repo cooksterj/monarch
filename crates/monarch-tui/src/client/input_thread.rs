@@ -20,7 +20,7 @@ use mouse_log::MouseLog;
 use super::{ClientEvent, InputKeys, MouseAction, MouseRouter, ServerLink, SharedFocus};
 use crate::{
     HostInput, HostInputFilter, HostProbe, InputEvent, MouseButton, MouseEvent, MouseExtractor,
-    MouseKind,
+    MouseKind, PrefixParser,
 };
 
 /// How long to wait for the host to answer the startup probe.
@@ -87,10 +87,8 @@ fn run(p: &InputParams, mut stdin: impl Read) {
     let (mut input, mut events) = (Vec::new(), Vec::new());
     let mut pending = false;
     while let Ok(n @ 1..) = stdin.read(&mut buf) {
-        if let Some(keys) = p.rekey.try_iter().last() {
-            parser = keys.parser();
-            pipeline.overlay_keys = keys.overlay_keys;
-        }
+        pipeline.log.raw(&buf[..n]);
+        rekey(p, &mut parser, &mut pipeline);
         input.clear();
         let probing = !probe.is_done();
         if probe.feed(&buf[..n], &mut input) && probing {
@@ -115,6 +113,14 @@ fn run(p: &InputParams, mut stdin: impl Read) {
         }
     }
     let _ = p.events.send(ClientEvent::InputClosed);
+}
+
+/// Applies the latest reloaded keys, if any.
+fn rekey(p: &InputParams, parser: &mut PrefixParser, pipeline: &mut Pipeline) {
+    if let Some(keys) = p.rekey.try_iter().last() {
+        *parser = keys.parser();
+        pipeline.overlay_keys = keys.overlay_keys;
+    }
 }
 
 fn dispatch(p: &InputParams, pipe: &mut Pipeline, event: InputEvent) {
