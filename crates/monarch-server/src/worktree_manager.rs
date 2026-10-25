@@ -1,5 +1,6 @@
-//! Adds git worktrees: finds the repository, picks the directory from
-//! `[projects]`, then checks out an existing branch or makes a new one.
+//! A repository's git worktrees: lists them, adds one (the directory comes
+//! from `[projects]`; an existing branch is checked out, else a new one is
+//! made) and removes one.
 
 use std::path::{Path, PathBuf};
 
@@ -8,12 +9,12 @@ use monarch_proto::NewWorktree;
 
 use crate::{GitRunner, ServerError};
 
-/// Creates worktrees through git.
-pub struct WorktreeMaker {
+/// Lists, creates and removes worktrees through git.
+pub struct WorktreeManager {
     git: Box<dyn GitRunner>,
 }
 
-impl WorktreeMaker {
+impl WorktreeManager {
     /// A maker asking `git`.
     #[must_use]
     pub fn new(git: Box<dyn GitRunner>) -> Self {
@@ -83,6 +84,47 @@ impl WorktreeMaker {
             .map_err(|_| ServerError::Worktree(format!("{name:?} is not a valid branch name")))
     }
 
+    /// Every worktree of the repository holding `dir`, main checkout
+    /// first, with its branch (`None` when detached). Bare and prunable
+    /// (directory gone) entries are left out; outside a repository, none.
+    #[must_use]
+    pub fn list(&self, dir: &Path) -> Vec<(PathBuf, Option<String>)> {
+        self.git
+            .run(dir, &["worktree", "list", "--porcelain"])
+            .map_or_else(Vec::new, |out| parse_list(&out))
+    }
+
+    /// Removes the worktree at `path`; its branch stays. Git refuses one
+    /// with uncommitted or untracked changes.
+    ///
+    /// # Errors
+    /// Not a worktree, the main checkout, or git refused (its message).
+    pub fn remove(&self, path: &Path) -> Result<(), ServerError> {
+        let main = self.repository(path).ok_or_else(|| {
+            ServerError::Worktree(format!("{} is not a worktree", path.display()))
+        })?;
+        if main == path {
+            return Err(ServerError::Worktree(
+                "the main checkout can't be removed".into(),
+            ));
+        }
+        let target = path.to_string_lossy();
+        let name = path
+            .file_name()
+            .map_or(target.clone(), |n| n.to_string_lossy());
+        self.git
+            .try_run(&main, &["worktree", "remove", &target])
+            .map(drop)
+            .map_err(|why| {
+                // Git suggests --force, which Monarch never uses.
+                ServerError::Worktree(if why.contains("modified or untracked") {
+                    format!("{name} has uncommitted changes; commit or discard them first")
+                } else {
+                    why
+                })
+            })
+    }
+
     /// The main checkout of the repository holding `dir` (worktrees made
     /// from a worktree still go beside the main one).
     fn repository(&self, dir: &Path) -> Option<PathBuf> {
@@ -96,6 +138,31 @@ impl WorktreeMaker {
             _ => common,
         })
     }
+}
+
+/// Reads `git worktree list --porcelain`: blocks of `worktree <path>`,
+/// `HEAD …`, then `branch refs/heads/<name>` or `detached`, and maybe
+/// `bare`, `locked` or `prunable`.
+fn parse_list(out: &str) -> Vec<(PathBuf, Option<String>)> {
+    let mut list = Vec::new();
+    let mut skip = false;
+    for line in out.lines() {
+        if let Some(path) = line.strip_prefix("worktree ") {
+            if skip {
+                list.pop();
+            }
+            skip = false;
+            list.push((PathBuf::from(path), None));
+        } else if let (Some(branch), Some(last)) = (line.strip_prefix("branch "), list.last_mut()) {
+            last.1 = Some(branch.trim_start_matches("refs/heads/").to_owned());
+        } else if line == "bare" || line.starts_with("prunable") {
+            skip = true;
+        }
+    }
+    if skip {
+        list.pop();
+    }
+    list
 }
 
 #[cfg(test)]
@@ -122,9 +189,25 @@ mod tests {
                 ["check-ref-format", "--branch", name] => {
                     (!name.contains("..")).then(|| (*name).to_owned())
                 }
-                ["worktree", "add", ..] => Some(String::new()),
+                ["worktree", "add" | "remove", ..] => Some(String::new()),
                 _ => None,
             }
+        }
+    }
+
+    /// Git refusing to remove a worktree with changes.
+    struct Refuses;
+
+    impl GitRunner for Refuses {
+        fn run(&self, dir: &Path, args: &[&str]) -> Option<String> {
+            FakeGit::default().run(dir, args)
+        }
+
+        fn try_run(&self, _dir: &Path, _args: &[&str]) -> Result<String, String> {
+            Err(
+                "'/w/app/feat-x' contains modified or untracked files, use --force to delete it"
+                    .into(),
+            )
         }
     }
 
@@ -140,7 +223,7 @@ mod tests {
     #[test]
     fn new_branches_start_from_the_base() {
         let git = FakeGit::default();
-        let maker = WorktreeMaker::new(Box::new(git.clone()));
+        let maker = WorktreeManager::new(Box::new(git.clone()));
         let made = maker
             .create(&NewWorktree {
                 base: Some("main".into()),
@@ -159,7 +242,7 @@ mod tests {
     #[test]
     fn existing_branches_are_checked_out() {
         let git = FakeGit::default();
-        let maker = WorktreeMaker::new(Box::new(git.clone()));
+        let maker = WorktreeManager::new(Box::new(git.clone()));
         let (_, new_branch) = maker.create(&request("old")).expect("made");
         assert!(!new_branch);
         let log = git.0.lock().expect("log").clone();
@@ -175,8 +258,51 @@ mod tests {
     }
 
     #[test]
+    fn listing_skips_bare_and_vanished_worktrees() {
+        let out = "worktree /src/app.git\nbare\n\n\
+                   worktree /src/app\nHEAD 1\nbranch refs/heads/main\n\n\
+                   worktree /w/app/feat-x\nHEAD 2\nbranch refs/heads/feat/x\n\n\
+                   worktree /w/app/gone\nHEAD 3\nbranch refs/heads/gone\nprunable gitdir file points to non-existent location\n\n\
+                   worktree /w/app/probe\nHEAD 4\ndetached\n";
+        let list = parse_list(out);
+        let shown: Vec<_> = list
+            .iter()
+            .map(|(p, b)| (p.to_string_lossy().into_owned(), b.clone()))
+            .collect();
+        assert_eq!(
+            shown,
+            [
+                ("/src/app".to_owned(), Some("main".to_owned())),
+                ("/w/app/feat-x".to_owned(), Some("feat/x".to_owned())),
+                ("/w/app/probe".to_owned(), None),
+            ]
+        );
+        assert_eq!(parse_list(""), []);
+    }
+
+    #[test]
+    fn removal_runs_from_the_main_checkout_and_spares_it() {
+        let git = FakeGit::default();
+        let manager = WorktreeManager::new(Box::new(git.clone()));
+        manager.remove(Path::new("/w/app/feat-x")).expect("removed");
+        let log = git.0.lock().expect("log").clone();
+        assert_eq!(
+            log.last().map(String::as_str),
+            Some("worktree remove /w/app/feat-x")
+        );
+        let err = manager.remove(Path::new("/src/app")).expect_err("main");
+        assert!(err.to_string().contains("main checkout"), "{err}");
+        let dirty = WorktreeManager::new(Box::new(Refuses));
+        let err = dirty.remove(Path::new("/w/app/feat-x")).expect_err("dirty");
+        assert_eq!(
+            err.to_string(),
+            "feat-x has uncommitted changes; commit or discard them first"
+        );
+    }
+
+    #[test]
     fn bad_names_and_places_are_refused() {
-        let maker = WorktreeMaker::new(Box::new(FakeGit::default()));
+        let maker = WorktreeManager::new(Box::new(FakeGit::default()));
         for name in ["-f", "a..b"] {
             let err = maker.create(&request(name)).expect_err("refused");
             assert!(err.to_string().contains("not a valid branch name"), "{err}");

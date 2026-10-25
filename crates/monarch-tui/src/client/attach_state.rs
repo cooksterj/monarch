@@ -70,6 +70,8 @@ impl AttachState {
             ServerMsg::SearchResult { pane, found } => out.found.push((pane, found)),
             ServerMsg::Review { pane, review } => out.reviews.push((pane, review)),
             ServerMsg::WorktreeMade(made) => out.worktrees.push(made),
+            ServerMsg::Worktrees(list) => out.worktree_lists.push(list),
+            ServerMsg::WorktreeRemoved(removed) => out.removed.push(removed),
             ServerMsg::Clipboard(text) => out.clipboard.push(text),
             ServerMsg::PaneExited { pane } => {
                 self.panes.remove(&pane);

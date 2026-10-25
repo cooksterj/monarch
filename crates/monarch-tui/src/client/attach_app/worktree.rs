@@ -20,7 +20,7 @@ impl AttachApp {
             self.say("the focused pane is not in a git repository");
             return;
         };
-        self.form = Some(WorktreeForm::new(dir));
+        self.popups.form = Some(WorktreeForm::new(dir));
         self.focus.set_overlay(true);
         self.dirty = true;
     }
@@ -28,7 +28,7 @@ impl AttachApp {
     /// Keys while the form is open.
     pub(super) fn worktree_input(&mut self, bytes: &[u8]) {
         for key in OverlayKey::decode(bytes) {
-            let Some(form) = self.form.as_mut() else {
+            let Some(form) = self.popups.form.as_mut() else {
                 break;
             };
             self.dirty = true;
@@ -39,7 +39,7 @@ impl AttachApp {
                     let _ = self.link.send(&ClientMsg::NewWorktree(form.request(root)));
                 }
                 WorktreeStep::Close => {
-                    self.form = None;
+                    self.popups.form = None;
                     self.focus.set_overlay(self.any_overlay());
                 }
             }
@@ -51,9 +51,9 @@ impl AttachApp {
     /// notice if the form was closed meanwhile.
     pub(super) fn worktree_made(&mut self, made: Result<WorktreeCreated, String>) {
         self.dirty = true;
-        match (made, self.form.as_mut()) {
+        match (made, self.popups.form.as_mut()) {
             (Ok(created), _) => {
-                self.form = None;
+                self.popups.form = None;
                 self.focus.set_overlay(self.any_overlay());
                 self.say(&format!("worktree {} ready", created.path));
             }
@@ -64,14 +64,10 @@ impl AttachApp {
 
     /// Whether any pop-up or copy mode still takes the keys.
     pub(super) fn any_overlay(&self) -> bool {
-        self.picker.is_some()
-            || self.copy.is_some()
-            || self.menu.is_some()
-            || self.review.is_some()
-            || self.form.is_some()
+        self.popups.any() || self.copy.is_some()
     }
 
-    fn say(&mut self, text: &str) {
+    pub(super) fn say(&mut self, text: &str) {
         self.notice = Some((text.to_owned(), Instant::now() + NOTICE));
         self.dirty = true;
     }

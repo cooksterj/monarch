@@ -73,6 +73,9 @@ pub enum Action {
     /// Make a git worktree for a new or existing branch and open a tab in
     /// it, running an agent or a shell.
     NewWorktree,
+    /// Open the project picker: every worktree of every repository the
+    /// session works in, to jump to, open or remove.
+    Projects,
     /// Focus this pane, showing its tab (what the go-to picker runs; not
     /// bindable).
     FocusPane(PaneId),
@@ -95,6 +98,7 @@ impl Action {
                 | Self::NextBlocked
                 | Self::Review
                 | Self::NewWorktree
+                | Self::Projects
         )
     }
 
@@ -124,6 +128,7 @@ mod tests {
         assert!(Action::Inbox.is_local() && Action::NextBlocked.is_local());
         assert!(Action::Review.is_local());
         assert!(Action::NewWorktree.is_local());
+        assert!(Action::Projects.is_local());
         assert!(!Action::FocusPane(PaneId(1)).is_local());
         assert!(!Action::Split(SplitAxis::Rows).is_local());
         assert!(!Action::SelectTab(1).is_local());

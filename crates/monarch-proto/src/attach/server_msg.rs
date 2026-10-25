@@ -4,7 +4,7 @@ use monarch_core::PaneId;
 use serde::{Deserialize, Serialize};
 
 use super::{AgentStatus, Delta, LayoutMsg, PanePlace, Snapshot, StyleDef};
-use crate::{GridPoint, Review, WorktreeCreated};
+use crate::{GridPoint, Review, WorktreeCreated, WorktreeEntry};
 
 /// One server → client attach-stream message.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -66,6 +66,12 @@ pub enum ServerMsg {
     /// Answer to [`super::ClientMsg::NewWorktree`]: what was made, or why
     /// nothing was.
     WorktreeMade(Result<WorktreeCreated, String>),
+    /// Answer to [`super::ClientMsg::Worktrees`]: by project, main
+    /// checkout first in each.
+    Worktrees(Vec<WorktreeEntry>),
+    /// Answer to [`super::ClientMsg::RemoveWorktree`]: the directory
+    /// removed, or why it wasn't.
+    WorktreeRemoved(Result<String, String>),
     /// A pane's working directory or git checkout changed.
     Place {
         /// The pane.

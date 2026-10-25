@@ -11,7 +11,7 @@ use crate::{ContextMenuView, HostInput, MouseButton, MouseExtractor, MouseKind, 
 impl AttachApp {
     /// A right-click: the menu opens at the pointer.
     pub(super) fn open_menu(&mut self, col: u16, row: u16) {
-        self.menu = Some(ContextMenu::new(&self.opts.keymap, col, row));
+        self.popups.menu = Some(ContextMenu::new(&self.opts.keymap, col, row));
         self.selection = None;
         self.focus.set_overlay(true);
         self.dirty = true;
@@ -23,7 +23,7 @@ impl AttachApp {
         let mut pieces = Vec::new();
         MouseExtractor::new().split(bytes, &mut pieces);
         for piece in pieces {
-            let Some(menu) = self.menu.as_mut() else {
+            let Some(menu) = self.popups.menu.as_mut() else {
                 break;
             };
             let steps: Vec<PickerStep> = match piece {
@@ -56,7 +56,7 @@ impl AttachApp {
     }
 
     fn close_menu(&mut self) {
-        self.menu = None;
+        self.popups.menu = None;
         self.focus.set_overlay(self.any_overlay());
         self.dirty = true;
     }

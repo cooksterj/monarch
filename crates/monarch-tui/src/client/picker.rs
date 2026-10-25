@@ -25,6 +25,8 @@ pub struct Picker {
     selected: usize,
     /// No search: letters and digits answer the highlighted row.
     list: bool,
+    /// Footer and no-rows text replacing the defaults.
+    text: Option<(String, String)>,
 }
 
 impl Picker {
@@ -38,6 +40,7 @@ impl Picker {
             matches: Vec::new(),
             selected: 0,
             list: false,
+            text: None,
         };
         picker.refilter();
         picker
@@ -51,6 +54,27 @@ impl Picker {
             list: true,
             ..Self::new(title, items)
         }
+    }
+
+    /// The same picker with its own footer `keys` and `empty` text (shown
+    /// when no row matches).
+    #[must_use]
+    pub fn with_text(self, keys: impl Into<String>, empty: impl Into<String>) -> Self {
+        Self {
+            text: Some((keys.into(), empty.into())),
+            ..self
+        }
+    }
+
+    /// Its own footer and no-rows text, if it has them.
+    #[must_use]
+    pub fn text(&self) -> Option<(&str, &str)> {
+        self.text.as_ref().map(|(k, e)| (k.as_str(), e.as_str()))
+    }
+
+    /// Changes the box title.
+    pub fn set_title(&mut self, title: impl Into<String>) {
+        self.title = title.into();
     }
 
     /// Whether this is a [`list`](Self::list).
@@ -138,8 +162,14 @@ impl Picker {
     /// The highlighted row, if anything matches.
     #[must_use]
     pub fn selected_item(&self) -> Option<&PickerItem> {
-        let m = self.matches.get(self.selected)?;
-        self.items.get(m.item)
+        self.items.get(self.selected_index()?)
+    }
+
+    /// Where the highlighted row is in the items given, if anything
+    /// matches.
+    #[must_use]
+    pub fn selected_index(&self) -> Option<usize> {
+        self.matches.get(self.selected).map(|m| m.item)
     }
 
     /// A list's own keys; `None` for the keys it shares with a search.
@@ -218,6 +248,19 @@ mod tests {
         for c in text.chars() {
             assert_eq!(p.key(OverlayKey::Char(c)), PickerStep::Open);
         }
+    }
+
+    #[test]
+    fn own_text_title_and_item_index() {
+        let mut p = palette().with_text(" keys ", "nothing");
+        assert_eq!(p.text(), Some((" keys ", "nothing")));
+        assert_eq!(palette().text(), None);
+        p.set_title("other");
+        assert_eq!(p.title(), "other");
+        typed(&mut p, "tab");
+        assert_eq!(p.selected_index(), Some(3), "new tab is item 3");
+        typed(&mut p, "zzz");
+        assert_eq!(p.selected_index(), None);
     }
 
     #[test]

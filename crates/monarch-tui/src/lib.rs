@@ -14,9 +14,9 @@ pub use client::{
     ANIMATION_STEP, Applied, AttachApp, AttachOptions, AttachOutcome, AttachState, AttachView,
     CONFIG_POLL, ClickCounter, ClientEvent, ConfigWatch, ContextMenu, CopyMode, CopyStep,
     DRAG_STEP, DragScroll, FocusView, GlyphAnimator, InputKeys, MULTI_CLICK, MouseAction,
-    MouseRouter, PaneReplica, Picker, PickerItem, PickerStep, ReviewState, ReviewStep, SelectEvent,
-    SelectUnit, Selection, ServerLink, SharedFocus, WHEEL_LINES, WORKTREE_CHOICES, WindowTitle,
-    WorktreeForm, WorktreeStep,
+    MouseRouter, PaneReplica, Picker, PickerItem, PickerStep, ProjectPicker, ProjectStep,
+    ReviewState, ReviewStep, SelectEvent, SelectUnit, Selection, ServerLink, SharedFocus,
+    WHEEL_LINES, WORKTREE_CHOICES, WindowTitle, WorktreeForm, WorktreeStep,
 };
 pub use error::TuiError;
 pub use host::{HostClipboard, HostModeMirror, HostProbe, HostReply};

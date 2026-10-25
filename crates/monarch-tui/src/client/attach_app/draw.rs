@@ -10,10 +10,7 @@ use ratatui::crossterm::{execute, queue};
 
 use super::AttachApp;
 use crate::client::{AttachOptions, AttachView, WindowTitle};
-use crate::{
-    ContextMenuView, MouseOwner, PickerView, ReviewView, Sidebar, SidebarGroup, StatusLine,
-    TuiError, WhichKey, WorktreeFormView,
-};
+use crate::{MouseOwner, ReviewView, Sidebar, SidebarGroup, StatusLine, TuiError, WhichKey};
 
 impl AttachApp {
     /// Mirrors the focused pane onto the host, then draws every visible
@@ -53,7 +50,7 @@ impl AttachApp {
         let (tabs, active_tab) = self.state.tab_labels();
         let copy = self.copy_view();
         let notice = self.notice.as_ref().map(|(text, _)| text.as_str());
-        let theme = self.glyphs.theme();
+        let (picker, menu, review, form) = self.popups.views(self.glyphs.theme());
         let view = AttachView {
             state: &self.state,
             status: StatusLine {
@@ -70,16 +67,10 @@ impl AttachApp {
                 .map_or_else(|| self.selection_span(), |c| c.selection),
             matches: copy.as_ref().map_or(&[][..], |c| &c.matches),
             copy_cursor: copy.as_ref().and_then(|c| c.cursor),
-            picker: self.picker.as_ref().map(|picker| PickerView { picker }),
-            menu: self.menu.as_ref().map(|menu| ContextMenuView { menu }),
-            review: self
-                .review
-                .as_ref()
-                .map(|state| ReviewView { state, theme }),
-            form: self
-                .form
-                .as_ref()
-                .map(|form| WorktreeFormView { form, theme }),
+            picker,
+            menu,
+            review,
+            form,
             which_key: (self.popup && !self.any_overlay()).then_some(WhichKey {
                 entries: &self.which_key,
                 title: &self.opts.prefix_label,
@@ -93,7 +84,7 @@ impl AttachApp {
 
     /// Tells the review pane how many diff lines a page holds.
     fn size_review(&mut self) {
-        if let Some(review) = self.review.as_mut() {
+        if let Some(review) = self.popups.review.as_mut() {
             let rows = AttachView::pane_area(self.size, self.state.left()).rows;
             review.set_page(ReviewView::diff_rows(rows));
         }

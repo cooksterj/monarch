@@ -88,6 +88,14 @@ pub enum ClientMsg {
     /// Make a worktree and open a tab in it (as the API's
     /// `worktree.create`); answered with `ServerMsg::WorktreeMade`.
     NewWorktree(NewWorktree),
+    /// List the worktrees of every repository the session's panes work
+    /// in; answered with `ServerMsg::Worktrees`.
+    Worktrees,
+    /// Open a tab with a shell in this worktree directory.
+    OpenWorktree(String),
+    /// Remove this worktree (its branch stays); answered with
+    /// `ServerMsg::WorktreeRemoved`.
+    RemoveWorktree(String),
 }
 
 #[cfg(test)]

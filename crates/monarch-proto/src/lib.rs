@@ -12,6 +12,7 @@ mod hello;
 mod hello_ack;
 mod review;
 mod screen;
+mod worktree_entry;
 
 pub use api::{AgentReport, NewWorktree, Request, Response, RpcError, WorktreeCreated};
 pub use attach::{
@@ -23,6 +24,7 @@ pub use error::ProtoError;
 pub use hello::Hello;
 pub use hello_ack::HelloAck;
 pub use review::{DiffLine, DiffLineKind, FileChange, Review, ReviewFile};
+pub use worktree_entry::WorktreeEntry;
 
 pub use screen::{
     Cell, CellAttrs, CellStyle, Cursor, CursorShape, GridPoint, ModeFlags, Rgb, Screen, ScreenSize,

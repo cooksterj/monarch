@@ -36,9 +36,9 @@ impl AttachApp {
 
     /// Keeps an open inbox in step with the agents.
     pub(super) fn refresh_inbox(&mut self) {
-        if self.picker.as_ref().is_some_and(Picker::is_list) {
+        if self.popups.picker.as_ref().is_some_and(Picker::is_list) {
             let items = self.inbox_items();
-            if let Some(inbox) = self.picker.as_mut() {
+            if let Some(inbox) = self.popups.picker.as_mut() {
                 inbox.refresh(items);
             }
         }

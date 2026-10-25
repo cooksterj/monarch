@@ -132,11 +132,11 @@ mod tests {
         │ " -        split down     HJKL       resize         a          inbox        │
         │ % |        split right    1-9        go to tab      g w        go to pane   │
         │ x          close pane     c          new tab        m          toggle mouse │
-        │ z          zoom           n          next tab       t          sidebar      │
-        │ hjkl ←↓↑→  focus          p          prev tab       v          review       │
-        │ o          focus next     :          palette        tab        next blocked │
-        │ {          swap prev      N          new worktree   d          detach       │
-        │ }          swap next      R          reload                                 │
+        │ z          zoom           n          next tab       s          projects     │
+        │ hjkl ←↓↑→  focus          p          prev tab       t          sidebar      │
+        │ o          focus next     :          palette        v          review       │
+        │ {          swap prev      N          new worktree   tab        next blocked │
+        │ }          swap next      R          reload         d          detach       │
         └─────────────────────────────────────────────────────────────────────────────┘
         "#);
     }
