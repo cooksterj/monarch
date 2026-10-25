@@ -13,6 +13,10 @@ use std::time::{Duration, Instant};
 use monarch_core::Key;
 use monarch_proto::ClientMsg;
 
+mod mouse_log;
+
+use mouse_log::MouseLog;
+
 use super::{ClientEvent, InputKeys, MouseAction, MouseRouter, ServerLink, SharedFocus};
 use crate::{
     HostInput, HostInputFilter, HostProbe, InputEvent, MouseButton, MouseEvent, MouseExtractor,
@@ -53,6 +57,8 @@ struct Pipeline {
     focusing: bool,
     /// Keys that open a pop-up.
     overlay_keys: Vec<Key>,
+    /// The opt-in routing trace.
+    log: MouseLog,
 }
 
 /// Spawns the input thread.
@@ -75,6 +81,7 @@ fn run(p: &InputParams, mut stdin: impl Read) {
     let mut parser = p.keys.parser();
     let mut pipeline = Pipeline {
         overlay_keys: p.keys.overlay_keys.clone(),
+        log: MouseLog::from_env(),
         ..Pipeline::default()
     };
     let (mut input, mut events) = (Vec::new(), Vec::new());
@@ -93,6 +100,7 @@ fn run(p: &InputParams, mut stdin: impl Read) {
         }
         if p.focus.overlay() {
             if !input.is_empty() {
+                pipeline.log.overlay(input.len());
                 let _ = p.events.send(ClientEvent::OverlayInput(input.clone()));
             }
             continue;
@@ -112,13 +120,17 @@ fn run(p: &InputParams, mut stdin: impl Read) {
 fn dispatch(p: &InputParams, pipe: &mut Pipeline, event: InputEvent) {
     match event {
         InputEvent::Forward(raw) if p.focus.overlay() => {
+            pipe.log.overlay(raw.len());
             let _ = p.events.send(ClientEvent::OverlayInput(raw));
         }
         InputEvent::Forward(raw) => {
             pipe.mice.split(&raw, &mut pipe.pieces);
             for piece in std::mem::take(&mut pipe.pieces) {
                 match piece {
-                    HostInput::Keys(keys) => send_keys(p, &mut pipe.filter, &keys),
+                    HostInput::Keys(keys) => {
+                        pipe.log.keys(&keys);
+                        send_keys(p, &mut pipe.filter, &keys);
+                    }
                     HostInput::Mouse(event) => route_mouse(p, pipe, &event),
                 }
             }
@@ -136,6 +148,7 @@ fn dispatch(p: &InputParams, pipe: &mut Pipeline, event: InputEvent) {
 /// else goes through the router for the focused pane.
 fn route_mouse(p: &InputParams, pipe: &mut Pipeline, event: &MouseEvent) {
     if pipe.focusing {
+        pipe.log.swallowed(event);
         pipe.focusing = !matches!(event.kind, MouseKind::Release(_));
         return;
     }
@@ -144,6 +157,7 @@ fn route_mouse(p: &InputParams, pipe: &mut Pipeline, event: &MouseEvent) {
         && view.local(event.col, event.row).is_none()
         && let Some(other) = p.focus.pane_at(event.col, event.row)
     {
+        pipe.log.focused(event, &view, other);
         let _ = p.link.send(&ClientMsg::Focus(other));
         if matches!(event.kind, MouseKind::Press(MouseButton::Right)) {
             // The menu acts on the focused pane: the one just clicked.
@@ -160,6 +174,7 @@ fn route_mouse(p: &InputParams, pipe: &mut Pipeline, event: &MouseEvent) {
         return;
     }
     let action = pipe.router.route(event, &view, Instant::now());
+    pipe.log.routed(event, &view, &action);
     send_mouse(p, action);
 }
 
