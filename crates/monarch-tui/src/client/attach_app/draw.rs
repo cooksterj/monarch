@@ -45,14 +45,15 @@ impl AttachApp {
 
     /// Draws panes, the status line and the key popup.
     fn paint(&mut self) -> Result<(), TuiError> {
-        let (tabs, active_tab) = self.state.tab_labels();
-        let copy = self.copy_view();
-        let notice = self.notice.as_ref().map(|(text, _)| text.as_str());
-        let groups = if self.state.left() > 0 {
+        let mut groups = if self.state.left() > 0 {
             self.state.sidebar_groups()
         } else {
             Vec::new()
         };
+        self.dress(&mut groups);
+        let (tabs, active_tab) = self.state.tab_labels();
+        let copy = self.copy_view();
+        let notice = self.notice.as_ref().map(|(text, _)| text.as_str());
         let view = AttachView {
             state: &self.state,
             status: StatusLine {

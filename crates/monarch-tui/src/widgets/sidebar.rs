@@ -2,9 +2,9 @@
 //! focused one marked, with a divider on its right edge.
 
 use monarch_core::PaneId;
-use ratatui::buffer::Buffer;
+use ratatui::buffer::{Buffer, Cell};
 use ratatui::layout::Rect;
-use ratatui::style::{Modifier, Style};
+use ratatui::style::{Color, Modifier, Style};
 use ratatui::widgets::Widget;
 
 use super::{SidebarGroup, SidebarRow};
@@ -67,7 +67,7 @@ impl Widget for Sidebar<'_> {
                 ),
                 Line::Pane(row) => {
                     let marker = if row.focused { "▸" } else { " " };
-                    let glyph = row.state.glyph();
+                    let glyph = row.look.map_or(row.state.glyph(), |l| l.symbol);
                     (
                         format!("{marker} {glyph} {}", row.label),
                         row_style(row),
@@ -78,18 +78,32 @@ impl Widget for Sidebar<'_> {
             };
             let (x, _) = buf.set_stringn(area.x, y, &text, usize::from(width), style);
             if let Line::Pane(row) = line
-                && row.state.needs_attention()
                 && width > 2
             {
-                buf[(area.x + 2, y)]
-                    .modifier
-                    .insert(Modifier::BOLD | Modifier::REVERSED);
+                paint_glyph(row, &mut buf[(area.x + 2, y)]);
             }
             let left = usize::from(area.x + width - x);
             if let Some(detail) = detail.filter(|_| left > 2) {
                 buf.set_stringn(x + 2, y, detail, left - 2, dim);
             }
         }
+    }
+}
+
+/// Colours the glyph cell from its look; without a colour, states that
+/// need attention stand out in bold reverse video instead.
+fn paint_glyph(row: &SidebarRow, cell: &mut Cell) {
+    match row.look.and_then(|l| Some((l.color?, l.bold))) {
+        Some((c, bold)) => {
+            cell.set_fg(Color::Rgb(c.r, c.g, c.b));
+            if bold {
+                cell.modifier.insert(Modifier::BOLD);
+            }
+        }
+        None if row.state.needs_attention() => {
+            cell.modifier.insert(Modifier::BOLD | Modifier::REVERSED);
+        }
+        None => {}
     }
 }
 
@@ -109,12 +123,14 @@ mod tests {
     use monarch_core::AgentState;
 
     use super::*;
+    use crate::GlyphLook;
 
     fn row(pane: u32, label: &str, detail: Option<&str>) -> SidebarRow {
         SidebarRow {
             pane: PaneId(pane),
             label: label.into(),
             state: AgentState::Unknown,
+            look: None,
             detail: detail.map(Into::into),
             focused: pane == 1,
             shown: pane < 3,
@@ -179,6 +195,28 @@ mod tests {
         assert!(
             !buf[(2, 5)].modifier.contains(Modifier::REVERSED),
             "working"
+        );
+    }
+
+    #[test]
+    fn a_look_sets_the_glyph_colour_and_symbol() {
+        let mut groups = groups();
+        groups[0].rows[1].state = AgentState::Blocked;
+        groups[0].rows[1].look = Some(GlyphLook {
+            symbol: '◆',
+            color: Some(monarch_core::Rgb::new(200, 160, 0)),
+            bold: true,
+        });
+        groups[1].rows[0].state = AgentState::Working;
+        groups[1].rows[0].look = Some(GlyphLook::plain('•'));
+        let (text, buf) = draw(&groups, 24, 6);
+        assert!(text.contains("  • 2 htop"), "{text}");
+        let cell = &buf[(2, 2)];
+        assert_eq!(cell.fg, Color::Rgb(200, 160, 0));
+        assert!(cell.modifier.contains(Modifier::BOLD));
+        assert!(
+            !cell.modifier.contains(Modifier::REVERSED),
+            "colour replaces reverse video"
         );
     }
 

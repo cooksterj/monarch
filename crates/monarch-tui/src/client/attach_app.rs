@@ -16,6 +16,7 @@ use super::{
 };
 use crate::{HostModeMirror, HostProbe, Picker, TuiError, WhichKeyEntry};
 
+mod animate;
 mod copy;
 mod draw;
 mod menu;
@@ -66,6 +67,8 @@ pub struct AttachApp {
     /// The sidebar is wanted (it still hides on narrow hosts).
     sidebar: bool,
     passthrough: bool,
+    /// Agent glyph animation state, its colours and the next frame.
+    glyphs: animate::Glyphs,
     notice: Option<(String, Instant)>,
     out: Vec<u8>,
     size: ScreenSize,
@@ -129,6 +132,7 @@ impl AttachApp {
             drag: None,
             sidebar: opts.sidebar,
             passthrough: false,
+            glyphs: animate::Glyphs::new(host.background),
             notice: warnings_notice(opts),
             out,
             size,
@@ -152,6 +156,7 @@ impl AttachApp {
             }
             self.check_resize()?;
             self.drag_tick();
+            self.animate();
             self.watch_config();
             self.expire_notice();
             self.show_which_key();
