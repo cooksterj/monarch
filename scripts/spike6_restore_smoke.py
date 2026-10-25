@@ -98,9 +98,16 @@ def kill_server(session):
     pid = server_pid(session)
     os.kill(pid, signal.SIGKILL)
     deadline = time.time() + 5
-    while subprocess.run(["kill", "-0", str(pid)], capture_output=True).returncode == 0:
+    while alive(pid):
         assert time.time() < deadline, "server survived kill -9"
         time.sleep(0.05)
+
+
+def alive(pid):
+    """Whether `pid` still runs. A killed process its parent has not reaped
+    yet is a zombie: `kill -0` still succeeds on it, so ask `ps` too."""
+    stat = subprocess.run(["ps", "-o", "stat=", "-p", str(pid)], capture_output=True, text=True)
+    return stat.returncode == 0 and not stat.stdout.strip().startswith("Z")
 
 
 def shell_comes_back_in_its_directory(binary, env, run):
