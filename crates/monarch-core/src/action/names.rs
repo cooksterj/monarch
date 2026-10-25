@@ -25,7 +25,7 @@ const PLAIN: [(&str, Action); 13] = [
 
 /// Client actions without a parameter, by name (kept apart so `PLAIN`
 /// stays the session's list).
-const LOCAL: [(&str, Action); 12] = [
+const LOCAL: [(&str, Action); 13] = [
     ("toggle-mouse", Action::ToggleMouse),
     ("command-palette", Action::CommandPalette),
     ("go-to-pane", Action::GoToPane),
@@ -38,6 +38,7 @@ const LOCAL: [(&str, Action); 12] = [
     ("new-worktree", Action::NewWorktree),
     ("projects", Action::Projects),
     ("sessions", Action::Sessions),
+    ("help", Action::Help),
 ];
 
 impl fmt::Display for Action {

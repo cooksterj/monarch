@@ -28,6 +28,7 @@ impl AttachApp {
             Action::CopyMode => self.open_copy(),
             Action::ToggleSidebar => self.toggle_sidebar(),
             Action::ReloadConfig => self.reload_config(),
+            Action::Help => self.open_help(),
             action => {
                 let _ = self.link.send(&ClientMsg::Action(action));
             }
@@ -41,7 +42,9 @@ impl AttachApp {
         if self.popups.menu.is_some() {
             return self.menu_input(bytes);
         }
-        if self.popups.review.is_some() {
+        if self.popups.help.is_some() {
+            self.help_input(bytes);
+        } else if self.popups.review.is_some() {
             self.review_input(bytes);
         } else if self.popups.form.is_some() {
             self.worktree_input(bytes);

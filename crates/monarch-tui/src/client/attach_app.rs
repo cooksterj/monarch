@@ -20,6 +20,7 @@ use crate::{HostModeMirror, TuiError, WhichKeyEntry};
 mod animate;
 mod copy;
 mod draw;
+mod help;
 mod inbox;
 mod menu;
 mod picker;

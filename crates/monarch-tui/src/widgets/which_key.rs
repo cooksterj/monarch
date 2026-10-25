@@ -1,5 +1,6 @@
 //! The popup listing what each key after the prefix does.
 
+use monarch_core::Action;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
@@ -11,7 +12,8 @@ use super::WhichKeyEntry;
 const GAP: u16 = 3;
 
 /// Entries in as many columns as fit, filled top to bottom, in a box at the
-/// bottom of the pane area.
+/// bottom of the pane area. The help key sits in the bottom border, so it
+/// shows however short the host is.
 #[derive(Debug, Clone, Copy)]
 pub struct WhichKey<'a> {
     /// What to list.
@@ -21,6 +23,17 @@ pub struct WhichKey<'a> {
 }
 
 impl WhichKey<'_> {
+    /// The entries listed in rows: all but the help key.
+    fn rows(&self) -> impl Iterator<Item = &WhichKeyEntry> {
+        self.entries.iter().filter(|e| e.action != Action::Help)
+    }
+
+    /// ` ? all keys ` for the bottom border, when help has a key.
+    fn help(&self) -> Option<String> {
+        let help = self.entries.iter().find(|e| e.action == Action::Help)?;
+        Some(format!(" {} all keys and help ", help.keys))
+    }
+
     /// Where the popup goes inside `area`: centred, flush with the bottom.
     #[must_use]
     pub fn placement(&self, area: Rect) -> Rect {
@@ -39,8 +52,8 @@ impl WhichKey<'_> {
 
     fn widths(&self) -> (u16, u16) {
         let width = |s: &str| u16::try_from(s.chars().count()).unwrap_or(u16::MAX);
-        let keys = self.entries.iter().map(|e| width(&e.keys)).max();
-        let label = self.entries.iter().map(|e| width(&e.label)).max();
+        let keys = self.rows().map(|e| width(&e.keys)).max();
+        let label = self.rows().map(|e| width(&e.label)).max();
         (keys.unwrap_or(0), label.unwrap_or(0))
     }
 
@@ -51,7 +64,7 @@ impl WhichKey<'_> {
 
     /// Columns and rows for `width` cells.
     fn grid(&self, width: u16) -> (u16, u16) {
-        let count = u16::try_from(self.entries.len()).unwrap_or(u16::MAX);
+        let count = u16::try_from(self.rows().count()).unwrap_or(u16::MAX);
         if count == 0 {
             return (1, 0);
         }
@@ -68,10 +81,13 @@ impl Widget for WhichKey<'_> {
             return;
         }
         Clear.render(popup, buf);
-        let block = Block::new()
+        let mut block = Block::new()
             .borders(Borders::ALL)
             .border_style(Style::new().add_modifier(Modifier::DIM))
             .title(format!(" {} ", self.title));
+        if let Some(help) = self.help() {
+            block = block.title_bottom(help);
+        }
         let inner = block.inner(popup);
         block.render(popup, buf);
         let (cols, rows) = self.grid(area.width.saturating_sub(2));
@@ -83,8 +99,7 @@ impl Widget for WhichKey<'_> {
             .count();
         let room = shown_cols * usize::from(rows);
         let mut cells: Vec<(&str, String)> = self
-            .entries
-            .iter()
+            .rows()
             .map(|e| (e.keys.as_str(), e.label.clone()))
             .collect();
         if cells.len() > room && room > 0 {
@@ -170,7 +185,7 @@ mod tests {
         │ {          swap prev      N          new worktree   v          review       │
         │ }          swap next      R          reload         tab        next blocked │
         │ =          equalize       S          sessions       d          detach       │
-        └─────────────────────────────────────────────────────────────────────────────┘
+        └ ? all keys and help ────────────────────────────────────────────────────────┘
         "#);
     }
 
@@ -184,7 +199,7 @@ mod tests {
         │ z          zoom      │
         │ hjkl ←↓↑→  focus     │
         │ …          22 more   │
-        └──────────────────────┘
+        └ ? all keys and help ─┘
         "#);
     }
 

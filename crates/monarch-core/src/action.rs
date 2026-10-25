@@ -4,6 +4,7 @@
 use serde::{Deserialize, Serialize};
 
 mod names;
+mod summary;
 
 use crate::{Direction, PaneId, SplitAxis};
 
@@ -79,6 +80,8 @@ pub enum Action {
     /// Open the session picker: switch to another running session, or
     /// start one by name.
     Sessions,
+    /// Show every key, mouse gesture and command, searchable.
+    Help,
     /// Focus this pane, showing its tab (what the go-to picker runs; not
     /// bindable).
     FocusPane(PaneId),
@@ -103,6 +106,7 @@ impl Action {
                 | Self::NewWorktree
                 | Self::Projects
                 | Self::Sessions
+                | Self::Help
         )
     }
 
@@ -133,7 +137,7 @@ mod tests {
         assert!(Action::Review.is_local());
         assert!(Action::NewWorktree.is_local());
         assert!(Action::Projects.is_local());
-        assert!(Action::Sessions.is_local());
+        assert!(Action::Sessions.is_local() && Action::Help.is_local());
         assert!(!Action::FocusPane(PaneId(1)).is_local());
         assert!(!Action::Split(SplitAxis::Rows).is_local());
         assert!(!Action::SelectTab(1).is_local());

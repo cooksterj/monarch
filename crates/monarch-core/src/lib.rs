@@ -5,6 +5,7 @@
 //! server, the TUI client and the CLI and tested without a terminal.
 
 mod action;
+mod action_group;
 mod agent_kind;
 mod agent_state;
 mod config;
@@ -17,6 +18,7 @@ mod session_name;
 mod theme;
 
 pub use action::{Action, RESIZE_STEP};
+pub use action_group::ActionGroup;
 pub use agent_kind::AgentKind;
 pub use agent_state::AgentState;
 pub use config::{

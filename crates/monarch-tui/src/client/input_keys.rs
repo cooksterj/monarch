@@ -43,6 +43,7 @@ impl From<&AttachOptions> for InputKeys {
                     | Action::NewWorktree
                     | Action::Projects
                     | Action::Sessions
+                    | Action::Help
             )
         };
         Self {
