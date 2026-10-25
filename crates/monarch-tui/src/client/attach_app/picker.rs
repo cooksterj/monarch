@@ -19,6 +19,7 @@ impl AttachApp {
             Action::ToggleMouse => self.toggle_mouse(),
             Action::CommandPalette => self.open_picker(self.palette()),
             Action::GoToPane => self.open_picker(self.go_to()),
+            Action::CopyMode => self.open_copy(),
             action => {
                 let _ = self.link.send(&ClientMsg::Action(action));
             }
@@ -26,9 +27,21 @@ impl AttachApp {
         None
     }
 
-    /// Feeds host input to the open pop-up; keys after the one that closes
-    /// it are dropped.
+    /// Feeds host input to the open pop-up or copy mode; keys after the
+    /// one that closes it are dropped.
     pub(super) fn on_overlay_input(&mut self, bytes: &[u8]) -> Option<AttachOutcome> {
+        if self.picker.is_none() {
+            for key in OverlayKey::decode(bytes) {
+                if self.copy.is_none() {
+                    break;
+                }
+                self.copy_key(key);
+            }
+            if self.copy.is_none() {
+                self.focus.set_overlay(false);
+            }
+            return None;
+        }
         for key in OverlayKey::decode(bytes) {
             let Some(picker) = self.picker.as_mut() else {
                 break;
@@ -43,7 +56,7 @@ impl AttachApp {
                 }
             }
         }
-        if self.picker.is_none() {
+        if self.picker.is_none() && self.copy.is_none() {
             self.focus.set_overlay(false);
         }
         None
@@ -57,7 +70,7 @@ impl AttachApp {
 
     fn close_picker(&mut self) {
         self.picker = None;
-        self.focus.set_overlay(false);
+        self.focus.set_overlay(self.copy.is_some());
         self.dirty = true;
     }
 

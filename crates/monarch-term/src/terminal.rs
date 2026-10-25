@@ -2,7 +2,7 @@
 
 use std::time::Instant;
 
-use monarch_proto::{Screen, ScreenSize, TerminalModes};
+use monarch_proto::{GridPoint, Screen, ScreenSize, SelectShape, TerminalModes};
 
 use crate::{
     AlacrittyEngine, Damage, Engine, EngineEvent, FrameCapture, HostProfile, OscTap, ScrollRequest,
@@ -118,6 +118,22 @@ impl Terminal {
     #[must_use]
     pub fn text(&self) -> String {
         self.engine.text()
+    }
+
+    /// See [`Engine::text_range`].
+    pub fn text_range(&mut self, start: GridPoint, end: GridPoint, shape: SelectShape) -> String {
+        self.engine.text_range(start, end, shape)
+    }
+
+    /// See [`Engine::search`].
+    #[must_use]
+    pub fn search(
+        &self,
+        query: &str,
+        from: GridPoint,
+        backward: bool,
+    ) -> Option<(GridPoint, GridPoint)> {
+        self.engine.search(query, from, backward)
     }
 }
 

@@ -3,8 +3,8 @@
 use monarch_core::{Action, PaneId};
 use serde::{Deserialize, Serialize};
 
-use super::HostInfo;
-use crate::ScreenSize;
+use super::{HostInfo, SelectShape};
+use crate::{GridPoint, ScreenSize};
 
 /// One client → server attach-stream message.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -30,6 +30,14 @@ pub enum ClientMsg {
         /// Lines to scroll.
         lines: i32,
     },
+    /// Scroll a pane so absolute line `top` (0 = oldest scrollback line)
+    /// is the first one shown, as near as history allows.
+    ScrollTo {
+        /// Target pane.
+        pane: PaneId,
+        /// The line to show at the top.
+        top: i64,
+    },
     /// The client lost track of a pane (sequence gap); send a snapshot.
     Resync(PaneId),
     /// Round-trip probe; the server answers with `Pong` and the same token.
@@ -38,6 +46,31 @@ pub enum ClientMsg {
     Detach,
     /// Run a session command (split, focus, tabs…).
     Action(Action),
+    /// Find `query` in a pane's screen and scrollback, starting just past
+    /// `from` and wrapping around; answered with `ServerMsg::SearchResult`.
+    Search {
+        /// Pane to search.
+        pane: PaneId,
+        /// Plain text (not a pattern); case-insensitive unless it has
+        /// capitals.
+        query: String,
+        /// Where the search starts (the copy-mode cursor).
+        from: GridPoint,
+        /// Search towards older output.
+        backward: bool,
+    },
+    /// Copy a range of a pane's grid, scrollback included, to this
+    /// client's clipboard; answered with `ServerMsg::Clipboard`.
+    Copy {
+        /// Pane to copy from.
+        pane: PaneId,
+        /// One end of the range.
+        start: GridPoint,
+        /// The other end, inclusive.
+        end: GridPoint,
+        /// How the range becomes text.
+        shape: SelectShape,
+    },
 }
 
 #[cfg(test)]

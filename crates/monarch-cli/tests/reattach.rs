@@ -114,6 +114,8 @@ impl Client {
                 message: None,
             },
             selection: None,
+            matches: &[],
+            copy_cursor: None,
             which_key: None,
             picker: None,
         };

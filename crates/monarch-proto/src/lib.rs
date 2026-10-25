@@ -13,14 +13,14 @@ mod screen;
 
 pub use attach::{
     ClientMsg, Delta, FrameCodec, HostInfo, LayoutMsg, PaneLayout, PaneState, PaneSummary,
-    RowCodec, RowDelta, Run, ServerMsg, Snapshot, StyleCache, StyleDef, StyleId, StyleTable,
-    TabSummary,
+    RowCodec, RowDelta, Run, SelectShape, ServerMsg, Snapshot, StyleCache, StyleDef, StyleId,
+    StyleTable, TabSummary,
 };
 pub use error::ProtoError;
 pub use hello::Hello;
 pub use hello_ack::HelloAck;
 
 pub use screen::{
-    Cell, CellAttrs, CellStyle, Cursor, CursorShape, ModeFlags, Rgb, Screen, ScreenSize, TermColor,
-    TerminalModes,
+    Cell, CellAttrs, CellStyle, Cursor, CursorShape, GridPoint, ModeFlags, Rgb, Screen, ScreenSize,
+    TermColor, TerminalModes,
 };

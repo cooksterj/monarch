@@ -1,6 +1,7 @@
 //! What applying server messages asks the client to do.
 
 use monarch_core::PaneId;
+use monarch_proto::GridPoint;
 
 /// Side effects collected by [`super::AttachState::apply`].
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -15,6 +16,8 @@ pub struct Applied {
     pub clipboard: Vec<String>,
     /// Panes whose programs exited.
     pub exited: Vec<PaneId>,
+    /// Answers to searches: the pane and where the match is, if anywhere.
+    pub found: Vec<(PaneId, Option<(GridPoint, GridPoint)>)>,
 }
 
 impl Applied {

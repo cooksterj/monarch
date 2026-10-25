@@ -12,11 +12,12 @@ use monarch_proto::{ClientMsg, HostInfo, ScreenSize};
 use ratatui::DefaultTerminal;
 
 use super::{
-    Applied, AttachOptions, AttachOutcome, AttachState, AttachView, ClientEvent, InputParams,
-    InputThread, PROBE_TIMEOUT, Selection, ServerLink, SharedFocus,
+    Applied, AttachOptions, AttachOutcome, AttachState, AttachView, ClientEvent, CopyMode,
+    InputParams, InputThread, PROBE_TIMEOUT, Selection, ServerLink, SharedFocus,
 };
 use crate::{HostModeMirror, HostProbe, Picker, TuiError, WhichKeyEntry};
 
+mod copy;
 mod draw;
 mod picker;
 mod select;
@@ -46,6 +47,8 @@ pub struct AttachApp {
     which_key: Vec<WhichKeyEntry>,
     /// The open palette or go-to picker, which takes the keys.
     picker: Option<Picker>,
+    /// Copy mode on the focused pane, which takes the keys.
+    copy: Option<CopyMode>,
     selection: Option<Selection>,
     passthrough: bool,
     notice: Option<(String, Instant)>,
@@ -107,6 +110,7 @@ impl AttachApp {
             popup: false,
             which_key: WhichKeyEntry::from_keymap(&opts.keymap),
             picker: None,
+            copy: None,
             selection: None,
             passthrough: false,
             notice,
@@ -174,6 +178,7 @@ impl AttachApp {
             self.copy(text);
         }
         self.dirty |= applied.redraw;
+        self.after_copy_frames(applied.found);
         self.focus.set(&self.state.focus_view());
         if applied.redraw {
             self.focus.set_panes(self.state.pane_rects());
@@ -220,7 +225,12 @@ fn spawn_input(
         overlay_keys: opts
             .keymap
             .bindings()
-            .filter(|(_, a)| matches!(a, Action::CommandPalette | Action::GoToPane))
+            .filter(|(_, a)| {
+                matches!(
+                    a,
+                    Action::CommandPalette | Action::GoToPane | Action::CopyMode
+                )
+            })
             .map(|(k, _)| k)
             .collect(),
         focus,

@@ -1,12 +1,12 @@
 //! A text selection in one pane, anchored to grid lines (G10).
 //!
 //! Points are absolute lines, so the highlight follows its text while new
-//! output scrolls it. Text can only be read from the client's copy of the
-//! viewport, so lines that have scrolled out of view are not copied.
+//! output scrolls it. The server reads the text for its bounds, so lines
+//! that have scrolled out of view are copied too.
 
-use monarch_proto::{Cell, Screen};
+use monarch_proto::{Cell, GridPoint, Screen, SelectShape};
 
-use super::{GridPoint, SelectUnit};
+use super::SelectUnit;
 use crate::SelectionSpan;
 
 /// Characters that end a word for double-click selection, besides spaces.
@@ -61,43 +61,7 @@ impl Selection {
     #[must_use]
     pub fn span(&self, screen: &Screen) -> SelectionSpan {
         let (start, end) = self.bounds();
-        SelectionSpan {
-            start_row: start.viewport_row(screen),
-            start_col: start.col,
-            end_row: end.viewport_row(screen),
-            end_col: end.col,
-        }
-    }
-
-    /// The selected text that is in view: trailing blanks trimmed per line,
-    /// lines joined by `\n`.
-    #[must_use]
-    pub fn text(&self, screen: &Screen) -> String {
-        let span = self.span(screen);
-        let mut lines = Vec::new();
-        for row in span.start_row.max(0)..=span.end_row {
-            let Some(cells) = usize::try_from(row).ok().and_then(|r| screen.rows.get(r)) else {
-                break;
-            };
-            let first = if row == span.start_row {
-                usize::from(span.start_col)
-            } else {
-                0
-            };
-            let last = if row == span.end_row {
-                usize::from(span.end_col)
-            } else {
-                cells.len()
-            };
-            let text: String = cells
-                .iter()
-                .enumerate()
-                .filter(|(i, c)| (first..=last).contains(i) && c.width > 0)
-                .map(|(_, c)| c.text())
-                .collect();
-            lines.push(text.trim_end().to_owned());
-        }
-        lines.join("\n")
+        SelectionSpan::between(screen, start, end, SelectShape::Chars)
     }
 }
 
@@ -154,16 +118,22 @@ mod tests {
         s
     }
 
+    fn cols(sel: &Selection) -> (u16, u16) {
+        let (a, b) = sel.bounds();
+        (a.col, b.col)
+    }
+
     #[test]
     fn drag_selects_text_across_lines_in_either_direction() {
         let s = screen(&["hello world", "second line"]);
         let mut sel = Selection::start(&s, 0, 6, SelectUnit::Cell);
         assert!(sel.is_empty(), "a click is not a selection");
         sel.extend(&s, 1, 5);
-        assert_eq!(sel.text(&s), "world\nsecond");
+        let expected = (GridPoint { line: 0, col: 6 }, GridPoint { line: 1, col: 5 });
+        assert_eq!(sel.bounds(), expected);
         let mut back = Selection::start(&s, 1, 5, SelectUnit::Cell);
         back.extend(&s, 0, 6);
-        assert_eq!(back.text(&s), "world\nsecond");
+        assert_eq!(back.bounds(), expected);
     }
 
     #[test]
@@ -171,18 +141,18 @@ mod tests {
         let s = screen(&["cat (src/main.rs) x"]);
         let word = Selection::start(&s, 0, 8, SelectUnit::Word);
         assert!(!word.is_empty());
-        assert_eq!(word.text(&s), "src/main.rs");
+        assert_eq!(cols(&word), (5, 15), "src/main.rs");
         let paren = Selection::start(&s, 0, 4, SelectUnit::Word);
-        assert_eq!(paren.text(&s), "(");
+        assert_eq!(cols(&paren), (4, 4), "(");
     }
 
     #[test]
-    fn triple_click_selects_lines_without_trailing_blanks() {
+    fn triple_click_selects_whole_lines() {
         let s = screen(&["first", "second"]);
         let mut line = Selection::start(&s, 0, 2, SelectUnit::Line);
-        assert_eq!(line.text(&s), "first");
+        assert_eq!(cols(&line), (0, 19), "the whole row");
         line.extend(&s, 1, 0);
-        assert_eq!(line.text(&s), "first\nsecond");
+        assert_eq!(line.bounds().1, GridPoint { line: 1, col: 19 });
     }
 
     #[test]
@@ -195,6 +165,6 @@ mod tests {
         assert_eq!(sel.span(&s).start_row, 0);
         s.history += 5;
         assert!(sel.span(&s).end_row < 0, "scrolled out of view");
-        assert_eq!(sel.text(&s), "", "text out of view is not copied");
+        assert_eq!(sel.bounds().0.line, 1, "but still where its text is");
     }
 }

@@ -46,6 +46,8 @@ impl AttachApp {
     /// Draws panes, the status line and the key popup.
     fn paint(&mut self) -> Result<(), TuiError> {
         let (tabs, active_tab) = self.state.tab_labels();
+        let copy = self.copy_view();
+        let notice = self.notice.as_ref().map(|(text, _)| text.as_str());
         let view = AttachView {
             state: &self.state,
             status: StatusLine {
@@ -55,9 +57,14 @@ impl AttachApp {
                 prefix: &self.opts.prefix_label,
                 detach: self.opts.keymap.key_for(Action::Detach),
                 pending: self.prefix_pending,
-                message: self.notice.as_ref().map(|(text, _)| text.as_str()),
+                message: notice.or(copy.as_ref().map(|c| c.status.as_str())),
             },
-            selection: self.selection_span(),
+            selection: match &copy {
+                Some(c) => c.selection,
+                None => self.selection_span(),
+            },
+            matches: copy.as_ref().map_or(&[][..], |c| &c.matches),
+            copy_cursor: copy.as_ref().and_then(|c| c.cursor),
             picker: self.picker.as_ref().map(|picker| PickerView { picker }),
             which_key: (self.popup && self.picker.is_none()).then_some(WhichKey {
                 entries: &self.which_key,

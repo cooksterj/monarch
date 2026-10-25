@@ -13,4 +13,8 @@ pub enum ScrollRequest {
     Top,
     /// Live output.
     Bottom,
+    /// Show this absolute line (0 = oldest scrollback line) at the top,
+    /// as near as history allows. Repeating it changes nothing, so a
+    /// client can send it again before the last one has taken effect.
+    TopLine(i64),
 }

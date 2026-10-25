@@ -9,10 +9,12 @@ use ratatui::widgets::Widget;
 use super::{SelectionSpan, StyleConverter};
 
 /// Renders a screen at the top-left of the area, clipped to it, with an
-/// optional selection drawn in reverse video.
+/// optional selection drawn in reverse video and search matches bold and
+/// underlined.
 pub struct PaneView<'a> {
     screen: &'a Screen,
     selection: Option<SelectionSpan>,
+    matches: &'a [SelectionSpan],
 }
 
 impl<'a> PaneView<'a> {
@@ -22,7 +24,15 @@ impl<'a> PaneView<'a> {
         Self {
             screen,
             selection: None,
+            matches: &[],
         }
+    }
+
+    /// Marks search matches (viewport coordinates).
+    #[must_use]
+    pub fn with_matches(mut self, matches: &'a [SelectionSpan]) -> Self {
+        self.matches = matches;
+        self
     }
 
     /// Highlights `selection` (viewport coordinates).
@@ -70,6 +80,12 @@ impl Widget for PaneView<'_> {
                     .is_some_and(|s| s.contains(y_index as i64, x as u16))
                 {
                     target.modifier.toggle(Modifier::REVERSED);
+                }
+                let (row, col) = (y_index as i64, x as u16);
+                if self.matches.iter().any(|m| m.contains(row, col)) {
+                    target
+                        .modifier
+                        .insert(Modifier::BOLD | Modifier::UNDERLINED);
                 }
             }
         }
@@ -138,6 +154,7 @@ mod tests {
             start_col: 1,
             end_row: 1,
             end_col: 0,
+            block: false,
         };
         let mut buf = Buffer::empty(Rect::new(0, 0, 4, 2));
         PaneView::new(&screen)
@@ -146,5 +163,24 @@ mod tests {
         let reversed = |x, y| buf[(x, y)].modifier.contains(Modifier::REVERSED);
         assert!(!reversed(0, 0) && reversed(1, 0) && reversed(3, 0));
         assert!(reversed(0, 1) && !reversed(1, 1));
+    }
+
+    #[test]
+    fn matches_are_bold_and_underlined() {
+        let s = screen();
+        let m = [SelectionSpan {
+            start_row: 0,
+            start_col: 1,
+            end_row: 0,
+            end_col: 1,
+            block: false,
+        }];
+        let mut buf = Buffer::empty(Rect::new(0, 0, 4, 2));
+        PaneView::new(&s)
+            .with_matches(&m)
+            .render(buf.area, &mut buf);
+        let marked = Modifier::BOLD | Modifier::UNDERLINED;
+        assert!(buf[(1, 0)].modifier.contains(marked));
+        assert!(!buf[(0, 0)].modifier.intersects(marked));
     }
 }

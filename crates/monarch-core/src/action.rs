@@ -54,6 +54,9 @@ pub enum Action {
     CommandPalette,
     /// Open the go-to picker: every pane in every tab, searched by title.
     GoToPane,
+    /// Browse the focused pane's history with the keyboard: move, search,
+    /// select and copy.
+    CopyMode,
     /// Focus this pane, showing its tab (what the go-to picker runs; not
     /// bindable).
     FocusPane(PaneId),
@@ -65,7 +68,11 @@ impl Action {
     pub fn is_local(self) -> bool {
         matches!(
             self,
-            Self::Detach | Self::ToggleMouse | Self::CommandPalette | Self::GoToPane
+            Self::Detach
+                | Self::ToggleMouse
+                | Self::CommandPalette
+                | Self::GoToPane
+                | Self::CopyMode
         )
     }
 
@@ -89,6 +96,7 @@ mod tests {
     fn only_client_actions_are_local() {
         assert!(Action::Detach.is_local() && Action::ToggleMouse.is_local());
         assert!(Action::CommandPalette.is_local() && Action::GoToPane.is_local());
+        assert!(Action::CopyMode.is_local());
         assert!(!Action::FocusPane(PaneId(1)).is_local());
         assert!(!Action::Split(SplitAxis::Rows).is_local());
         assert!(!Action::SelectTab(1).is_local());

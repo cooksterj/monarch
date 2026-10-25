@@ -10,7 +10,9 @@ use alacritty_terminal::index::{Column, Line};
 use alacritty_terminal::term::test::TermSize;
 use alacritty_terminal::term::{Config, Osc52, Term, TermDamage};
 use alacritty_terminal::vte::ansi::{CursorShape as AlacShape, Processor};
-use monarch_proto::{Cell, Cursor, CursorShape, PaneState, Screen, ScreenSize, TerminalModes};
+use monarch_proto::{
+    Cell, Cursor, CursorShape, GridPoint, PaneState, Screen, ScreenSize, SelectShape, TerminalModes,
+};
 
 use super::cell_convert::CellConverter;
 use super::event_translator::{EventTranslator, TranslateContext};
@@ -172,7 +174,15 @@ impl Engine for AlacrittyEngine {
     }
 
     fn scroll(&mut self, request: ScrollRequest) {
+        let grid = self.term.grid();
+        let (history, offset) = (grid.history_size(), grid.display_offset());
         self.term.scroll_display(match request {
+            ScrollRequest::TopLine(line) => {
+                let history = i64::try_from(history).unwrap_or(i64::MAX);
+                let want = (history - line).clamp(0, history);
+                let now = i64::try_from(offset).unwrap_or(0);
+                Scroll::Delta(i32::try_from(want - now).unwrap_or(0))
+            }
             ScrollRequest::Lines(n) => Scroll::Delta(n),
             ScrollRequest::PageUp => Scroll::PageUp,
             ScrollRequest::PageDown => Scroll::PageDown,
@@ -193,7 +203,21 @@ impl Engine for AlacrittyEngine {
     fn set_host_profile(&mut self, profile: HostProfile) {
         self.host = profile;
     }
+
+    fn text_range(&mut self, start: GridPoint, end: GridPoint, shape: SelectShape) -> String {
+        history::text_range(&mut self.term, start, end, shape)
+    }
+
+    fn search(
+        &self,
+        query: &str,
+        from: GridPoint,
+        backward: bool,
+    ) -> Option<(GridPoint, GridPoint)> {
+        history::search(&self.term, query, from, backward)
+    }
 }
 
+mod history;
 #[cfg(test)]
 mod tests;

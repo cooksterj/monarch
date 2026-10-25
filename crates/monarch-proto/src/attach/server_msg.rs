@@ -4,6 +4,7 @@ use monarch_core::PaneId;
 use serde::{Deserialize, Serialize};
 
 use super::{Delta, LayoutMsg, Snapshot, StyleDef};
+use crate::GridPoint;
 
 /// One server → client attach-stream message.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -46,6 +47,14 @@ pub enum ServerMsg {
     },
     /// Answer to [`super::ClientMsg::Ping`], echoing its token.
     Pong(u64),
+    /// Answer to [`super::ClientMsg::Search`]: the first and last cell of
+    /// the match, or `None` when the text is nowhere in the pane.
+    SearchResult {
+        /// The pane searched.
+        pane: PaneId,
+        /// Where the match is.
+        found: Option<(GridPoint, GridPoint)>,
+    },
 }
 
 #[cfg(test)]

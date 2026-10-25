@@ -2,7 +2,7 @@
 
 use std::time::Instant;
 
-use monarch_proto::{Cell, PaneState, Screen, ScreenSize, TerminalModes};
+use monarch_proto::{Cell, GridPoint, PaneState, Screen, ScreenSize, SelectShape, TerminalModes};
 
 use crate::{Damage, EngineEvent, HostProfile, ScrollRequest};
 
@@ -75,5 +75,23 @@ pub trait Engine: Send {
     /// Engines may override this with something cheaper than `screen()`.
     fn text(&self) -> String {
         self.screen().text()
+    }
+
+    /// The text between two grid points, scrollback included, in `shape`;
+    /// lines the terminal wrapped come back joined. Engines without
+    /// scrollback access return nothing.
+    fn text_range(&mut self, _start: GridPoint, _end: GridPoint, _shape: SelectShape) -> String {
+        String::new()
+    }
+
+    /// The next match for plain-text `query` after `from` (before it, if
+    /// `backward`), wrapping around; its first and last cell.
+    fn search(
+        &self,
+        _query: &str,
+        _from: GridPoint,
+        _backward: bool,
+    ) -> Option<(GridPoint, GridPoint)> {
+        None
     }
 }
