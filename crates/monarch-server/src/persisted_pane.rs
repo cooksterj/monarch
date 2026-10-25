@@ -43,7 +43,7 @@ impl PersistedPane {
     #[must_use]
     pub fn restore(&self) -> PaneSpec {
         let argv = match &self.agent {
-            Some(agent) => agent.resume_argv(),
+            Some(agent) => agent.restore_argv(),
             None if self.is_shell() => self.argv.clone(),
             None => Vec::new(),
         };
