@@ -1,9 +1,10 @@
 //! Keeping every pane sized to its place, and clients told about it.
 
-use monarch_core::PaneId;
+use monarch_core::{ClientId, PaneId};
 use monarch_proto::ScreenSize;
 
 use super::SessionState;
+use crate::ClientHandle;
 
 impl SessionState {
     /// Focuses `id`, showing its tab. Unknown panes are ignored.
@@ -18,6 +19,24 @@ impl SessionState {
             self.arrange(&before);
         }
         true
+    }
+
+    /// A client reported its window size: recorded, and applied (the
+    /// latest client wins, as tmux's `window-size latest`).
+    pub fn resize_client(&mut self, id: ClientId, size: ScreenSize) {
+        if let Some(client) = self.clients.get_mut(&id) {
+            client.set_window(size);
+        }
+        self.resize(size);
+    }
+
+    /// The size most recently reported by a client still attached.
+    pub(super) fn latest_window(&self) -> Option<ScreenSize> {
+        self.clients
+            .values()
+            .filter_map(ClientHandle::window)
+            .max_by_key(|(at, _)| *at)
+            .map(|(_, size)| size)
     }
 
     /// Resizes the window (latest client wins); every tab is laid out
@@ -67,5 +86,38 @@ impl SessionState {
             })
             .map(|(id, r)| (id, ScreenSize::new(r.cols, r.rows)))
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use tokio::sync::mpsc;
+
+    use super::*;
+    use crate::test_support::FakePane;
+
+    #[test]
+    fn when_a_client_leaves_the_window_fits_the_latest_one_left() {
+        let mut s = SessionState::default();
+        let pane = s.allocate_pane_id();
+        s.insert_pane(pane, FakePane::boxed(ScreenSize::new(80, 24)));
+        let (small_tx, _small_rx) = mpsc::channel(8);
+        let (big_tx, _big_rx) = mpsc::channel(8);
+        let small = s.add_client(small_tx);
+        let big = s.add_client(big_tx);
+        s.resize_client(small, ScreenSize::new(80, 23));
+        std::thread::sleep(Duration::from_millis(2));
+        s.resize_client(big, ScreenSize::new(150, 40));
+        assert_eq!(s.size(), ScreenSize::new(150, 40), "the latest client wins");
+        s.remove_client(big);
+        assert_eq!(
+            s.size(),
+            ScreenSize::new(80, 23),
+            "back to the client still attached"
+        );
+        s.remove_client(small);
+        assert_eq!(s.size(), ScreenSize::new(80, 23), "no client: unchanged");
     }
 }

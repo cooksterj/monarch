@@ -200,9 +200,14 @@ impl SessionState {
         id
     }
 
-    /// Forgets a client.
+    /// Forgets a client; the window takes the size of the client that
+    /// reported one most recently, so a smaller terminal left attached is
+    /// not drawn clipped.
     pub fn remove_client(&mut self, id: ClientId) {
         self.clients.remove(&id);
+        if let Some(size) = self.latest_window() {
+            self.resize(size);
+        }
     }
 
     /// A client, if still attached.

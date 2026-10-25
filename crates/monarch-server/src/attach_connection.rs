@@ -127,7 +127,7 @@ fn apply(ctx: &ServerContext, id: ClientId, msg: ClientMsg) {
                 io.send(bytes);
             }
         }
-        ClientMsg::Resize(size) => state.resize(size),
+        ClientMsg::Resize(size) => state.resize_client(id, size),
         ClientMsg::HostInfo(info) => state.set_host(info),
         ClientMsg::Focus(pane) => {
             state.set_focus(pane);

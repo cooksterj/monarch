@@ -1,9 +1,10 @@
 //! The session's record of one attached client.
 
 use std::collections::BTreeSet;
+use std::time::Instant;
 
 use monarch_core::{ClientId, PaneId};
-use monarch_proto::ServerMsg;
+use monarch_proto::{ScreenSize, ServerMsg};
 use tokio::sync::mpsc::Sender;
 use tokio::sync::mpsc::error::TrySendError;
 
@@ -27,6 +28,8 @@ pub struct ClientHandle {
     pending: Vec<ServerMsg>,
     overflowed: bool,
     closed: bool,
+    /// The window size it last reported, and when.
+    window: Option<(Instant, ScreenSize)>,
 }
 
 impl ClientHandle {
@@ -42,7 +45,19 @@ impl ClientHandle {
             pending: Vec::new(),
             overflowed: false,
             closed: false,
+            window: None,
         }
+    }
+
+    /// Records the window size it reported.
+    pub fn set_window(&mut self, size: ScreenSize) {
+        self.window = Some((Instant::now(), size));
+    }
+
+    /// The window size it last reported, and when.
+    #[must_use]
+    pub fn window(&self) -> Option<(Instant, ScreenSize)> {
+        self.window
     }
 
     /// Its id.
