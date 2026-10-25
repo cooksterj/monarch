@@ -180,3 +180,20 @@ fn set_mouse_switches_capture_on_the_next_sync() {
         "{off:?}"
     );
 }
+
+#[test]
+fn captures_mouse_follows_the_policy_and_the_last_sync() {
+    let mut mirror = HostModeMirror::new(&HostInfo::default()).with_mouse(MouseMode::Auto);
+    assert!(mirror.captures_mouse(), "before the first sync");
+    let plain = modes(ModeFlags::empty(), 0);
+    sync(&mut mirror, &plain, &Cursor::default());
+    assert!(mirror.captures_mouse());
+    mirror.set_mouse(MouseMode::Off);
+    sync(&mut mirror, &plain, &Cursor::default());
+    assert!(!mirror.captures_mouse(), "passthrough");
+    mirror.set_mouse(MouseMode::Pane);
+    sync(&mut mirror, &plain, &Cursor::default());
+    assert!(!mirror.captures_mouse(), "pane mode, pane not tracking");
+    let off = HostModeMirror::new(&HostInfo::default()).with_mouse(MouseMode::Off);
+    assert!(!off.captures_mouse());
+}

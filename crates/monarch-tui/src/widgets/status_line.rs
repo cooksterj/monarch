@@ -6,6 +6,8 @@ use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::widgets::Widget;
 
+use super::MouseOwner;
+
 /// Session, tab bar and the key hint. Drawn in reverse video so it follows
 /// the host's own colours until theme tokens land (M6); the shown tab is
 /// the one cell run that is not reversed.
@@ -26,20 +28,27 @@ pub struct StatusLine<'a> {
     /// A short notice (e.g. "copied 12 characters") shown instead of the
     /// hint for a moment.
     pub message: Option<&'a str>,
-    /// `prefix m` handed the mouse to the host terminal; shown until it
-    /// is taken back so clicks that do nothing in Monarch make sense.
-    pub mouse_terminal: bool,
+    /// Who has the mouse, always shown (room permitting) so clicks that
+    /// do nothing in Monarch make sense.
+    pub mouse: MouseOwner,
 }
 
 impl StatusLine<'_> {
-    /// The mouse badge, then the notice or the key hint.
-    fn right(&self) -> String {
-        let badge = if self.mouse_terminal {
-            " MOUSE: TERMINAL │"
+    /// The mouse badge, then the notice or the key hint. The badge is
+    /// dropped when it would push the session name off a narrow row.
+    fn right(&self, width: u16) -> String {
+        let hint = self.hint();
+        let badge = self.mouse.badge();
+        let head = format!(" monarch │ {} │", self.session);
+        let wanted = [head.as_str(), badge, hint.as_str()]
+            .iter()
+            .map(|s| s.chars().count())
+            .sum::<usize>();
+        if wanted <= usize::from(width) {
+            format!("{badge}{hint}")
         } else {
-            ""
-        };
-        format!("{badge}{}", self.hint())
+            hint
+        }
     }
 
     fn hint(&self) -> String {
@@ -93,7 +102,7 @@ impl Widget for StatusLine<'_> {
         let base = Style::new().add_modifier(Modifier::REVERSED);
         let row = Rect { height: 1, ..area };
         buf.set_style(row, base);
-        let right = self.right();
+        let right = self.right(row.width);
         let right_width = u16::try_from(right.chars().count())
             .unwrap_or(u16::MAX)
             .min(row.width);
@@ -134,7 +143,7 @@ mod tests {
             detach: Some(Key::Char('d')),
             pending,
             message: None,
-            mouse_terminal: false,
+            mouse: MouseOwner::Monarch,
         }
     }
 
@@ -145,13 +154,13 @@ mod tests {
     #[test]
     fn shows_session_tabs_and_hint() {
         let tabs = tabs();
-        insta::assert_snapshot!(draw(line(&tabs, false), 60), @" monarch │ main │  1 vim   2 zsh            ctrl+b d detach ");
+        insta::assert_snapshot!(draw(line(&tabs, false), 80), @" monarch │ main │  1 vim   2 zsh               MOUSE: MONARCH │ ctrl+b d detach ");
     }
 
     #[test]
     fn the_shown_tab_is_not_reversed() {
         let tabs = tabs();
-        let mut term = Terminal::new(TestBackend::new(60, 1)).expect("terminal");
+        let mut term = Terminal::new(TestBackend::new(80, 1)).expect("terminal");
         let second = StatusLine {
             active_tab: 1,
             ..line(&tabs, false)
@@ -195,7 +204,7 @@ mod tests {
             message: Some("copied 5 characters"),
             ..line(&tabs, false)
         };
-        insta::assert_snapshot!(draw(with, 60), @" monarch │ main │  1 vim   2 zsh        copied 5 characters ");
+        insta::assert_snapshot!(draw(with, 80), @" monarch │ main │  1 vim   2 zsh           MOUSE: MONARCH │ copied 5 characters ");
         let pending = StatusLine {
             pending: true,
             ..with
@@ -207,7 +216,7 @@ mod tests {
     fn the_mouse_badge_stays_beside_notices_and_the_prefix() {
         let tabs = tabs();
         let mouse = StatusLine {
-            mouse_terminal: true,
+            mouse: MouseOwner::Terminal,
             ..line(&tabs, false)
         };
         insta::assert_snapshot!(draw(mouse, 60), @" monarch │ main │  1 vim  MOUSE: TERMINAL │ ctrl+b d detach ");

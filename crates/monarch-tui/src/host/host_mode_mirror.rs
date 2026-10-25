@@ -62,6 +62,16 @@ impl HostModeMirror {
         self.mouse = Some(policy);
     }
 
+    /// Whether the host sends mouse reports to Monarch: as last synced,
+    /// or before the first sync, whether the policy will capture.
+    #[must_use]
+    pub fn captures_mouse(&self) -> bool {
+        match &self.applied {
+            Some(applied) => applied.flags.intersects(tracking()),
+            None => self.mouse != Some(MouseMode::Off),
+        }
+    }
+
     /// Modes Monarch itself needs on the host: bracketed paste and focus
     /// reporting stay on (input is filtered per pane), the title is saved,
     /// and one kitty keyboard level is pushed.
@@ -152,7 +162,7 @@ fn host_flags(modes: &TerminalModes, mouse: Option<MouseMode>) -> ModeFlags {
 /// client then handles the wheel itself, so the host's alternate scroll
 /// is turned off.
 fn captured(flags: ModeFlags, policy: MouseMode) -> ModeFlags {
-    let tracking = ModeFlags::MOUSE_CLICK | ModeFlags::MOUSE_DRAG | ModeFlags::MOUSE_MOTION;
+    let tracking = tracking();
     let wanted = flags & tracking;
     let capture = match policy {
         MouseMode::Auto => ModeFlags::MOUSE_DRAG | (wanted & ModeFlags::MOUSE_MOTION),
@@ -165,6 +175,10 @@ fn captured(flags: ModeFlags, policy: MouseMode) -> ModeFlags {
         flags.remove(ModeFlags::ALTERNATE_SCROLL);
     }
     flags
+}
+
+fn tracking() -> ModeFlags {
+    ModeFlags::MOUSE_CLICK | ModeFlags::MOUSE_DRAG | ModeFlags::MOUSE_MOTION
 }
 
 fn mirrored() -> ModeFlags {

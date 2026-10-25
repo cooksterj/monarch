@@ -10,7 +10,7 @@ use ratatui::crossterm::{execute, queue};
 
 use super::AttachApp;
 use crate::client::{AttachView, WindowTitle};
-use crate::{ContextMenuView, PickerView, Sidebar, StatusLine, TuiError, WhichKey};
+use crate::{ContextMenuView, MouseOwner, PickerView, Sidebar, StatusLine, TuiError, WhichKey};
 
 impl AttachApp {
     /// Mirrors the focused pane onto the host, then draws every visible
@@ -63,7 +63,7 @@ impl AttachApp {
                 detach: self.opts.keymap.key_for(Action::Detach),
                 pending: self.prefix_pending,
                 message: notice.or(copy.as_ref().map(|c| c.status.as_str())),
-                mouse_terminal: self.passthrough,
+                mouse: MouseOwner::new(self.mirror.captures_mouse()),
             },
             sidebar: Some(Sidebar { groups: &groups }),
             selection: match &copy {

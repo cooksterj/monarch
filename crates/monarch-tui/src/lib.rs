@@ -25,6 +25,6 @@ pub use input::{
 };
 pub use platform::{LocalClipboard, SystemClipboard};
 pub use widgets::{
-    ContextMenuView, PaneBorders, PaneView, PickerView, SelectionSpan, Sidebar, SidebarGroup,
-    SidebarRow, StatusLine, StyleConverter, WhichKey, WhichKeyEntry,
+    ContextMenuView, MouseOwner, PaneBorders, PaneView, PickerView, SelectionSpan, Sidebar,
+    SidebarGroup, SidebarRow, StatusLine, StyleConverter, WhichKey, WhichKeyEntry,
 };
