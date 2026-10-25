@@ -122,12 +122,10 @@ def run_all(binary):
         first.wait_for(f"`{SESSION}`;".encode(), "nested attach refused")  # spaces are cursor moves
         first.wait_for(b"monarch \xe2\x94\x82 " + SESSION.encode(), "status line")
         first.wait_for(b"\x1b]2;monarch:" + SESSION.encode(), "window title")
-        # Only changed cells are redrawn, so look for the name, not the label.
+        # The bar is rebuilt from all output so far: never reset `seen` first.
         first.wait_for_bar(b"sh ", "the tab named after the shell")
-        first.seen = b""
         os.write(first.fd, b"cat\r")
         first.wait_for_bar(b"cat", "the tab named after the program in front")
-        first.seen = b""
         os.write(first.fd, b"\x04")
         first.wait_for_bar(b"sh ", "the shell's name back")
         print("  names: the tab follows the foreground program (sh, cat, sh)")
