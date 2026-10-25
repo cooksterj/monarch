@@ -4,7 +4,7 @@
 use std::fmt::Write;
 
 use monarch_core::AgentState;
-use monarch_proto::{PaneExplanation, RuleOutcome};
+use monarch_proto::{PaneExplanation, RuleOutcome, StatusSource};
 
 /// Longest rule preview printed, in characters.
 const PREVIEW: usize = 100;
@@ -32,11 +32,10 @@ pub(super) fn list(panes: &[PaneExplanation]) -> String {
             text.push_str("$ not an agent\n");
             continue;
         }
-        let rule = pane
-            .winner
-            .as_deref()
-            .map(|r| format!(": {r}"))
-            .unwrap_or_default();
+        let rule = match (pane.source, pane.winner.as_deref()) {
+            (StatusSource::Screen, Some(rule)) => format!(": {rule}"),
+            _ => String::new(),
+        };
         let _ = writeln!(
             text,
             "{}  (from {}{rule})",
@@ -139,7 +138,7 @@ fn program(pane: &PaneExplanation) -> &str {
 #[cfg(test)]
 mod tests {
     use monarch_core::PaneId;
-    use monarch_proto::{AgentStatus, StatusSource};
+    use monarch_proto::AgentStatus;
 
     use super::*;
 
@@ -200,6 +199,15 @@ mod tests {
             "p3   tab 2  gemini  ◆ Blocked  (from its screen: ask)"
         );
         assert!(text.ends_with("`monarch agent explain <pane>`\n"));
+        let hooked = PaneExplanation {
+            source: StatusSource::Hooks,
+            ..gemini()
+        };
+        let line = list(&[hooked]);
+        assert!(
+            line.contains("(from its hooks)\n"),
+            "the screen's rule didn't decide: {line}"
+        );
         assert_eq!(list(&[]), "no panes\n");
     }
 

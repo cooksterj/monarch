@@ -48,6 +48,8 @@ monarch setup           # let Claude Code and Codex report their state to Monarc
 monarch new feat/x --agent claude   # worktree for branch feat/x, Claude Code working in it
 monarch ls              # running sessions
 monarch kill work       # end the session named work (it won't be restored)
+monarch agent explain   # every pane's agent state and where it came from
+monarch agent wait p3 --timeout 600   # until pane p3's agent needs you (blocked, done, error)
 ```
 
 `monarch new <branch>` adds a git worktree for the branch (created from the current commit, or
@@ -59,6 +61,11 @@ it inside Monarch and the tab just appears; outside, it attaches.
 (honouring `CLAUDE_CONFIG_DIR` and `CODEX_HOME`), touching nothing else and backing each file up
 first. It is safe to re-run; `--dry-run` shows what would change and `--uninstall` removes the
 hooks. Outside Monarch the hooks do nothing. Codex asks you to trust new hooks in `/hooks`.
+
+Agents can use these commands too. `skills/monarch/SKILL.md` is a Claude Code skill that teaches
+an agent inside Monarch to check on other panes, wait for them and start agents in worktrees.
+Install it for yourself with
+`mkdir -p ~/.claude/skills/monarch && cp skills/monarch/SKILL.md ~/.claude/skills/monarch/`.
 
 Configuration lives at `~/.config/monarch/config.toml` (override with `MONARCH_CONFIG`).
 
