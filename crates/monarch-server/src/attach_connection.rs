@@ -14,6 +14,7 @@ use tokio_util::codec::{FramedRead, FramedWrite};
 use crate::{ActionEffect, RENDER_LANE, ServerContext, ServerError, SessionState};
 
 mod history;
+mod review;
 
 type Codec = FrameCodec<ClientMsg, ServerMsg>;
 
@@ -55,7 +56,7 @@ async fn write_frames(wr: OwnedWriteHalf, mut lane: Receiver<Vec<ServerMsg>>) {
 }
 
 async fn read_messages(
-    ctx: &ServerContext,
+    ctx: &Arc<ServerContext>,
     id: ClientId,
     rd: OwnedReadHalf,
 ) -> Result<(), ServerError> {
@@ -70,11 +71,12 @@ async fn read_messages(
 }
 
 /// Applies one client message; `false` ends the connection.
-fn handle(ctx: &ServerContext, id: ClientId, msg: ClientMsg) -> bool {
+fn handle(ctx: &Arc<ServerContext>, id: ClientId, msg: ClientMsg) -> bool {
     match msg {
         ClientMsg::Detach => return false,
         ClientMsg::Action(action) => run_action(ctx, action),
         msg @ (ClientMsg::Search { .. } | ClientMsg::Copy { .. }) => history::reply(ctx, id, msg),
+        ClientMsg::Review(pane) => review::request(ctx, id, pane),
         msg => apply(ctx, id, msg),
     }
     true

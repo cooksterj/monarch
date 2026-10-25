@@ -3,7 +3,8 @@
 
 use crate::Rgb;
 
-/// The colours agent states are drawn in, for dark or light hosts.
+/// The colours agent states and diffs are drawn in, for dark or light
+/// hosts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Theme {
     /// A working agent's pulsing dot, at its brightest.
@@ -18,6 +19,12 @@ pub struct Theme {
     pub done_to: Rgb,
     /// A failed agent's cross.
     pub error: Rgb,
+    /// An added line in a diff.
+    pub added: Rgb,
+    /// A removed line in a diff.
+    pub removed: Rgb,
+    /// A diff's hunk header (`@@ -1,3 +1,4 @@`).
+    pub hunk: Rgb,
 }
 
 impl Theme {
@@ -31,6 +38,9 @@ impl Theme {
             done_from: Rgb::new(0xa8, 0xe6, 0xa3),
             done_to: Rgb::new(0x2e, 0xe6, 0x5b),
             error: Rgb::new(0xff, 0x5f, 0x5f),
+            added: Rgb::new(0x7e, 0xd3, 0x7e),
+            removed: Rgb::new(0xf0, 0x71, 0x78),
+            hunk: Rgb::new(0x6f, 0xb3, 0xd2),
         }
     }
 
@@ -44,6 +54,9 @@ impl Theme {
             done_from: Rgb::new(0x6c, 0xbf, 0x6a),
             done_to: Rgb::new(0x0a, 0x8a, 0x2a),
             error: Rgb::new(0xc6, 0x28, 0x28),
+            added: Rgb::new(0x1a, 0x7f, 0x37),
+            removed: Rgb::new(0xb3, 0x1d, 0x28),
+            hunk: Rgb::new(0x05, 0x50, 0xae),
         }
     }
 

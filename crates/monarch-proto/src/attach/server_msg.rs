@@ -4,7 +4,7 @@ use monarch_core::PaneId;
 use serde::{Deserialize, Serialize};
 
 use super::{AgentStatus, Delta, LayoutMsg, PanePlace, Snapshot, StyleDef};
-use crate::GridPoint;
+use crate::{GridPoint, Review};
 
 /// One server → client attach-stream message.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -54,6 +54,14 @@ pub enum ServerMsg {
         pane: PaneId,
         /// Where the match is.
         found: Option<(GridPoint, GridPoint)>,
+    },
+    /// Answer to [`super::ClientMsg::Review`]: the pane's checkout and its
+    /// changes, or `None` outside a git repository.
+    Review {
+        /// The pane asked about.
+        pane: PaneId,
+        /// What changed.
+        review: Option<Review>,
     },
     /// A pane's working directory or git checkout changed.
     Place {

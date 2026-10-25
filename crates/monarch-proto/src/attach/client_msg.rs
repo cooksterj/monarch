@@ -71,6 +71,9 @@ pub enum ClientMsg {
         /// How the range becomes text.
         shape: SelectShape,
     },
+    /// Read the uncommitted changes in the checkout a pane works in;
+    /// answered with `ServerMsg::Review`.
+    Review(PaneId),
 }
 
 #[cfg(test)]

@@ -20,6 +20,11 @@ pub(super) struct Glyphs {
 }
 
 impl Glyphs {
+    /// The colours in use; `None` under `NO_COLOR`.
+    pub(super) fn theme(&self) -> Option<&Theme> {
+        self.theme.as_ref()
+    }
+
     /// Colours chosen for a host with `background`.
     pub(super) fn new(background: Option<Rgb>) -> Self {
         let now = Instant::now();

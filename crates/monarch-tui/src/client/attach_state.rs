@@ -68,6 +68,7 @@ impl AttachState {
             }
             ServerMsg::HostWrite(bytes) => out.host_write.extend(bytes),
             ServerMsg::SearchResult { pane, found } => out.found.push((pane, found)),
+            ServerMsg::Review { pane, review } => out.reviews.push((pane, review)),
             ServerMsg::Clipboard(text) => out.clipboard.push(text),
             ServerMsg::PaneExited { pane } => {
                 self.panes.remove(&pane);

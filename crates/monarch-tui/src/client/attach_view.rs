@@ -7,8 +7,8 @@ use ratatui::layout::{Position, Rect};
 
 use super::AttachState;
 use crate::{
-    ContextMenuView, PaneBorders, PaneView, PickerView, SelectionSpan, Sidebar, StatusLine,
-    WhichKey,
+    ContextMenuView, PaneBorders, PaneView, PickerView, ReviewView, SelectionSpan, Sidebar,
+    StatusLine, WhichKey,
 };
 
 /// Rows the client keeps for itself at the bottom of the host terminal.
@@ -36,6 +36,8 @@ pub struct AttachView<'a> {
     pub picker: Option<PickerView<'a>>,
     /// The right-click menu, drawn over everything at the pointer.
     pub menu: Option<ContextMenuView<'a>>,
+    /// The review pane, drawn over the panes.
+    pub review: Option<ReviewView<'a>>,
 }
 
 impl AttachView<'_> {
@@ -74,6 +76,9 @@ impl AttachView<'_> {
         self.draw_panes(frame, pane_rect);
         if let Some(popup) = self.which_key {
             frame.render_widget(popup, pane_rect);
+        }
+        if let Some(review) = self.review {
+            frame.render_widget(review, pane_rect);
         }
         if let Some(picker) = self.picker {
             frame.render_widget(picker, pane_rect);
@@ -182,6 +187,7 @@ mod tests {
             copy_cursor: None,
             which_key: None,
             picker: None,
+            review: None,
             menu: None,
         };
         term.draw(|f| view.draw(f)).expect("draw");
@@ -226,6 +232,7 @@ mod tests {
             copy_cursor: None,
             which_key: None,
             picker: None,
+            review: None,
             menu: None,
         };
         term.draw(|f| view.draw(f)).expect("draw");
@@ -286,6 +293,7 @@ mod tests {
             copy_cursor: None,
             which_key: None,
             picker: None,
+            review: None,
             menu: None,
         };
         term.draw(|f| view.draw(f)).expect("draw");
