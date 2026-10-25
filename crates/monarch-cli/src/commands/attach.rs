@@ -2,10 +2,8 @@
 
 use std::io::Write;
 use std::process::ExitCode;
-use std::time::Duration;
 
-use anyhow::Context;
-use monarch_core::{Action, Config, Keymap};
+use monarch_core::{Action, Config, Keymap, LoadedConfig};
 use monarch_server::SocketPath;
 use monarch_tui::{AttachApp, AttachOptions, AttachOutcome};
 
@@ -15,9 +13,10 @@ use crate::AttachArgs;
 /// Attaches, starting the server first if it is not running.
 pub(crate) fn run(
     args: &AttachArgs,
-    config: &Config,
+    loaded: &LoadedConfig,
     out: &mut dyn Write,
 ) -> anyhow::Result<ExitCode> {
+    let config = &loaded.config;
     let session = args
         .session
         .clone()
@@ -27,28 +26,11 @@ pub(crate) fn run(
         std::env::var("MONARCH_SESSION").ok().as_deref(),
         config,
     )?;
-    let prefix = config
-        .keys
-        .prefix_byte()
-        .with_context(|| format!("prefix `{}` is not a ctrl+key chord", config.keys.prefix))?;
-    let (keymap, warnings) = Keymap::from_config(&config.keys);
     let socket = SocketPath::for_session(&session)?;
+    // Checked before a server is started for nothing.
+    let opts = AttachOptions::new(socket.clone(), session.clone(), loaded)?;
     ensure_server(&session, &socket, &args.agents)?;
-    let outcome = AttachApp::attach(&AttachOptions {
-        socket,
-        session: session.clone(),
-        prefix,
-        prefix_label: config.keys.prefix.clone(),
-        window_title: config.ui.window_title.clone(),
-        mouse: config.ui.mouse,
-        sidebar: config.ui.sidebar,
-        sidebar_width: config.ui.sidebar_width,
-        sidebar_min_columns: config.ui.sidebar_min_columns,
-        keymap,
-        which_key_delay: Duration::from_millis(config.keys.which_key_delay_ms),
-        repeat: Duration::from_millis(config.keys.repeat_ms),
-        warnings,
-    })?;
+    let outcome = AttachApp::attach(&opts)?;
     writeln!(out, "{}", farewell(&session, outcome))?;
     Ok(ExitCode::SUCCESS)
 }
@@ -117,7 +99,13 @@ mod tests {
     fn a_non_control_prefix_is_rejected_before_connecting() {
         let mut config = Config::default();
         config.keys.prefix = "alt+b".into();
-        let err = run(&AttachArgs::default(), &config, &mut Vec::new()).expect_err("rejected");
+        let loaded = LoadedConfig {
+            config,
+            path: "/c.toml".into(),
+            found: false,
+            unknown_keys: Vec::new(),
+        };
+        let err = run(&AttachArgs::default(), &loaded, &mut Vec::new()).expect_err("rejected");
         assert!(err.to_string().contains("alt+b"), "{err}");
     }
 }

@@ -6,17 +6,16 @@
 
 use std::io::Read;
 use std::sync::Arc;
-use std::sync::mpsc::Sender;
+use std::sync::mpsc::{Receiver, Sender};
 use std::thread;
 use std::time::{Duration, Instant};
 
 use monarch_core::Key;
 use monarch_proto::ClientMsg;
 
-use super::{ClientEvent, MouseAction, MouseRouter, ServerLink, SharedFocus};
+use super::{ClientEvent, InputKeys, MouseAction, MouseRouter, ServerLink, SharedFocus};
 use crate::{
     HostInput, HostInputFilter, HostProbe, InputEvent, MouseEvent, MouseExtractor, MouseKind,
-    PrefixParser,
 };
 
 /// How long to wait for the host to answer the startup probe.
@@ -28,15 +27,11 @@ const FOCUS_TIMEOUT: Duration = Duration::from_secs(2);
 pub struct InputParams {
     /// Where pane input goes.
     pub link: ServerLink,
-    /// The prefix control byte.
-    pub prefix: u8,
-    /// Keys that repeat without the prefix.
-    pub repeat: Vec<Key>,
-    /// How long after its last use a repeatable key keeps working.
-    pub repeat_window: Duration,
-    /// Keys that open a pop-up: what follows them goes to the main loop
-    /// even before it has drawn the pop-up.
-    pub overlay_keys: Vec<Key>,
+    /// The prefix and the keys handled before the main loop sees them.
+    pub keys: InputKeys,
+    /// Replacement keys after a config reload, applied before the next
+    /// read is parsed.
+    pub rekey: Receiver<InputKeys>,
     /// Which pane has focus and its modes.
     pub focus: Arc<SharedFocus>,
     /// Commands, probe results and end of input go to the main loop.
@@ -55,6 +50,8 @@ struct Pipeline {
     pieces: Vec<HostInput>,
     /// A click focused another pane; its drags and release go nowhere.
     focusing: bool,
+    /// Keys that open a pop-up.
+    overlay_keys: Vec<Key>,
 }
 
 /// Spawns the input thread.
@@ -74,12 +71,18 @@ fn run(p: &InputParams, mut stdin: impl Read) {
     let mut buf = [0u8; 4096];
     let mut probe = HostProbe::new();
     let deadline = Instant::now() + PROBE_TIMEOUT;
-    let mut parser =
-        PrefixParser::new(p.prefix).with_repeat(p.repeat.iter().copied(), p.repeat_window);
-    let mut pipeline = Pipeline::default();
+    let mut parser = p.keys.parser();
+    let mut pipeline = Pipeline {
+        overlay_keys: p.keys.overlay_keys.clone(),
+        ..Pipeline::default()
+    };
     let (mut input, mut events) = (Vec::new(), Vec::new());
     let mut pending = false;
     while let Ok(n @ 1..) = stdin.read(&mut buf) {
+        if let Some(keys) = p.rekey.try_iter().last() {
+            parser = keys.parser();
+            pipeline.overlay_keys = keys.overlay_keys;
+        }
         input.clear();
         let probing = !probe.is_done();
         if probe.feed(&buf[..n], &mut input) && probing {
@@ -120,7 +123,7 @@ fn dispatch(p: &InputParams, pipe: &mut Pipeline, event: InputEvent) {
             }
         }
         InputEvent::Command(key) => {
-            if p.overlay_keys.contains(&key) {
+            if pipe.overlay_keys.contains(&key) {
                 p.focus.set_overlay(true);
             }
             let _ = p.events.send(ClientEvent::Command(key));
@@ -198,6 +201,26 @@ mod tests {
     use super::*;
     use crate::client::FocusView;
 
+    /// Parameters with prefix Ctrl-b and `:` opening a pop-up.
+    fn params(
+        ours: UnixStream,
+        focus: Arc<SharedFocus>,
+        events: Sender<ClientEvent>,
+    ) -> InputParams {
+        let (_tx, rekey) = mpsc::channel();
+        InputParams {
+            link: ServerLink::from_stream(ours),
+            keys: InputKeys {
+                prefix: 0x02,
+                overlay_keys: vec![Key::Char(':')],
+                ..InputKeys::default()
+            },
+            rekey,
+            focus,
+            events,
+        }
+    }
+
     /// Runs the thread over `input` and returns everything it sent.
     fn sent(focus: FocusView, input: &[u8]) -> Vec<ClientMsg> {
         sent_with_panes(focus, &[], input)
@@ -210,15 +233,7 @@ mod tests {
         let shared = Arc::new(SharedFocus::default());
         shared.set(&focus);
         shared.set_panes(panes.to_vec());
-        let params = InputParams {
-            link: ServerLink::from_stream(ours),
-            prefix: 0x02,
-            repeat: Vec::new(),
-            repeat_window: Duration::ZERO,
-            overlay_keys: vec![Key::Char(':')],
-            focus: shared,
-            events,
-        };
+        let params = params(ours, shared, events);
         run(&params, input);
         drop(params);
         let mut wire = Vec::new();
@@ -316,15 +331,7 @@ mod tests {
             pane: Some(PaneId(1)),
             ..FocusView::default()
         });
-        let params = InputParams {
-            link: ServerLink::from_stream(ours),
-            prefix: 0x02,
-            repeat: Vec::new(),
-            repeat_window: Duration::ZERO,
-            overlay_keys: vec![Key::Char(':')],
-            focus,
-            events,
-        };
+        let params = params(ours, focus, events);
         run(&params, &b"\x1b[?62;22chi\x02d"[..]);
         drop(params);
 
@@ -359,15 +366,7 @@ mod tests {
             pane: Some(PaneId(1)),
             ..FocusView::default()
         });
-        let params = InputParams {
-            link: ServerLink::from_stream(ours),
-            prefix: 0x02,
-            repeat: Vec::new(),
-            repeat_window: Duration::ZERO,
-            overlay_keys: vec![Key::Char(':')],
-            focus: Arc::clone(&focus),
-            events,
-        };
+        let params = params(ours, Arc::clone(&focus), events);
         run(&params, &b"\x1b[?62;22c\x02:spl"[..]);
         drop(params);
         let got: Vec<ClientEvent> = rx.try_iter().skip(1).collect();
@@ -385,19 +384,33 @@ mod tests {
     }
 
     #[test]
+    fn reloaded_keys_apply_to_the_next_read() {
+        let (ours, _theirs) = UnixStream::pair().expect("pair");
+        let (events, rx) = mpsc::channel();
+        let (tx, rekey) = mpsc::channel();
+        let p = InputParams {
+            rekey,
+            ..params(ours, Arc::new(SharedFocus::default()), events)
+        };
+        tx.send(InputKeys {
+            prefix: 0x01,
+            ..InputKeys::default()
+        })
+        .expect("send");
+        run(&p, &b"\x1b[?62;22c\x01d"[..]);
+        let got: Vec<ClientEvent> = rx.try_iter().collect();
+        assert!(
+            got.contains(&ClientEvent::Command(Key::Char('d'))),
+            "{got:?}"
+        );
+    }
+
+    #[test]
     fn input_without_a_focused_pane_is_dropped() {
         let (ours, mut theirs) = UnixStream::pair().expect("pair");
         let (events, rx) = mpsc::channel();
         let focus = Arc::new(SharedFocus::default());
-        let params = InputParams {
-            link: ServerLink::from_stream(ours),
-            prefix: 0x02,
-            repeat: Vec::new(),
-            repeat_window: Duration::ZERO,
-            overlay_keys: vec![Key::Char(':')],
-            focus,
-            events,
-        };
+        let params = params(ours, focus, events);
         run(&params, &b"\x1b[?62;22cx"[..]);
         drop(params);
         assert!(matches!(rx.recv(), Ok(ClientEvent::Host(_))));

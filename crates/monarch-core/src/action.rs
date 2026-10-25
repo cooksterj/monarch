@@ -59,6 +59,9 @@ pub enum Action {
     CopyMode,
     /// Show or hide the sidebar of panes grouped by project.
     ToggleSidebar,
+    /// Read the config file again and apply it (it is also re-read
+    /// whenever it changes).
+    ReloadConfig,
     /// Focus this pane, showing its tab (what the go-to picker runs; not
     /// bindable).
     FocusPane(PaneId),
@@ -76,6 +79,7 @@ impl Action {
                 | Self::GoToPane
                 | Self::CopyMode
                 | Self::ToggleSidebar
+                | Self::ReloadConfig
         )
     }
 
@@ -101,6 +105,7 @@ mod tests {
         assert!(Action::CommandPalette.is_local() && Action::GoToPane.is_local());
         assert!(Action::CopyMode.is_local());
         assert!(Action::ToggleSidebar.is_local());
+        assert!(Action::ReloadConfig.is_local());
         assert!(!Action::FocusPane(PaneId(1)).is_local());
         assert!(!Action::Split(SplitAxis::Rows).is_local());
         assert!(!Action::SelectTab(1).is_local());

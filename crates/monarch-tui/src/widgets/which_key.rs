@@ -130,12 +130,12 @@ mod tests {
         insta::assert_snapshot!(draw(80, 10), @r#"
         ┌ ctrl+b ─────────────────────────────────────────────────────────────────────┐
         │ " -        split down     }          swap next      :          palette      │
-        │ % |        split right    =          equalize       [          copy mode    │
-        │ x          close pane     HJKL       resize         g w        go to pane   │
-        │ z          zoom           1-9        go to tab      m          toggle mouse │
-        │ hjkl ←↓↑→  focus          c          new tab        t          sidebar      │
-        │ o          focus next     n          next tab       d          detach       │
-        │ {          swap prev      p          prev tab                               │
+        │ % |        split right    =          equalize       R          reload       │
+        │ x          close pane     HJKL       resize         [          copy mode    │
+        │ z          zoom           1-9        go to tab      g w        go to pane   │
+        │ hjkl ←↓↑→  focus          c          new tab        m          toggle mouse │
+        │ o          focus next     n          next tab       t          sidebar      │
+        │ {          swap prev      p          prev tab       d          detach       │
         └─────────────────────────────────────────────────────────────────────────────┘
         "#);
     }

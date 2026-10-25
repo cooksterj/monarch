@@ -7,19 +7,21 @@ use std::sync::Arc;
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
 use std::time::{Duration, Instant};
 
-use monarch_core::{Action, Key};
+use monarch_core::Key;
 use monarch_proto::{ClientMsg, HostInfo, ScreenSize};
 use ratatui::DefaultTerminal;
 
 use super::{
-    Applied, AttachOptions, AttachOutcome, AttachState, AttachView, ClientEvent, CopyMode,
-    DragScroll, InputParams, InputThread, PROBE_TIMEOUT, Selection, ServerLink, SharedFocus,
+    Applied, AttachOptions, AttachOutcome, AttachState, AttachView, ClientEvent, ConfigWatch,
+    CopyMode, DragScroll, InputKeys, InputParams, InputThread, PROBE_TIMEOUT, Selection,
+    ServerLink, SharedFocus,
 };
 use crate::{HostModeMirror, HostProbe, Picker, TuiError, WhichKeyEntry};
 
 mod copy;
 mod draw;
 mod picker;
+mod reload;
 mod select;
 mod sidebar;
 mod which_key;
@@ -39,7 +41,11 @@ pub struct AttachApp {
     mirror: HostModeMirror,
     host: HostInfo,
     focus: Arc<SharedFocus>,
+    /// New keys for the input thread after a reload.
+    rekey: mpsc::Sender<InputKeys>,
     opts: AttachOptions,
+    /// The config file, re-read when it changes.
+    config: ConfigWatch,
     prefix_pending: bool,
     /// When the prefix was pressed, while it waits for a key.
     prefix_at: Option<Instant>,
@@ -90,12 +96,10 @@ impl AttachApp {
         ServerLink::spawn_reader(reader, tx.clone());
         write_host(&mut ui, HostProbe::QUERY)?;
         let focus = Arc::new(SharedFocus::default());
-        spawn_input(&link, opts, Arc::clone(&focus), tx);
+        let rekey = spawn_input(&link, opts, Arc::clone(&focus), tx);
         let (host, backlog) = wait_for_host(&events);
         let size = introduce(&ui, &link, host, opts)?;
-        let mut mirror = HostModeMirror::new(&host).with_mouse(opts.mouse);
-        let mut out = Vec::new();
-        mirror.enter(&mut out);
+        let (mirror, out) = enter_host(&host, opts);
         let mut state = AttachState::new();
         state.set_left(sidebar::sidebar_cols(opts, opts.sidebar, size));
         let notice = (!opts.warnings.is_empty())
@@ -109,7 +113,9 @@ impl AttachApp {
             mirror,
             host,
             focus,
+            rekey,
             opts: opts.clone(),
+            config: ConfigWatch::new(opts.config_path.clone(), Instant::now()),
             prefix_pending: false,
             prefix_at: None,
             popup: false,
@@ -143,6 +149,7 @@ impl AttachApp {
             }
             self.check_resize()?;
             self.drag_tick();
+            self.watch_config();
             self.expire_notice();
             self.show_which_key();
             if self.dirty && self.last_draw.elapsed() >= FRAME {
@@ -220,32 +227,32 @@ impl AttachApp {
     }
 }
 
-/// Starts the thread that reads the host terminal.
+/// Starts the thread that reads the host terminal; returns where to send
+/// it new keys.
 fn spawn_input(
     link: &ServerLink,
     opts: &AttachOptions,
     focus: Arc<SharedFocus>,
     events: mpsc::Sender<ClientEvent>,
-) {
+) -> mpsc::Sender<InputKeys> {
+    let (rekey_tx, rekey) = mpsc::channel();
     InputThread::spawn(InputParams {
         link: link.clone(),
-        prefix: opts.prefix,
-        repeat: opts.keymap.repeatable_keys().collect(),
-        repeat_window: opts.repeat,
-        overlay_keys: opts
-            .keymap
-            .bindings()
-            .filter(|(_, a)| {
-                matches!(
-                    a,
-                    Action::CommandPalette | Action::GoToPane | Action::CopyMode
-                )
-            })
-            .map(|(k, _)| k)
-            .collect(),
+        keys: InputKeys::from(opts),
+        rekey,
         focus,
         events,
     });
+    rekey_tx
+}
+
+/// The host-mode mirror for `host`, and the bytes that put the host in
+/// Monarch's modes.
+fn enter_host(host: &HostInfo, opts: &AttachOptions) -> (HostModeMirror, Vec<u8>) {
+    let mut mirror = HostModeMirror::new(host).with_mouse(opts.mouse);
+    let mut out = Vec::new();
+    mirror.enter(&mut out);
+    (mirror, out)
 }
 
 /// Tells the server what the host can do and how big the panes are.
