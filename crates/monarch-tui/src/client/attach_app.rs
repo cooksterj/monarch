@@ -3,6 +3,7 @@
 use std::collections::VecDeque;
 use std::os::unix::net::UnixStream;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
 use std::time::{Duration, Instant};
 
@@ -12,7 +13,7 @@ use ratatui::DefaultTerminal;
 
 use super::{
     Applied, AttachOptions, AttachOutcome, AttachState, ClientEvent, ConfigWatch, CopyMode,
-    DragScroll, InputKeys, Selection, ServerLink, SharedFocus,
+    DragScroll, InputKeys, Selection, ServerLink, SessionLister, SharedFocus,
 };
 use crate::{HostModeMirror, TuiError, WhichKeyEntry};
 
@@ -27,6 +28,7 @@ mod projects;
 mod reload;
 mod review;
 mod select;
+mod sessions;
 mod sidebar;
 mod startup;
 mod which_key;
@@ -45,6 +47,10 @@ pub struct AttachApp {
     ui: DefaultTerminal,
     link: ServerLink,
     events: Receiver<ClientEvent>,
+    /// For results worked out off this thread (the session list).
+    post: mpsc::Sender<ClientEvent>,
+    /// Finds the running sessions for the session picker.
+    lister: Arc<dyn SessionLister>,
     backlog: VecDeque<ClientEvent>,
     state: AttachState,
     mirror: HostModeMirror,
@@ -52,6 +58,9 @@ pub struct AttachApp {
     focus: Arc<SharedFocus>,
     /// New keys for the input thread after a reload.
     rekey: mpsc::Sender<InputKeys>,
+    /// Set when this attach ends, so its input thread lets go of the
+    /// terminal.
+    input_stop: Arc<AtomicBool>,
     opts: AttachOptions,
     /// The config file, re-read when it changes.
     config: ConfigWatch,
@@ -85,10 +94,13 @@ impl AttachApp {
     ///
     /// # Errors
     /// The server is unreachable or the terminal cannot be driven.
-    pub fn attach(opts: &AttachOptions) -> Result<AttachOutcome, TuiError> {
+    pub fn attach(
+        opts: &AttachOptions,
+        lister: Arc<dyn SessionLister>,
+    ) -> Result<AttachOutcome, TuiError> {
         let (link, reader) = ServerLink::connect(&opts.socket)?;
         let ui = ratatui::init();
-        let result = Self::start(ui, link, reader, opts).and_then(|mut app| {
+        let result = Self::start(ui, link, reader, opts, lister).and_then(|mut app| {
             let outcome = app.run();
             app.finish()?;
             outcome
@@ -102,18 +114,22 @@ impl AttachApp {
         link: ServerLink,
         reader: UnixStream,
         opts: &AttachOptions,
+        lister: Arc<dyn SessionLister>,
     ) -> Result<Self, TuiError> {
         let s = Started::new(ui, link, reader, opts)?;
         Ok(Self {
             ui: s.ui,
             link: s.link,
             events: s.events,
+            post: s.post,
+            lister,
             backlog: s.backlog,
             state: s.state,
             mirror: s.mirror,
             host: s.host,
             focus: s.focus,
             rekey: s.rekey,
+            input_stop: s.input_stop,
             opts: opts.clone(),
             config: ConfigWatch::new(opts.config_path.clone(), Instant::now()),
             prefix_pending: false,
@@ -176,6 +192,7 @@ impl AttachApp {
             ClientEvent::Select(gesture) => self.on_select(gesture),
             ClientEvent::Menu { col, row } => self.open_menu(col, row),
             ClientEvent::Typed => self.on_typed(),
+            ClientEvent::Sessions(list) => self.loaded_sessions(list),
             ClientEvent::Host(_) => {}
         }
         None
@@ -236,7 +253,11 @@ impl AttachApp {
         Ok(())
     }
 
+    /// Gives the terminal back as it was, lets go of its input and closes
+    /// the connection (another attach may follow in this process).
     fn finish(&mut self) -> Result<(), TuiError> {
+        self.input_stop.store(true, Ordering::SeqCst);
+        self.link.close();
         self.mirror.leave(&mut self.out);
         let out = std::mem::take(&mut self.out);
         write_host(&mut self.ui, &out)

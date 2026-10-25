@@ -2,12 +2,14 @@
 
 use std::io::Write;
 use std::process::ExitCode;
+use std::sync::Arc;
 
 use monarch_core::{Action, Config, Keymap, LoadedConfig};
 use monarch_server::SocketPath;
-use monarch_tui::{AttachApp, AttachOptions, AttachOutcome};
+use monarch_tui::{AttachApp, AttachOptions, AttachOutcome, SessionLister};
 
 use super::auto_start::ensure_server;
+use super::ls::SocketSessions;
 use crate::AttachArgs;
 
 /// Attaches, starting the server first if it is not running.
@@ -17,7 +19,7 @@ pub(crate) fn run(
     out: &mut dyn Write,
 ) -> anyhow::Result<ExitCode> {
     let config = &loaded.config;
-    let session = args
+    let mut session = args
         .session
         .clone()
         .unwrap_or_else(|| config.session.default_name.clone());
@@ -26,12 +28,20 @@ pub(crate) fn run(
         std::env::var("MONARCH_SESSION").ok().as_deref(),
         config,
     )?;
-    let socket = SocketPath::for_session(&session)?;
-    // Checked before a server is started for nothing.
-    let opts = AttachOptions::new(socket.clone(), session.clone(), loaded)?;
-    ensure_server(&session, &socket, &args.agents)?;
-    let outcome = AttachApp::attach(&opts)?;
-    writeln!(out, "{}", farewell(&session, outcome))?;
+    let lister: Arc<dyn SessionLister> = Arc::new(SocketSessions);
+    loop {
+        let socket = SocketPath::for_session(&session)?;
+        // Checked before a server is started for nothing.
+        let opts = AttachOptions::new(socket.clone(), session.clone(), loaded)?;
+        ensure_server(&session, &socket, &args.agents)?;
+        match AttachApp::attach(&opts, Arc::clone(&lister))? {
+            AttachOutcome::Switch(next) => session = next,
+            outcome => {
+                writeln!(out, "{}", farewell(&session, &outcome))?;
+                break;
+            }
+        }
+    }
     Ok(ExitCode::SUCCESS)
 }
 
@@ -58,10 +68,11 @@ fn refuse_nesting(
 }
 
 /// The line printed after the client gives the terminal back.
-fn farewell(session: &str, outcome: AttachOutcome) -> String {
+fn farewell(session: &str, outcome: &AttachOutcome) -> String {
     match outcome {
         AttachOutcome::Detached => format!("[detached from session {session}]"),
         AttachOutcome::ServerExited => format!("[session {session} ended]"),
+        AttachOutcome::Switch(next) => format!("[switched from session {session} to {next}]"),
     }
 }
 
@@ -72,11 +83,11 @@ mod tests {
     #[test]
     fn farewell_names_the_session() {
         assert_eq!(
-            farewell("main", AttachOutcome::Detached),
+            farewell("main", &AttachOutcome::Detached),
             "[detached from session main]"
         );
         assert_eq!(
-            farewell("w", AttachOutcome::ServerExited),
+            farewell("w", &AttachOutcome::ServerExited),
             "[session w ended]"
         );
     }

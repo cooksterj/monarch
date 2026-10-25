@@ -79,12 +79,7 @@ impl SocketPath {
     /// # Errors
     /// The name is empty, starts with a dot or has other characters.
     pub fn validate(session: &str) -> Result<(), ServerError> {
-        let ok = !session.is_empty()
-            && !session.starts_with('.')
-            && session
-                .chars()
-                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'));
-        if ok {
+        if monarch_core::is_session_name(session) {
             Ok(())
         } else {
             Err(ServerError::InvalidSession(session.into()))

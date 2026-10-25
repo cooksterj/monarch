@@ -5,7 +5,7 @@ use monarch_core::Theme;
 
 use crate::{
     ContextMenu, ContextMenuView, Picker, PickerView, ProjectPicker, ReviewState, ReviewView,
-    WorktreeForm, WorktreeFormView,
+    SessionPicker, WorktreeForm, WorktreeFormView,
 };
 
 /// Every pop-up; each takes the keys while open.
@@ -15,6 +15,8 @@ pub(super) struct Popups {
     pub picker: Option<Picker>,
     /// The project picker.
     pub projects: Option<ProjectPicker>,
+    /// The session picker.
+    pub sessions: Option<SessionPicker>,
     /// The right-click menu, which also takes clicks.
     pub menu: Option<ContextMenu>,
     /// The review pane.
@@ -37,6 +39,7 @@ impl Popups {
     pub fn any(&self) -> bool {
         self.picker.is_some()
             || self.projects.is_some()
+            || self.sessions.is_some()
             || self.menu.is_some()
             || self.review.is_some()
             || self.form.is_some()
@@ -44,7 +47,9 @@ impl Popups {
 
     /// The widgets for those open, coloured by `theme`.
     pub fn views<'a>(&'a self, theme: Option<&'a Theme>) -> Views<'a> {
-        let picker = (self.picker.as_ref()).or(self.projects.as_ref().map(ProjectPicker::picker));
+        let picker = (self.picker.as_ref())
+            .or(self.projects.as_ref().map(ProjectPicker::picker))
+            .or(self.sessions.as_ref().map(SessionPicker::picker));
         (
             picker.map(|picker| PickerView { picker }),
             self.menu.as_ref().map(|menu| ContextMenuView { menu }),

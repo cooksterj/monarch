@@ -24,6 +24,7 @@ impl AttachApp {
             Action::Review => self.open_review(),
             Action::NewWorktree => self.open_worktree_form(),
             Action::Projects => self.open_projects(),
+            Action::Sessions => self.open_sessions(),
             Action::CopyMode => self.open_copy(),
             Action::ToggleSidebar => self.toggle_sidebar(),
             Action::ReloadConfig => self.reload_config(),
@@ -46,6 +47,8 @@ impl AttachApp {
             self.worktree_input(bytes);
         } else if self.popups.projects.is_some() {
             self.projects_input(bytes);
+        } else if self.popups.sessions.is_some() {
+            return self.sessions_input(bytes);
         } else if self.popups.picker.is_some() {
             return self.picker_input(bytes);
         } else {

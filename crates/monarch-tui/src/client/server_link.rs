@@ -75,6 +75,16 @@ impl ServerLink {
             .map_err(|e| TuiError::io("sending to server", e))
     }
 
+    /// Closes the connection both ways: the server sees this client go,
+    /// and the reader thread ends.
+    pub fn close(&self) {
+        let writer = self
+            .writer
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        let _ = writer.shutdown(std::net::Shutdown::Both);
+    }
+
     /// Reads server frames on a std thread, forwarding each as a
     /// [`ClientEvent::Server`] and ending with [`ClientEvent::ServerClosed`].
     pub fn spawn_reader(mut stream: UnixStream, events: Sender<ClientEvent>) {

@@ -74,24 +74,44 @@ impl Widget for WhichKey<'_> {
             .title(format!(" {} ", self.title));
         let inner = block.inner(popup);
         block.render(popup, buf);
-        let (keys_width, _) = self.widths();
-        let (_, rows) = self.grid(area.width.saturating_sub(2));
+        let (cols, rows) = self.grid(area.width.saturating_sub(2));
+        // A short host gets fewer rows; columns still fill top to bottom.
+        let rows = rows.min(inner.height).max(1);
         let step = self.column_width() + GAP;
-        for (i, entry) in (0u16..).zip(self.entries) {
-            let (col, row) = (i / rows.max(1), i % rows.max(1));
-            let x = inner.x + 1 + col * step;
-            if row >= inner.height || x >= inner.right() {
-                continue;
-            }
-            let room = usize::from(inner.right() - x);
-            let y = inner.y + row;
-            let bold = Style::new().add_modifier(Modifier::BOLD);
-            buf.set_stringn(x, y, &entry.keys, room, bold);
-            let label_x = x + keys_width + 2;
-            if label_x < inner.right() {
-                let room = usize::from(inner.right() - label_x);
-                buf.set_stringn(label_x, y, &entry.label, room, Style::new());
-            }
+        let shown_cols = (0..cols)
+            .take_while(|c| inner.x + 1 + c * step < inner.right())
+            .count();
+        let room = shown_cols * usize::from(rows);
+        let mut cells: Vec<(&str, String)> = self
+            .entries
+            .iter()
+            .map(|e| (e.keys.as_str(), e.label.clone()))
+            .collect();
+        if cells.len() > room && room > 0 {
+            let hidden = cells.len() - (room - 1);
+            cells.truncate(room - 1);
+            cells.push(("…", format!("{hidden} more")));
+        }
+        for (i, (keys, label)) in (0u16..).zip(&cells) {
+            let x = inner.x + 1 + (i / rows) * step;
+            self.cell(buf, inner, (x, inner.y + i % rows), (keys, label));
+        }
+    }
+}
+
+impl WhichKey<'_> {
+    /// One `key  label` pair at `at`, cut at the box's edge.
+    fn cell(&self, buf: &mut Buffer, inner: Rect, at: (u16, u16), text: (&str, &str)) {
+        let ((x, y), (keys, label)) = (at, text);
+        if x >= inner.right() || y >= inner.bottom() {
+            return;
+        }
+        let bold = Style::new().add_modifier(Modifier::BOLD);
+        buf.set_stringn(x, y, keys, usize::from(inner.right() - x), bold);
+        let label_x = x + self.widths().0 + 2;
+        if label_x < inner.right() {
+            let room = usize::from(inner.right() - label_x);
+            buf.set_stringn(label_x, y, label, room, Style::new());
         }
     }
 }
@@ -126,23 +146,36 @@ mod tests {
     }
 
     #[test]
+    fn short_hosts_say_how_many_keys_did_not_fit() {
+        let text = draw(80, 6);
+        assert!(text.contains("…"), "{text}");
+        let more = text
+            .lines()
+            .find(|l| l.contains("more"))
+            .expect("a more row");
+        assert!(more.contains("more"), "{text}");
+        assert!(!text.contains("detach"), "cut");
+    }
+
+    #[test]
     fn wide_hosts_get_columns() {
-        insta::assert_snapshot!(draw(80, 10), @r#"
+        insta::assert_snapshot!(draw(80, 11), @r#"
         ┌ ctrl+b ─────────────────────────────────────────────────────────────────────┐
-        │ " -        split down     HJKL       resize         a          inbox        │
-        │ % |        split right    1-9        go to tab      g w        go to pane   │
-        │ x          close pane     c          new tab        m          toggle mouse │
-        │ z          zoom           n          next tab       s          projects     │
-        │ hjkl ←↓↑→  focus          p          prev tab       t          sidebar      │
-        │ o          focus next     :          palette        v          review       │
-        │ {          swap prev      N          new worktree   tab        next blocked │
-        │ }          swap next      R          reload         d          detach       │
+        │ " -        split down     HJKL       resize         [          copy mode    │
+        │ % |        split right    1-9        go to tab      a          inbox        │
+        │ x          close pane     c          new tab        g w        go to pane   │
+        │ z          zoom           n          next tab       m          toggle mouse │
+        │ hjkl ←↓↑→  focus          p          prev tab       s          projects     │
+        │ o          focus next     :          palette        t          sidebar      │
+        │ {          swap prev      N          new worktree   v          review       │
+        │ }          swap next      R          reload         tab        next blocked │
+        │ =          equalize       S          sessions       d          detach       │
         └─────────────────────────────────────────────────────────────────────────────┘
         "#);
     }
 
     #[test]
-    fn narrow_hosts_get_one_column_and_what_fits() {
+    fn narrow_hosts_get_one_column_and_a_count_of_the_rest() {
         insta::assert_snapshot!(draw(24, 8), @r#"
         ┌ ctrl+b ──────────────┐
         │ " -        split down│
@@ -150,7 +183,7 @@ mod tests {
         │ x          close pane│
         │ z          zoom      │
         │ hjkl ←↓↑→  focus     │
-        │ o          focus next│
+        │ …          22 more   │
         └──────────────────────┘
         "#);
     }

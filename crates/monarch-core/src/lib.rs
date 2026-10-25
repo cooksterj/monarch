@@ -13,6 +13,7 @@ mod ids;
 mod keymap;
 mod layout;
 mod rgb;
+mod session_name;
 mod theme;
 
 pub use action::{Action, RESIZE_STEP};
@@ -27,4 +28,5 @@ pub use ids::{ClientId, PaneId, TabId};
 pub use keymap::{Key, Keymap, KeymapPreset};
 pub use layout::{Direction, Rect, SplitAxis, SplitTree, Tab};
 pub use rgb::Rgb;
+pub use session_name::is_session_name;
 pub use theme::Theme;
