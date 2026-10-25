@@ -68,6 +68,32 @@ Install it for yourself with
 `mkdir -p ~/.claude/skills/monarch && cp skills/monarch/SKILL.md ~/.claude/skills/monarch/`.
 
 Configuration lives at `~/.config/monarch/config.toml` (override with `MONARCH_CONFIG`).
+`monarch config default` prints every setting; `monarch config check` validates your file.
+
+### Themes
+
+Monarch colours only its own chrome: the status bar, pane borders, the sidebar and pop-ups. What
+runs in a pane keeps its own colours. By default the theme follows your terminal's background:
+`monarch-dark` on dark backgrounds and `monarch-light` on light ones. Built-in themes are
+`monarch-dark`, `monarch-light`, `catppuccin-mocha`, `catppuccin-latte`, `tokyonight-night`,
+`tokyonight-day`, `gruvbox-dark` and `gruvbox-light`.
+
+```toml
+[theme]
+auto_switch = true            # pick `dark` or `light` from the terminal's background
+dark = "catppuccin-mocha"
+light = "catppuccin-latte"
+# auto_switch = false
+# name = "gruvbox-dark"       # always use this one
+
+[theme.colors]                # override single tokens, as #rrggbb
+accent = "#ff8800"
+```
+
+The tokens are `bar`, `bar_text`, `accent`, `accent_text`, `working`, `blocked_from`, `blocked_to`,
+`done_from`, `done_to`, `error`, `added`, `removed` and `hunk`. An unknown name or a bad colour
+is reported and the default is used instead. Changes apply when you save the file. With `NO_COLOR`
+set, Monarch draws its chrome with reverse video and bold instead of colours.
 
 ## Keys
 

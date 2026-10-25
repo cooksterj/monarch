@@ -31,7 +31,8 @@ fn check(loader: &ConfigLoader, out: &mut dyn Write) -> anyhow::Result<ExitCode>
     for key in &loaded.unknown_keys {
         writeln!(out, "warning: unknown key `{key}` in {path}")?;
     }
-    for warning in Keymap::from_config(&loaded.config.keys).1 {
+    let keys = Keymap::from_config(&loaded.config.keys).1;
+    for warning in keys.iter().chain(&loaded.config.theme.warnings()) {
         writeln!(out, "warning: {warning}")?;
     }
     writeln!(out, "{path}: ok")?;
@@ -77,6 +78,15 @@ mod tests {
         std::fs::write(&path, "[keys.bind]\nv = \"explode\"\n").expect("write");
         let text = run_to_string(&ConfigCommand::Check, &ConfigLoader::at(&path));
         assert!(text.contains("warning: [keys.bind] \"v\""), "{text}");
+    }
+
+    #[test]
+    fn check_reports_bad_theme_colours() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("c.toml");
+        std::fs::write(&path, "[theme.colors]\naccent = \"red\"\n").expect("write");
+        let text = run_to_string(&ConfigCommand::Check, &ConfigLoader::at(&path));
+        assert!(text.contains("warning: theme.colors.accent"), "{text}");
     }
 
     #[test]

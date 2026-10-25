@@ -1,12 +1,23 @@
-//! Colour tokens for Monarch's own chrome. Widgets take colours from here,
-//! never literals; built-in themes and user overrides arrive in M6.
+//! Colour tokens for Monarch's own chrome. Widgets take colours from
+//! here, never literals. Built-in themes live in `builtin`; a config can
+//! pick one and override single tokens.
+
+mod builtin;
 
 use crate::Rgb;
 
-/// The colours agent states and diffs are drawn in, for dark or light
-/// hosts.
+/// The colours Monarch draws its chrome, agent states and diffs in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Theme {
+    /// The status bar's background.
+    pub bar: Rgb,
+    /// Text on the status bar.
+    pub bar_text: Rgb,
+    /// The shown tab, the prefix indicator, the focused pane's border and
+    /// sidebar headings.
+    pub accent: Rgb,
+    /// Text on an `accent` background.
+    pub accent_text: Rgb,
     /// A working agent's pulsing dot, at its brightest.
     pub working: Rgb,
     /// A waiting (blocked) agent's diamond fades from this…
@@ -27,46 +38,78 @@ pub struct Theme {
     pub hunk: Rgb,
 }
 
+/// Every token's name, as `[theme.colors]` spells it.
+pub const THEME_TOKENS: [&str; 13] = [
+    "bar",
+    "bar_text",
+    "accent",
+    "accent_text",
+    "working",
+    "blocked_from",
+    "blocked_to",
+    "done_from",
+    "done_to",
+    "error",
+    "added",
+    "removed",
+    "hunk",
+];
+
 impl Theme {
-    /// For dark host backgrounds.
+    /// The default theme for dark host backgrounds (`monarch-dark`).
     #[must_use]
     pub const fn dark() -> Self {
-        Self {
-            working: Rgb::new(0x5f, 0xaf, 0xff),
-            blocked_from: Rgb::new(0xc8, 0xa0, 0x00),
-            blocked_to: Rgb::new(0x7b, 0x4f, 0x1d),
-            done_from: Rgb::new(0xa8, 0xe6, 0xa3),
-            done_to: Rgb::new(0x2e, 0xe6, 0x5b),
-            error: Rgb::new(0xff, 0x5f, 0x5f),
-            added: Rgb::new(0x7e, 0xd3, 0x7e),
-            removed: Rgb::new(0xf0, 0x71, 0x78),
-            hunk: Rgb::new(0x6f, 0xb3, 0xd2),
-        }
+        builtin::MONARCH_DARK
     }
 
-    /// For light host backgrounds, darker so it stays readable.
+    /// The default theme for light host backgrounds (`monarch-light`).
     #[must_use]
     pub const fn light() -> Self {
-        Self {
-            working: Rgb::new(0x1f, 0x6f, 0xd1),
-            blocked_from: Rgb::new(0xa6, 0x7c, 0x00),
-            blocked_to: Rgb::new(0x5c, 0x3a, 0x12),
-            done_from: Rgb::new(0x6c, 0xbf, 0x6a),
-            done_to: Rgb::new(0x0a, 0x8a, 0x2a),
-            error: Rgb::new(0xc6, 0x28, 0x28),
-            added: Rgb::new(0x1a, 0x7f, 0x37),
-            removed: Rgb::new(0xb3, 0x1d, 0x28),
-            hunk: Rgb::new(0x05, 0x50, 0xae),
-        }
+        builtin::MONARCH_LIGHT
     }
 
-    /// The theme for a host whose background is `background`, if known.
+    /// The built-in theme called `name`.
+    #[must_use]
+    pub fn named(name: &str) -> Option<Self> {
+        builtin::THEMES
+            .iter()
+            .find(|(n, _)| *n == name)
+            .map(|(_, theme)| *theme)
+    }
+
+    /// Every built-in theme's name.
+    pub fn names() -> impl Iterator<Item = &'static str> {
+        builtin::THEMES.iter().map(|(name, _)| *name)
+    }
+
+    /// The default theme for a host whose background is `background`, if
+    /// known.
     #[must_use]
     pub fn for_background(background: Option<Rgb>) -> Self {
         match background {
             Some(bg) if bg.is_light() => Self::light(),
             _ => Self::dark(),
         }
+    }
+
+    /// The token called `name` (see [`THEME_TOKENS`]), to override.
+    pub fn token_mut(&mut self, name: &str) -> Option<&mut Rgb> {
+        Some(match name {
+            "bar" => &mut self.bar,
+            "bar_text" => &mut self.bar_text,
+            "accent" => &mut self.accent,
+            "accent_text" => &mut self.accent_text,
+            "working" => &mut self.working,
+            "blocked_from" => &mut self.blocked_from,
+            "blocked_to" => &mut self.blocked_to,
+            "done_from" => &mut self.done_from,
+            "done_to" => &mut self.done_to,
+            "error" => &mut self.error,
+            "added" => &mut self.added,
+            "removed" => &mut self.removed,
+            "hunk" => &mut self.hunk,
+            _ => return None,
+        })
     }
 }
 
@@ -94,9 +137,41 @@ mod tests {
     }
 
     #[test]
-    fn done_settles_brighter_than_it_starts_on_dark() {
-        let t = Theme::dark();
-        assert!(t.done_to.g >= t.done_from.g);
-        assert_ne!(t.blocked_from, t.blocked_to);
+    fn every_token_can_be_overridden_by_name() {
+        let mut theme = Theme::dark();
+        for name in THEME_TOKENS {
+            *theme.token_mut(name).expect(name) = Rgb::new(1, 2, 3);
+        }
+        assert_eq!(theme.hunk, Rgb::new(1, 2, 3));
+        assert_eq!(theme.bar, Rgb::new(1, 2, 3));
+        assert!(theme.token_mut("background").is_none());
+    }
+
+    #[test]
+    fn built_in_themes_are_found_by_name() {
+        assert_eq!(Theme::named("monarch-dark"), Some(Theme::dark()));
+        assert_eq!(Theme::named("monarch-light"), Some(Theme::light()));
+        assert!(Theme::named("solarized").is_none());
+        assert_eq!(Theme::names().count(), 8);
+    }
+
+    #[test]
+    fn every_theme_is_readable() {
+        for name in Theme::names() {
+            let t = Theme::named(name).expect(name);
+            let dark = name.ends_with("dark") || name.ends_with("mocha") || name.ends_with("night");
+            assert_eq!(t.bar.is_light(), !dark, "{name}: bar suits its background");
+            assert_ne!(
+                t.bar_text.is_light(),
+                t.bar.is_light(),
+                "{name}: bar text contrasts"
+            );
+            assert_ne!(
+                t.accent_text.is_light(),
+                t.accent.is_light(),
+                "{name}: accent text contrasts"
+            );
+            assert_ne!(t.blocked_from, t.blocked_to, "{name}: blocked pulses");
+        }
     }
 }

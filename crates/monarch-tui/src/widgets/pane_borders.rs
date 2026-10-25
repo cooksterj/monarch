@@ -5,6 +5,8 @@ use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::widgets::Widget;
 
+use super::Chrome;
+
 const UP: u8 = 1;
 const DOWN: u8 = 2;
 const LEFT: u8 = 4;
@@ -12,13 +14,15 @@ const RIGHT: u8 = 8;
 
 /// Draws a box-drawing line in every cell of `area` that no pane covers,
 /// joining lines into corners and tees. Lines touching the focused pane
-/// are bold, the rest dim (until theme tokens give them colours).
+/// are highlighted (bold, in the theme's accent), the rest dim.
 #[derive(Debug, Clone, Copy)]
 pub struct PaneBorders<'a> {
     /// Every visible pane's rectangle.
     pub panes: &'a [Rect],
     /// The focused pane's rectangle.
     pub focused: Option<Rect>,
+    /// The colours.
+    pub chrome: Chrome<'a>,
 }
 
 impl PaneBorders<'_> {
@@ -51,7 +55,7 @@ impl Widget for PaneBorders<'_> {
                     .filter(|(dx, dy, _)| self.is_divider(area, xi + dx, yi + dy))
                     .fold(0, |m, (_, _, bit)| m | bit);
                 let style = if self.touches_focus(x, y) {
-                    Style::new().add_modifier(Modifier::BOLD)
+                    self.chrome.highlight()
                 } else {
                     Style::new().add_modifier(Modifier::DIM)
                 };
@@ -87,8 +91,17 @@ mod tests {
 
     fn draw(panes: &[Rect], focused: Option<Rect>, w: u16, h: u16) -> Buffer {
         let mut term = Terminal::new(TestBackend::new(w, h)).expect("terminal");
-        term.draw(|f| f.render_widget(PaneBorders { panes, focused }, f.area()))
-            .expect("draw");
+        term.draw(|f| {
+            f.render_widget(
+                PaneBorders {
+                    panes,
+                    focused,
+                    chrome: Chrome::default(),
+                },
+                f.area(),
+            );
+        })
+        .expect("draw");
         term.backend().buffer().clone()
     }
 
@@ -132,6 +145,20 @@ mod tests {
         assert!(buf[(3, 0)].modifier.contains(Modifier::BOLD));
         let unfocused = draw(&panes, None, 7, 3);
         assert!(unfocused[(3, 0)].modifier.contains(Modifier::DIM));
+    }
+
+    #[test]
+    fn a_theme_colours_the_focused_lines() {
+        let theme = monarch_core::Theme::dark();
+        let panes = [Rect::new(0, 0, 3, 3), Rect::new(4, 0, 3, 3)];
+        let mut buf = Buffer::empty(Rect::new(0, 0, 7, 3));
+        PaneBorders {
+            panes: &panes,
+            focused: Some(panes[0]),
+            chrome: Chrome::new(Some(&theme)),
+        }
+        .render(buf.area, &mut buf);
+        assert_eq!(buf[(3, 1)].fg, Chrome::color(theme.accent));
     }
 
     #[test]

@@ -4,11 +4,11 @@
 use monarch_core::Theme;
 use ratatui::buffer::Buffer;
 use ratatui::layout::{Position, Rect};
-use ratatui::style::{Color, Modifier, Style};
+use ratatui::style::{Modifier, Style};
 use ratatui::text::Line;
 use ratatui::widgets::{Block, Borders, Clear, Widget};
 
-use crate::{WORKTREE_CHOICES, WorktreeForm};
+use crate::{Chrome, WORKTREE_CHOICES, WorktreeForm};
 
 /// Widest the box gets.
 const WIDTH: u16 = 60;
@@ -102,7 +102,7 @@ impl WorktreeFormView<'_> {
             let red = self
                 .theme
                 .map_or(Style::new().add_modifier(Modifier::BOLD), |t| {
-                    Style::new().fg(Color::Rgb(t.error.r, t.error.g, t.error.b))
+                    Style::new().fg(Chrome::color(t.error))
                 });
             return Some((why, red));
         }

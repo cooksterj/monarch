@@ -8,8 +8,8 @@ use monarch_proto::{ClientMsg, ScreenSize};
 
 use super::AttachApp;
 use super::select::NOTICE;
-use crate::Sidebar;
 use crate::client::{AttachOptions, AttachView};
+use crate::{Chrome, Sidebar};
 
 impl AttachApp {
     /// `prefix t`: shows or hides the sidebar.
@@ -43,7 +43,11 @@ impl AttachApp {
             let groups = self.state.sidebar_groups();
             let host = ratatui::layout::Rect::new(0, 0, self.size.cols, self.size.rows);
             let area = AttachView::sidebar_area(host, left);
-            let rows = Sidebar { groups: &groups }.targets(area);
+            let rows = Sidebar {
+                groups: &groups,
+                chrome: Chrome::default(),
+            }
+            .targets(area);
             rects.extend(
                 rows.into_iter()
                     .map(|(pane, r)| (pane, Rect::new(r.x, r.y, r.width, r.height))),

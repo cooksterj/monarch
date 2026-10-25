@@ -27,7 +27,7 @@ pub use input::{
 };
 pub use platform::{LocalClipboard, SystemClipboard};
 pub use widgets::{
-    ContextMenuView, GlyphLook, MouseOwner, PaneBorders, PaneView, PickerView, ReviewView,
+    Chrome, ContextMenuView, GlyphLook, MouseOwner, PaneBorders, PaneView, PickerView, ReviewView,
     SelectionSpan, Sidebar, SidebarGroup, SidebarRow, StatusLine, StyleConverter, WhichKey,
     WhichKeyEntry, WorktreeFormView,
 };

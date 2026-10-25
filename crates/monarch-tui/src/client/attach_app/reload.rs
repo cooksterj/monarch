@@ -1,5 +1,5 @@
 //! Applying the config file again, when it changes or on `prefix R`,
-//! without restarting: keys, mouse, sidebar and window title.
+//! without restarting: keys, mouse, sidebar, theme and window title.
 
 use std::time::Instant;
 
@@ -56,6 +56,7 @@ impl AttachApp {
         if !self.passthrough {
             self.mirror.set_mouse(opts.mouse);
         }
+        self.glyphs.retheme(self.host.background, &opts.theme);
         self.which_key = WhichKeyEntry::from_keymap(&opts.keymap);
         let _ = self.rekey.send(InputKeys::from(&opts));
         self.opts = opts;

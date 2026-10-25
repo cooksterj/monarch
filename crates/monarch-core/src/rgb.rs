@@ -1,5 +1,8 @@
 //! A 24-bit colour.
 
+use std::fmt;
+use std::str::FromStr;
+
 use serde::{Deserialize, Serialize};
 
 /// A 24-bit RGB colour.
@@ -17,6 +20,13 @@ impl Rgb {
     /// A colour from components.
     #[must_use]
     pub const fn new(r: u8, g: u8, b: u8) -> Self {
+        Self { r, g, b }
+    }
+
+    /// A colour from `0xrrggbb`.
+    #[must_use]
+    pub const fn hex(rgb: u32) -> Self {
+        let [_, r, g, b] = rgb.to_be_bytes();
         Self { r, g, b }
     }
 
@@ -51,9 +61,40 @@ impl Rgb {
     }
 }
 
+impl FromStr for Rgb {
+    type Err = String;
+
+    /// Reads `#rrggbb`; the error says what was wrong.
+    fn from_str(text: &str) -> Result<Self, String> {
+        let digits = text.strip_prefix('#').unwrap_or_default();
+        if digits.len() != 6 || !digits.bytes().all(|b| b.is_ascii_hexdigit()) {
+            return Err(format!("{text:?} is not a #rrggbb colour"));
+        }
+        u32::from_str_radix(digits, 16)
+            .map(Self::hex)
+            .map_err(|e| e.to_string())
+    }
+}
+
+impl fmt::Display for Rgb {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "#{:02x}{:02x}{:02x}", self.r, self.g, self.b)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn hex_colours_parse_and_print() {
+        assert_eq!(Rgb::hex(0x12_ab_ef), Rgb::new(0x12, 0xab, 0xef));
+        assert_eq!("#12abEF".parse(), Ok(Rgb::new(0x12, 0xab, 0xef)));
+        assert_eq!(Rgb::new(1, 2, 255).to_string(), "#0102ff");
+        for bad in ["12abef", "#12abe", "#12abeg", "#+2abef"] {
+            assert!(bad.parse::<Rgb>().is_err(), "{bad}");
+        }
+    }
 
     #[test]
     fn x11_form_scales_to_16_bits() {
