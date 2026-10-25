@@ -102,7 +102,8 @@ impl ProjectPicker {
     }
 }
 
-/// A row: `project  branch`, with what is there at the right.
+/// A row: `project  branch`, with its badge (`±3 ↑2`) and what is there
+/// at the right.
 fn item(entry: &WorktreeEntry, focus: Option<PaneId>) -> PickerItem {
     let branch = entry.branch.as_deref().unwrap_or("(detached)");
     let panes = match entry.panes.len() {
@@ -111,11 +112,13 @@ fn item(entry: &WorktreeEntry, focus: Option<PaneId>) -> PickerItem {
         1 => "1 pane".to_owned(),
         n => format!("{n} panes"),
     };
-    let detail = match (entry.main, panes.is_empty()) {
-        (true, true) => "main".to_owned(),
-        (true, false) => format!("main · {panes}"),
-        (false, _) => panes,
-    };
+    let badge = entry.status.map(|s| s.to_string()).unwrap_or_default();
+    let main = if entry.main { "main" } else { "" };
+    let detail = [badge.as_str(), main, &panes]
+        .into_iter()
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join(" · ");
     PickerItem {
         label: format!("{}  {branch}", entry.project),
         detail,
@@ -126,6 +129,8 @@ fn item(entry: &WorktreeEntry, focus: Option<PaneId>) -> PickerItem {
 
 #[cfg(test)]
 mod tests {
+    use monarch_proto::CheckoutStatus;
+
     use super::*;
 
     fn entry(path: &str, branch: &str, main: bool, panes: &[u32]) -> WorktreeEntry {
@@ -135,6 +140,7 @@ mod tests {
             branch: Some(branch.into()),
             main,
             panes: panes.iter().map(|p| PaneId(*p)).collect(),
+            status: None,
         }
     }
 
@@ -143,7 +149,14 @@ mod tests {
         p.load(
             vec![
                 entry("/src/app", "main", true, &[1, 2]),
-                entry("/w/app/feat-x", "feat/x", false, &[]),
+                WorktreeEntry {
+                    status: Some(CheckoutStatus {
+                        changed: 2,
+                        ahead: 1,
+                        behind: 0,
+                    }),
+                    ..entry("/w/app/feat-x", "feat/x", false, &[])
+                },
                 entry("/w/app/busy", "busy", false, &[3]),
             ],
             Some(PaneId(3)),
@@ -163,7 +176,7 @@ mod tests {
             rows,
             [
                 ("app  main", "main · 2 panes"),
-                ("app  feat/x", ""),
+                ("app  feat/x", "±2 ↑1"),
                 ("app  busy", "here"),
             ]
         );

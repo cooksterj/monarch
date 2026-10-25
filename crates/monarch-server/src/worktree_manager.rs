@@ -5,11 +5,12 @@
 use std::path::{Path, PathBuf};
 
 use monarch_core::ProjectsConfig;
-use monarch_proto::NewWorktree;
+use monarch_proto::{CheckoutStatus, NewWorktree};
 
-use crate::{GitRunner, ServerError};
+use crate::{GitRunner, GitStatus, ServerError};
 
-/// Lists, creates and removes worktrees through git.
+/// Lists, creates and removes worktrees through git, and reads their
+/// status.
 pub struct WorktreeManager {
     git: Box<dyn GitRunner>,
 }
@@ -123,6 +124,13 @@ impl WorktreeManager {
                     why
                 })
             })
+    }
+
+    /// How the checkout at `path` differs from its last commit and
+    /// upstream; `None` when git can't say.
+    #[must_use]
+    pub fn status(&self, path: &Path) -> Option<CheckoutStatus> {
+        GitStatus::read(self.git.as_ref(), path).map(|r| r.status)
     }
 
     /// The main checkout of the repository holding `dir` (worktrees made

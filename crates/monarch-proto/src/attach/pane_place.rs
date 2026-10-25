@@ -2,6 +2,8 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::CheckoutStatus;
+
 /// A pane's working directory and, inside a git repository, which project,
 /// checkout and branch it is. The sidebar groups panes by checkout.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -14,6 +16,8 @@ pub struct PanePlace {
     pub worktree: Option<String>,
     /// The checked-out branch, or a short commit id when detached.
     pub branch: Option<String>,
+    /// Its uncommitted files and unpushed commits, when git could say.
+    pub status: Option<CheckoutStatus>,
 }
 
 impl PanePlace {
@@ -38,6 +42,10 @@ mod tests {
             project: Some("monarch".into()),
             worktree: Some("/w/monarch".into()),
             branch: Some("main".into()),
+            status: Some(CheckoutStatus {
+                changed: 2,
+                ..CheckoutStatus::default()
+            }),
         };
         let bytes = postcard::to_allocvec(&place).expect("encode");
         assert_eq!(postcard::from_bytes::<PanePlace>(&bytes).ok(), Some(place));

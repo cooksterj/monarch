@@ -1,12 +1,14 @@
-//! Works out which git project, checkout and branch a directory is in.
+//! Works out which git project, checkout and branch a directory is in,
+//! and how that checkout differs from its last commit and upstream.
 
 use std::path::Path;
 
 use monarch_proto::PanePlace;
 
-use crate::GitRunner;
+use crate::{GitRunner, GitStatus};
 
-/// Asks git where a directory is (two or three quick `git` runs).
+/// Asks git where a directory is (two quick `git` runs, three when
+/// detached).
 pub struct RepoProbe {
     git: Box<dyn GitRunner>,
 }
@@ -37,9 +39,10 @@ impl RepoProbe {
         };
         place.project = project_name(Path::new(common));
         place.worktree = Some(top.to_owned());
-        place.branch = self
-            .git
-            .run(cwd, &["symbolic-ref", "--short", "-q", "HEAD"])
+        let read = GitStatus::read(self.git.as_ref(), cwd);
+        place.status = read.as_ref().map(|r| r.status);
+        place.branch = read
+            .and_then(|r| r.head)
             .or_else(|| self.git.run(cwd, &["rev-parse", "--short", "HEAD"]))
             .filter(|b| !b.is_empty());
         place
@@ -74,7 +77,7 @@ mod tests {
     }
 
     const DIRS: &str = "rev-parse --path-format=absolute --show-toplevel --git-common-dir";
-    const BRANCH: &str = "symbolic-ref --short -q HEAD";
+    const STATUS: &str = "status --porcelain=v2 --branch";
 
     fn probe(answers: &[(&'static str, &'static str)]) -> RepoProbe {
         RepoProbe::new(Box::new(Scripted(answers.iter().copied().collect())))
@@ -84,13 +87,15 @@ mod tests {
     fn a_worktree_belongs_to_its_main_repository() {
         let p = probe(&[
             (DIRS, "/w/monarch-feat\n/w/monarch/.git"),
-            (BRANCH, "feat/sidebar"),
+            (STATUS, "# branch.head feat/sidebar\n# branch.ab +1 -0\n? x"),
         ]);
         let place = p.place(Path::new("/w/monarch-feat/src"));
         assert_eq!(place.cwd, "/w/monarch-feat/src");
         assert_eq!(place.project.as_deref(), Some("monarch"));
         assert_eq!(place.worktree.as_deref(), Some("/w/monarch-feat"));
         assert_eq!(place.branch.as_deref(), Some("feat/sidebar"));
+        let status = place.status.expect("status read");
+        assert_eq!((status.changed, status.ahead, status.behind), (1, 1, 0));
     }
 
     #[test]
@@ -102,6 +107,7 @@ mod tests {
         let place = p.place(Path::new("/w/api"));
         assert_eq!(place.project.as_deref(), Some("api"));
         assert_eq!(place.branch.as_deref(), Some("1a2b3c4"));
+        assert_eq!(place.status, None, "git status failed: no badge");
     }
 
     #[test]

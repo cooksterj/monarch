@@ -1,5 +1,7 @@
 //! A heading in the sidebar: one git checkout, or the panes outside any.
 
+use monarch_proto::CheckoutStatus;
+
 use super::SidebarRow;
 
 /// Panes working in one checkout (`monarch  main`), or in no repository.
@@ -11,6 +13,8 @@ pub struct SidebarGroup {
     pub title: String,
     /// The branch, drawn dim beside the title.
     pub detail: Option<String>,
+    /// Uncommitted files and unpushed commits, drawn at the right.
+    pub status: Option<CheckoutStatus>,
     /// Its panes in tab order.
     pub rows: Vec<SidebarRow>,
 }
@@ -26,6 +30,7 @@ impl SidebarGroup {
             worktree: None,
             title: Self::SCRATCH.into(),
             detail: None,
+            status: None,
             rows: Vec::new(),
         }
     }

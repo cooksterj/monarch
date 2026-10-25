@@ -78,12 +78,15 @@ fn group_for<'a>(groups: &'a mut Vec<SidebarGroup>, place: &PanePlace) -> &'a mu
                 worktree: place.worktree.clone(),
                 title: place.project.clone().unwrap_or_default(),
                 detail: place.branch.clone(),
+                status: None,
                 rows: Vec::new(),
             });
             groups.len() - 1
         }
     };
-    &mut groups[index]
+    let group = &mut groups[index];
+    group.status = group.status.or(place.status);
+    group
 }
 
 /// An agent's activity line, or its state's name when it has none; a
@@ -114,7 +117,7 @@ fn where_in(place: &PanePlace) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use monarch_core::PaneId;
-    use monarch_proto::{LayoutMsg, ScreenSize, ServerMsg, TabSummary};
+    use monarch_proto::{CheckoutStatus, LayoutMsg, ScreenSize, ServerMsg, TabSummary};
 
     use super::*;
     use crate::Applied;
@@ -125,6 +128,7 @@ mod tests {
             project: top.map(|t| t.rsplit('/').next().unwrap_or(t).into()),
             worktree: top.map(Into::into),
             branch: top.map(|_| branch.into()),
+            status: None,
         }
     }
 
@@ -234,6 +238,27 @@ mod tests {
             AttachState::new().sidebar_groups().is_empty(),
             "no layout yet"
         );
+    }
+
+    #[test]
+    fn a_group_shows_its_checkout_status() {
+        let mut state = state();
+        assert_eq!(state.sidebar_groups()[0].status, None, "not read yet");
+        let dirty = CheckoutStatus {
+            changed: 2,
+            ahead: 0,
+            behind: 1,
+        };
+        let place = PanePlace {
+            status: Some(dirty),
+            ..place("/w/api/src", Some("/w/api"), "main")
+        };
+        let msg = ServerMsg::Place {
+            pane: PaneId(3),
+            place: Some(place),
+        };
+        state.apply(msg, &mut Applied::default());
+        assert_eq!(state.sidebar_groups()[0].status, Some(dirty), "from pane 3");
     }
 
     /// The test state with pane 1 blocked and pane 3 working, both Claude.

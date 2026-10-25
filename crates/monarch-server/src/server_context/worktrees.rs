@@ -55,6 +55,7 @@ impl ServerContext {
                     branch: branch.clone(),
                     main: i == 0,
                     panes: panes.map(|(p, _)| *p).collect(),
+                    status: self.worktrees.status(Path::new(&path)),
                     path,
                 });
             }
@@ -117,12 +118,15 @@ mod tests {
     use crate::test_support::{FakePane, context};
     use crate::{GitRunner, WorktreeManager};
 
-    /// A repository at `/src/app` with a worktree at `/w/app/feat`.
+    /// A repository at `/src/app` with a worktree at `/w/app/feat`, which
+    /// has one changed file.
     struct TwoWorktrees;
 
     impl GitRunner for TwoWorktrees {
-        fn run(&self, _dir: &Path, args: &[&str]) -> Option<String> {
+        fn run(&self, dir: &Path, args: &[&str]) -> Option<String> {
             match args {
+                ["status", ..] if dir == Path::new("/w/app/feat") => Some("? new.rs".into()),
+                ["status", ..] => Some(String::new()),
                 ["worktree", "list", "--porcelain"] => Some(
                     "worktree /src/app\nHEAD 1\nbranch refs/heads/main\n\n\
                      worktree /w/app/feat\nHEAD 2\nbranch refs/heads/feat\n"
@@ -163,6 +167,8 @@ mod tests {
                 ("app", "/w/app/feat", false, vec![]),
             ]
         );
+        let changed: Vec<_> = list.iter().map(|e| e.status.map(|s| s.changed)).collect();
+        assert_eq!(changed, [Some(0), Some(1)]);
     }
 
     #[test]

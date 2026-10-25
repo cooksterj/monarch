@@ -122,7 +122,7 @@ mod tests {
             let top = Path::new("/w").join(repo);
             match args[0] {
                 "rev-parse" => Some(format!("{}\n{}/.git", top.display(), top.display())),
-                _ => Some("main".into()),
+                _ => Some("# branch.head main".into()),
             }
         }
     }
