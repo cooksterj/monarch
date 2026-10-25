@@ -63,6 +63,7 @@ impl AttachApp {
                 detach: self.opts.keymap.key_for(Action::Detach),
                 pending: self.prefix_pending,
                 message: notice.or(copy.as_ref().map(|c| c.status.as_str())),
+                mouse_terminal: self.passthrough,
             },
             sidebar: Some(Sidebar { groups: &groups }),
             selection: match &copy {

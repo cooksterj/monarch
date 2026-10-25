@@ -112,6 +112,7 @@ impl Client {
                 detach: None,
                 pending: false,
                 message: None,
+                mouse_terminal: false,
             },
             sidebar: None,
             selection: None,

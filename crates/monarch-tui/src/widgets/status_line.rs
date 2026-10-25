@@ -26,10 +26,23 @@ pub struct StatusLine<'a> {
     /// A short notice (e.g. "copied 12 characters") shown instead of the
     /// hint for a moment.
     pub message: Option<&'a str>,
+    /// `prefix m` handed the mouse to the host terminal; shown until it
+    /// is taken back so clicks that do nothing in Monarch make sense.
+    pub mouse_terminal: bool,
 }
 
 impl StatusLine<'_> {
+    /// The mouse badge, then the notice or the key hint.
     fn right(&self) -> String {
+        let badge = if self.mouse_terminal {
+            " MOUSE: TERMINAL │"
+        } else {
+            ""
+        };
+        format!("{badge}{}", self.hint())
+    }
+
+    fn hint(&self) -> String {
         if !self.pending
             && let Some(message) = self.message.filter(|m| !m.is_empty())
         {
@@ -121,6 +134,7 @@ mod tests {
             detach: Some(Key::Char('d')),
             pending,
             message: None,
+            mouse_terminal: false,
         }
     }
 
@@ -187,6 +201,26 @@ mod tests {
             ..with
         };
         assert!(draw(pending, 60).contains("PREFIX"));
+    }
+
+    #[test]
+    fn the_mouse_badge_stays_beside_notices_and_the_prefix() {
+        let tabs = tabs();
+        let mouse = StatusLine {
+            mouse_terminal: true,
+            ..line(&tabs, false)
+        };
+        insta::assert_snapshot!(draw(mouse, 60), @" monarch │ main │  1 vim  MOUSE: TERMINAL │ ctrl+b d detach ");
+        let noticed = StatusLine {
+            message: Some("mouse: terminal"),
+            ..mouse
+        };
+        assert!(draw(noticed, 60).contains("MOUSE: TERMINAL │ mouse: terminal"));
+        let pending = StatusLine {
+            pending: true,
+            ..mouse
+        };
+        assert!(draw(pending, 60).contains("MOUSE: TERMINAL │ PREFIX │"));
     }
 
     #[test]
