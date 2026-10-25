@@ -1,0 +1,5 @@
+ ┊ 💻 terminal  npm test  (2.1s)
+ ⠹ pondering...
+────────────────────────────────────────────────────────────────
+ ❯
+ ⚕ claude-sonnet-4.5 │ 12.4K/200K │ ctrl+c to interrupt

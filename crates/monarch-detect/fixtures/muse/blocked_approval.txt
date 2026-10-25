@@ -1,0 +1,7 @@
+◆ Run: npm test
+
+  ❯ Allow this stage once
+    Always allow in this workspace
+    Deny
+
+  Enter to confirm · ↑/↓ to move

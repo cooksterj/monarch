@@ -1,0 +1,9 @@
+  ✓ Read src/lib.rs
+
+  ┌ Run this command? ──────────────────────────────────────────┐
+  │ $ cargo test --workspace                                    │
+  └─────────────────────────────────────────────────────────────┘
+  ▶ Approve
+    Allow All for This Session
+    Allow All for Every Session
+    Deny with feedback

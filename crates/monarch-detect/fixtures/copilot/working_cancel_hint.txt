@@ -1,0 +1,8 @@
+● Read src/main.ts
+  └ 120 lines read
+
+◉ Thinking (Esc to cancel · 1.2k tokens)
+
+ ~/app [main]                                         claude-sonnet-4.5
+ >
+ Ctrl+c Exit · Ctrl+r Expand recent

@@ -1,0 +1,8 @@
+ ● Devin wants to run a command
+   $ npm test
+
+ ❯ Approve once
+   Approve for this session
+   Deny
+
+ ↑↓ select · enter confirm · esc cancel

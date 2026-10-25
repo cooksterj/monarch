@@ -1,0 +1,5 @@
+ ● Read src/main.rs
+
+ ⠹ Running tools… (esc to interrupt)
+ ❭
+ swe-1.5 · context: 14%

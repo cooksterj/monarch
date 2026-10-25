@@ -1,0 +1,6 @@
+ Cline wants to run a command:
+   npm test
+
+ Cline needs permission
+ Approve tool call?
+ [y] Approve  [n] Deny

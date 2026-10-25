@@ -1,0 +1,10 @@
+ ● I'll run the test suite.
+
+ Run command
+   npm test
+
+ ❯ 1. Allow once
+   2. Allow for this conversation
+   3. Deny
+ ↑/↓ Navigate · tab Amend · ctrl+g edit/expand command
+ esc to cancel

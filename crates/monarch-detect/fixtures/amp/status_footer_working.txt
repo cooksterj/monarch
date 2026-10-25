@@ -1,0 +1,7 @@
+  I'll fix the failing test in parser.rs.
+
+  ✓ Read src/parser.rs
+
+╭──────────────────────────────────────────────────────────────╮
+│                                                              │
+╰ ≋ Thinking ──────────────────────────────── Smart · 12% used ╯

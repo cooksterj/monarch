@@ -1,0 +1,7 @@
+╭──────────────────────────────────────╮
+│ >_ OpenAI Codex (v0.50.0)            │
+╰──────────────────────────────────────╯
+
+› Explain this codebase
+
+  100% context left · ? for shortcuts

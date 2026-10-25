@@ -1,0 +1,9 @@
+● I'll run the test suite.
+
+  Bash(npm test)
+
+  Run this command?
+  ❯ 1. Yes
+    2. Yes, and don't ask again this session
+    3. No, tell Letta what to do differently
+  Enter to select · Esc to cancel

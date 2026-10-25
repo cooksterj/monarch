@@ -1,0 +1,4 @@
+◆ Done. All 42 tests pass.
+
+⟩
+gpt-5 · medium · ~/app
