@@ -6,6 +6,7 @@
 //! are the fallback for agents without hooks.
 
 mod guesses;
+mod history;
 mod screen;
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -26,6 +27,10 @@ pub struct StateEngine {
     guessed: BTreeSet<PaneId>,
     /// Panes running an agent known by its screen manifest.
     screened: BTreeSet<PaneId>,
+    /// Status changes so far, counting from 1.
+    changes: u64,
+    /// When each pane last entered each state, by change count.
+    entered: BTreeMap<PaneId, Vec<(AgentState, u64)>>,
 }
 
 impl StateEngine {
@@ -129,6 +134,7 @@ impl StateEngine {
         self.hooked.remove(&pane);
         self.guessed.remove(&pane);
         self.screened.remove(&pane);
+        self.entered.remove(&pane);
     }
 }
 

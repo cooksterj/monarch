@@ -28,6 +28,9 @@ pub enum CoreError {
     /// An agent name Monarch does not know.
     #[error("unknown agent {0:?}; expected one of: {choices}", choices = crate::AgentKind::choices())]
     UnknownAgent(String),
+    /// An agent state name Monarch does not know.
+    #[error("unknown state {0:?}; expected one of: working, blocked, idle, done, error, exited")]
+    UnknownState(String),
     /// An action name Monarch does not know.
     #[error("unknown action {0:?} (see `monarch keys` for the list)")]
     UnknownAction(String),

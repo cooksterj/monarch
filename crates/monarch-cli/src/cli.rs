@@ -8,6 +8,7 @@ mod kill_args;
 mod new_args;
 mod server_args;
 mod setup_args;
+mod wait_args;
 
 use clap::{Parser, Subcommand};
 
@@ -19,6 +20,7 @@ pub use kill_args::KillArgs;
 pub use new_args::NewArgs;
 pub use server_args::ServerArgs;
 pub use setup_args::SetupArgs;
+pub use wait_args::WaitArgs;
 
 /// An attention-first terminal multiplexer for AI coding agents.
 #[derive(Debug, Parser)]

@@ -4,7 +4,6 @@
 use std::collections::BTreeSet;
 
 use monarch_core::{AgentKind, AgentState, PaneId};
-use monarch_proto::ServerMsg;
 
 use super::SessionState;
 use crate::screen_watcher::PaneScreen;
@@ -44,14 +43,14 @@ impl SessionState {
         let agent = entry.command.as_deref().and_then(AgentKind::for_program);
         let watched = self.client_count() > 0 && self.focus() == Some(pane);
         if let Some(status) = self.agents.screen(pane, state, agent, watched) {
-            self.broadcast(&ServerMsg::Agent { pane, status });
+            self.agent_changed(pane, status);
         }
     }
 
     /// The agent detected in `pane` is no longer in front.
     pub fn screen_gone(&mut self, pane: PaneId) {
         if let Some(status) = self.agents.screen_gone(pane) {
-            self.broadcast(&ServerMsg::Agent { pane, status });
+            self.agent_changed(pane, status);
         }
     }
 }
