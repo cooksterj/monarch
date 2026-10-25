@@ -21,6 +21,10 @@ pub enum TuiError {
     /// The server refused the connection.
     #[error("server refused to attach: {0}")]
     Refused(String),
+    /// The config cannot drive the client (e.g. a prefix that is not a
+    /// control chord).
+    #[error("{0}")]
+    Config(String),
 }
 
 impl TuiError {
@@ -41,5 +45,6 @@ mod tests {
     fn io_errors_carry_context() {
         let e = TuiError::io("connecting", std::io::Error::other("no server"));
         assert_eq!(e.to_string(), "connecting: no server");
+        assert_eq!(TuiError::Config("bad".into()).to_string(), "bad");
     }
 }

@@ -23,7 +23,7 @@ pub(crate) fn dispatch(cli: Cli, out: &mut dyn Write) -> anyhow::Result<ExitCode
         Some(Command::Config(cmd)) => config::run(&cmd, &loader, out),
         Some(Command::Keys) => keys::run(&loader.load()?.config, out),
         Some(Command::Server(args)) => server::run(&args, &loader.load()?.config),
-        Some(Command::Attach(args)) => attach::run(&args, &loader.load()?.config, out),
-        None => attach::run(&AttachArgs::default(), &loader.load()?.config, out),
+        Some(Command::Attach(args)) => attach::run(&args, &loader.load()?, out),
+        None => attach::run(&AttachArgs::default(), &loader.load()?, out),
     }
 }

@@ -21,6 +21,7 @@ impl AttachApp {
             Action::GoToPane => self.open_picker(self.go_to()),
             Action::CopyMode => self.open_copy(),
             Action::ToggleSidebar => self.toggle_sidebar(),
+            Action::ReloadConfig => self.reload_config(),
             action => {
                 let _ = self.link.send(&ClientMsg::Action(action));
             }

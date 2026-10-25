@@ -63,28 +63,18 @@ pub(super) fn sidebar_cols(opts: &AttachOptions, on: bool, size: ScreenSize) -> 
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
-
-    use monarch_core::{Keymap, MouseMode};
+    use monarch_core::{Config, LoadedConfig};
 
     use super::*;
 
     fn opts() -> AttachOptions {
-        AttachOptions {
-            socket: "/tmp/m.sock".into(),
-            session: "main".into(),
-            prefix: 0x02,
-            prefix_label: "ctrl+b".into(),
-            window_title: "{title}".into(),
-            mouse: MouseMode::Auto,
-            sidebar: true,
-            sidebar_width: 32,
-            sidebar_min_columns: 100,
-            keymap: Keymap::default(),
-            which_key_delay: Duration::from_millis(300),
-            repeat: Duration::from_millis(500),
-            warnings: Vec::new(),
-        }
+        let loaded = LoadedConfig {
+            config: Config::default(),
+            path: "/c.toml".into(),
+            found: false,
+            unknown_keys: Vec::new(),
+        };
+        AttachOptions::new("/tmp/m.sock".into(), "main".into(), &loaded).expect("valid")
     }
 
     #[test]

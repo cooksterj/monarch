@@ -65,6 +65,13 @@ class Client:
             assert time.time() < deadline, f"timed out waiting for {what}: {self.seen[-300:]!r}"
             self.pump(0.05)
 
+    def wait_since(self, mark, needle, what, seconds=10):
+        """Waits for `needle` in output after offset `mark`."""
+        deadline = time.time() + seconds
+        while needle not in self.seen[mark:]:
+            assert time.time() < deadline, f"timed out waiting for {what}: {self.seen[-300:]!r}"
+            self.pump(0.05)
+
     def wait_for_bar(self, text, what, seconds=10):
         """Waits for `text` on the bottom row (the tab bar). Only changed
         cells are redrawn, so the row is rebuilt from every write to it."""
@@ -198,22 +205,51 @@ def sidebar_groups_and_focuses(binary, env, run):
     os.write(wide.fd, b"cd /\r")
     wide.wait_for(b"Scratch", "the pane outside a repository")
     wide.idle(0.3)
-    wide.seen = b""
+    mark = len(wide.seen)
     os.write(wide.fd, b"\x1b[<0;4;2M\x1b[<0;4;2m")  # "1 sh" under proj
     wide.idle(0.5)
     os.write(wide.fd, b"pwd\r")
-    wide.wait_for(b"/proj", "the clicked pane focused in tab 1")
-    wide.seen = b""
+    wide.wait_since(mark, b"/proj", "the clicked pane focused in tab 1")
+    mark = len(wide.seen)
     os.write(wide.fd, b"\x02t")
     wide.idle(0.3)
     os.write(wide.fd, b"echo cols-$(tput cols)\r")
-    wide.wait_for(b"cols-120", "panes take the whole width")
+    wide.wait_since(mark, b"cols-120", "panes take the whole width")
+    print("  sidebar: grouped by repo/branch, click focused a pane in another tab, prefix t hid it")
+    config_reloads(wide, env["MONARCH_CONFIG"])
     for _ in range(2):
         os.write(wide.fd, b"exit\r")
         wide.idle(0.5)
     wide.wait_for(b"ended]", "session end message")
     wide.finish()
-    print("  sidebar: grouped by repo/branch, click focused a pane in another tab, prefix t hid it")
+
+
+def config_reloads(wide, path):
+    """Edits to the config apply while attached; a bad edit is refused."""
+    def edit(text, outcome=None):
+        with open(path, "w") as f:
+            f.write(text)
+        if outcome:  # the row is rebuilt from all output: never reset it
+            wide.wait_for_bar(outcome.encode(), f"notice: {outcome}")
+        else:  # the same notice again draws nothing new; give it time
+            wide.idle(2)
+
+    def width(cols):
+        mark = len(wide.seen)
+        os.write(wide.fd, b"echo cols-$(tput cols)\r")
+        wide.wait_since(mark, f"cols-{cols}".encode(), f"{cols} columns")
+
+    os.write(wide.fd, b"\x02t")  # show the sidebar again
+    width(88)
+    edit("[ui]\nsidebar_width = 40\n", "config reloaded")
+    width(80)
+    edit('[keys]\nprefix = "ctrl+a"\n[ui]\nsidebar_width = 40\n')
+    os.write(wide.fd, b"\x01t")
+    width(120)
+    edit('[keys]\nprefix = "alt+b"\n', "config not reloaded")
+    os.write(wide.fd, b"\x01t")
+    width(80)
+    print("  reload: sidebar width and prefix changed live; a bad prefix kept the old keys")
 
 
 if __name__ == "__main__":
