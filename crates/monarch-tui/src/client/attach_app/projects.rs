@@ -34,7 +34,12 @@ impl AttachApp {
                     let _ = self.link.send(&ClientMsg::Worktrees);
                 }
             }
-            Err(why) => self.say(&why),
+            Err(why) => {
+                if let Some(projects) = self.popups.projects.as_mut() {
+                    projects.tell(&why);
+                }
+                self.say(&why);
+            }
         }
     }
 
@@ -47,10 +52,6 @@ impl AttachApp {
             self.dirty = true;
             let msg = match projects.key(key) {
                 ProjectStep::Open => None,
-                ProjectStep::Notice(text) => {
-                    self.say(&text);
-                    None
-                }
                 ProjectStep::Remove(path) => Some(ClientMsg::RemoveWorktree(path)),
                 ProjectStep::Close => {
                     self.close_projects();

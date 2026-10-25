@@ -12,6 +12,11 @@
 //! releases of keys Monarch consumed are swallowed so the pane never sees a
 //! release without its press.
 //!
+//! A command key typed with Ctrl still held from the prefix (`Ctrl-b
+//! Ctrl-s`) counts as the plain key, in both encodings: legacy hosts send
+//! a control byte, kitty hosts a `CSI … ;5u`. Tab, Enter and the prefix
+//! itself keep their own meaning.
+//!
 //! An escape sequence as the command key is read as an arrow (CSI or SS3,
 //! any modifiers) or, alone at the end of a read, as Esc; other sequences
 //! are swallowed rather than typed into the pane.
@@ -251,7 +256,7 @@ impl PrefixParser {
             forward.push(byte);
         } else if byte == ESC {
             self.escape.start();
-        } else if let Some(key) = Key::from_byte(byte) {
+        } else if let Some(key) = Key::from_byte(byte).or_else(|| held_ctrl(byte)) {
             self.command(key, forward, out);
         }
     }
@@ -272,6 +277,12 @@ impl PrefixParser {
             self.marker_progress = usize::from(byte == ESC);
         }
     }
+}
+
+/// The letter of a Ctrl+letter control byte (`0x13` → `s`), for a command
+/// key pressed without letting go of Ctrl after the prefix.
+fn held_ctrl(byte: u8) -> Option<Key> {
+    matches!(byte, 0x01..=0x1a).then(|| Key::Char(char::from(byte + 0x60)))
 }
 
 fn flush(forward: &mut Vec<u8>, out: &mut Vec<InputEvent>) {

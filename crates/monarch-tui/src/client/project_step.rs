@@ -15,8 +15,6 @@ pub enum ProjectStep {
     OpenTab(String),
     /// Remove this worktree directory (confirmed); stay open.
     Remove(String),
-    /// Stay open and show this.
-    Notice(String),
 }
 
 #[cfg(test)]
