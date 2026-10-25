@@ -13,7 +13,7 @@ use ratatui::DefaultTerminal;
 
 use super::{
     Applied, AttachOptions, AttachOutcome, AttachState, AttachView, ClientEvent, CopyMode,
-    InputParams, InputThread, PROBE_TIMEOUT, Selection, ServerLink, SharedFocus,
+    DragScroll, InputParams, InputThread, PROBE_TIMEOUT, Selection, ServerLink, SharedFocus,
 };
 use crate::{HostModeMirror, HostProbe, Picker, TuiError, WhichKeyEntry};
 
@@ -51,6 +51,8 @@ pub struct AttachApp {
     /// Copy mode on the focused pane, which takes the keys.
     copy: Option<CopyMode>,
     selection: Option<Selection>,
+    /// Scrolling while a selection drag is past the pane's edge.
+    drag: Option<DragScroll>,
     /// The sidebar is wanted (it still hides on narrow hosts).
     sidebar: bool,
     passthrough: bool,
@@ -96,7 +98,6 @@ impl AttachApp {
         mirror.enter(&mut out);
         let mut state = AttachState::new();
         state.set_left(sidebar::sidebar_cols(opts, opts.sidebar, size));
-        let last_draw = Instant::now() - FRAME;
         let notice = (!opts.warnings.is_empty())
             .then(|| (opts.warnings.join("; "), Instant::now() + WARNING));
         Ok(Self {
@@ -116,13 +117,14 @@ impl AttachApp {
             picker: None,
             copy: None,
             selection: None,
+            drag: None,
             sidebar: opts.sidebar,
             passthrough: false,
             notice,
             out,
             size,
             dirty: true,
-            last_draw,
+            last_draw: Instant::now() - FRAME,
         })
     }
 
@@ -140,6 +142,7 @@ impl AttachApp {
                 return Ok(outcome);
             }
             self.check_resize()?;
+            self.drag_tick();
             self.expire_notice();
             self.show_which_key();
             if self.dirty && self.last_draw.elapsed() >= FRAME {
@@ -184,6 +187,9 @@ impl AttachApp {
         }
         self.dirty |= applied.redraw;
         self.after_copy_frames(applied.found);
+        if applied.redraw && self.drag.is_some() {
+            self.drag_extend();
+        }
         if applied.redraw {
             self.publish_panes();
         } else {
