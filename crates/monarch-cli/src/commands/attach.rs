@@ -1,7 +1,7 @@
 //! `monarch attach` (and a bare `monarch`): connect to a session.
 
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::sync::Arc;
 
@@ -30,14 +30,21 @@ pub(crate) fn run(
         config,
     )?;
     let lister: Arc<dyn SessionLister> = Arc::new(SocketSessions);
-    let mut welcome = StateFile::root().is_ok_and(|root| first_run(&root));
+    let mut first = true;
     loop {
         let socket = SocketPath::for_session(&session)?;
         // Checked before a server is started for nothing.
         let mut opts = AttachOptions::new(socket.clone(), session.clone(), loaded)?;
-        opts.welcome = std::mem::take(&mut welcome);
+        let unwelcomed = std::mem::take(&mut first)
+            .then(StateFile::root)
+            .and_then(|root| unwelcomed(&root.ok()?));
+        opts.welcome = unwelcomed.is_some();
         ensure_server(&session, &socket, &args.agents)?;
-        match AttachApp::attach(&opts, Arc::clone(&lister))? {
+        let outcome = AttachApp::attach(&opts, Arc::clone(&lister))?;
+        if let Some(marker) = unwelcomed {
+            remember(&marker);
+        }
+        match outcome {
             AttachOutcome::Switch(next) => session = next,
             outcome => {
                 writeln!(out, "{}", farewell(&session, &outcome))?;
@@ -48,15 +55,21 @@ pub(crate) fn run(
     Ok(ExitCode::SUCCESS)
 }
 
-/// Whether this is the first attach on this machine, judged by a marker
-/// in Monarch's state directory, which it then writes. Any error counts
-/// as not first: a welcome every time would be worse than none.
-fn first_run(root: &Path) -> bool {
+/// The marker to write after the first attach on this machine, when
+/// Monarch's state directory `root` doesn't have it yet. Nothing is
+/// written here: an attach that fails must not use up the welcome.
+fn unwelcomed(root: &Path) -> Option<PathBuf> {
     let marker = root.join("welcomed");
-    if marker.exists() {
-        return false;
+    (!marker.exists()).then_some(marker)
+}
+
+/// Writes `marker` once the welcome has been shown. If that fails the
+/// welcome shows again next time, which beats never showing it.
+fn remember(marker: &Path) {
+    if let Some(dir) = marker.parent() {
+        let _ = std::fs::create_dir_all(dir);
     }
-    std::fs::create_dir_all(root).is_ok() && std::fs::write(&marker, "").is_ok()
+    let _ = std::fs::write(marker, "");
 }
 
 /// Panes carry `MONARCH_PANE`. A client started inside one reads the very
@@ -98,14 +111,10 @@ mod tests {
     fn the_welcome_shows_once() {
         let dir = tempfile::tempdir().expect("dir");
         let root = dir.path().join("state/monarch");
-        assert!(first_run(&root), "first attach");
-        assert!(!first_run(&root), "never again");
-        let file = dir.path().join("file");
-        std::fs::write(&file, "").expect("write");
-        assert!(
-            !first_run(&file.join("monarch")),
-            "an unwritable root shows nothing"
-        );
+        let marker = unwelcomed(&root).expect("first attach");
+        assert!(!root.exists(), "nothing written before the attach");
+        remember(&marker);
+        assert_eq!(unwelcomed(&root), None, "never again");
     }
 
     #[test]

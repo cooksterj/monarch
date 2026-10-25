@@ -127,7 +127,6 @@ def run_all(binary):
         first.wait_for(b"press", "the welcome on the first attach")
         os.write(first.fd, b"q")
         first.idle(0.5)
-        assert os.path.exists(os.path.join(run, "monarch", "welcomed")), "welcome remembered"
         os.write(first.fd, b"echo monarch-$((40+2))\r")
         first.wait_for(b"monarch-42", "echo output")
         os.write(first.fd, binary.encode() + b"\r")
@@ -179,6 +178,7 @@ def run_all(binary):
         os.write(first.fd, b"d")
         first.wait_for(f"[detached from session {SESSION}]".encode(), "detach message")
         first.finish()
+        assert os.path.exists(os.path.join(run, "monarch", "welcomed")), "welcome remembered"
         assert b"qecho" not in first.seen, "the key closing the welcome leaked into the pane"
         print("  welcome: shown on the first attach only; the key that closed it was swallowed")
         print("  attach: auto-started server, nested attach refused, status line + title shown, typed, prefix shown, detached")
