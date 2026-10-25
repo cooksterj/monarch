@@ -141,6 +141,24 @@ impl ServerContext {
         self.persist.notify_one();
     }
 
+    /// Keeps the session id an agent pane's hooks report, so a restart
+    /// resumes that session (Codex picks its own id). Panes Monarch did
+    /// not launch as that agent are left alone.
+    pub fn record_session(&self, report: &AgentReport) {
+        let Some(id) = &report.session_id else {
+            return;
+        };
+        let mut specs = self.lock_specs();
+        let Some(agent) = specs.get_mut(&report.pane).and_then(|s| s.agent.as_mut()) else {
+            return;
+        };
+        if agent.kind == report.agent && agent.session_id.as_ref() != Some(id) {
+            agent.session_id = Some(id.clone());
+            drop(specs);
+            self.persist.notify_one();
+        }
+    }
+
     /// What each live pane was started with.
     #[must_use]
     pub fn specs(&self) -> BTreeMap<PaneId, PaneSpec> {
