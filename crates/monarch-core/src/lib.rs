@@ -12,6 +12,8 @@ mod error;
 mod ids;
 mod keymap;
 mod layout;
+mod rgb;
+mod theme;
 
 pub use action::{Action, RESIZE_STEP};
 pub use agent_kind::AgentKind;
@@ -24,3 +26,5 @@ pub use error::CoreError;
 pub use ids::{ClientId, PaneId, TabId};
 pub use keymap::{Key, Keymap, KeymapPreset};
 pub use layout::{Direction, Rect, SplitAxis, SplitTree, Tab};
+pub use rgb::Rgb;
+pub use theme::Theme;

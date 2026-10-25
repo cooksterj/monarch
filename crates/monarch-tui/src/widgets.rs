@@ -1,6 +1,7 @@
 //! ratatui widgets. Each widget is a pure function of its inputs.
 
 mod context_menu_view;
+mod glyph_look;
 mod mouse_owner;
 mod pane_borders;
 mod pane_view;
@@ -15,6 +16,7 @@ mod which_key;
 mod which_key_entry;
 
 pub use context_menu_view::ContextMenuView;
+pub use glyph_look::GlyphLook;
 pub use mouse_owner::MouseOwner;
 pub use pane_borders::PaneBorders;
 pub use pane_view::PaneView;

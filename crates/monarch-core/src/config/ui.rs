@@ -18,6 +18,8 @@ pub struct UiConfig {
     pub mouse: MouseMode,
     /// Host window title format; `{session}`, `{pane}` and `{title}` expand.
     pub window_title: String,
+    /// Animate agent-state glyphs (pulsing, fading); off draws them still.
+    pub animations: bool,
 }
 
 impl Default for UiConfig {
@@ -28,6 +30,7 @@ impl Default for UiConfig {
             sidebar_min_columns: 100,
             mouse: MouseMode::Auto,
             window_title: "{title} — monarch:{session}".into(),
+            animations: true,
         }
     }
 }
@@ -39,5 +42,6 @@ mod tests {
     #[test]
     fn mouse_defaults_to_auto() {
         assert_eq!(UiConfig::default().mouse, MouseMode::Auto);
+        assert!(UiConfig::default().animations);
     }
 }

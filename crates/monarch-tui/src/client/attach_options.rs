@@ -31,6 +31,8 @@ pub struct AttachOptions {
     pub sidebar_width: u16,
     /// `[ui].sidebar_min_columns`: narrower hosts hide the sidebar.
     pub sidebar_min_columns: u16,
+    /// `[ui].animations`: animate agent-state glyphs.
+    pub animations: bool,
     /// What each key after the prefix does.
     pub keymap: Keymap,
     /// How long the prefix waits before the key popup appears.
@@ -59,6 +61,7 @@ impl AttachOptions {
             sidebar: ui.sidebar,
             sidebar_width: ui.sidebar_width,
             sidebar_min_columns: ui.sidebar_min_columns,
+            animations: ui.animations,
             keymap: Keymap::default(),
             which_key_delay: Duration::ZERO,
             repeat: Duration::ZERO,
@@ -94,6 +97,7 @@ impl AttachOptions {
         self.sidebar = config.ui.sidebar;
         self.sidebar_width = config.ui.sidebar_width;
         self.sidebar_min_columns = config.ui.sidebar_min_columns;
+        self.animations = config.ui.animations;
         self.keymap = keymap;
         self.which_key_delay = Duration::from_millis(config.keys.which_key_delay_ms);
         self.repeat = Duration::from_millis(config.keys.repeat_ms);

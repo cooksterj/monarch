@@ -29,6 +29,7 @@ impl AttachState {
                         .trim_end()
                         .to_owned(),
                     state: agent.state,
+                    look: None,
                     detail: activity(agent).or_else(|| place.and_then(where_in)),
                     focused: Some(pane.pane) == layout.focus,
                     shown: tab == layout.active_tab,

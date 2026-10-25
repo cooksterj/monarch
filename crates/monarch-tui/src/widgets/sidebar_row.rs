@@ -2,6 +2,8 @@
 
 use monarch_core::{AgentState, PaneId};
 
+use super::GlyphLook;
+
 /// A pane under its project heading.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SidebarRow {
@@ -12,6 +14,9 @@ pub struct SidebarRow {
     /// Its agent's state, drawn as a glyph before the label (`$` for a
     /// plain shell).
     pub state: AgentState,
+    /// How its glyph looks this frame (animated, coloured); `None` draws
+    /// the state's plain glyph.
+    pub look: Option<GlyphLook>,
     /// Its agent's activity, or where in the checkout it works (`src`),
     /// or its directory outside one; drawn dim after the label.
     pub detail: Option<String>,
@@ -31,6 +36,7 @@ mod tests {
             pane: PaneId(1),
             label: "1 zsh".into(),
             state: AgentState::Unknown,
+            look: None,
             detail: None,
             focused: true,
             shown: true,
