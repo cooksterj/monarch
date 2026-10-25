@@ -21,6 +21,7 @@ mod copy;
 mod draw;
 mod picker;
 mod select;
+mod sidebar;
 mod which_key;
 
 /// Minimum time between frames drawn to the host.
@@ -50,6 +51,8 @@ pub struct AttachApp {
     /// Copy mode on the focused pane, which takes the keys.
     copy: Option<CopyMode>,
     selection: Option<Selection>,
+    /// The sidebar is wanted (it still hides on narrow hosts).
+    sidebar: bool,
     passthrough: bool,
     notice: Option<(String, Instant)>,
     out: Vec<u8>,
@@ -87,11 +90,12 @@ impl AttachApp {
         let focus = Arc::new(SharedFocus::default());
         spawn_input(&link, opts, Arc::clone(&focus), tx);
         let (host, backlog) = wait_for_host(&events);
-        let size = introduce(&ui, &link, host)?;
+        let size = introduce(&ui, &link, host, opts)?;
         let mut mirror = HostModeMirror::new(&host).with_mouse(opts.mouse);
         let mut out = Vec::new();
         mirror.enter(&mut out);
-        let state = AttachState::new();
+        let mut state = AttachState::new();
+        state.set_left(sidebar::sidebar_cols(opts, opts.sidebar, size));
         let last_draw = Instant::now() - FRAME;
         let notice = (!opts.warnings.is_empty())
             .then(|| (opts.warnings.join("; "), Instant::now() + WARNING));
@@ -112,6 +116,7 @@ impl AttachApp {
             picker: None,
             copy: None,
             selection: None,
+            sidebar: opts.sidebar,
             passthrough: false,
             notice,
             out,
@@ -179,9 +184,10 @@ impl AttachApp {
         }
         self.dirty |= applied.redraw;
         self.after_copy_frames(applied.found);
-        self.focus.set(&self.state.focus_view());
         if applied.redraw {
-            self.focus.set_panes(self.state.pane_rects());
+            self.publish_panes();
+        } else {
+            self.focus.set(&self.state.focus_view());
         }
     }
 
@@ -196,9 +202,7 @@ impl AttachApp {
             self.ui
                 .autoresize()
                 .map_err(|e| TuiError::io("resizing", e))?;
-            self.link
-                .send(&ClientMsg::Resize(AttachView::pane_area(size)))?;
-            self.dirty = true;
+            self.relayout();
         }
         Ok(())
     }
@@ -238,18 +242,20 @@ fn spawn_input(
     });
 }
 
-/// Tells the server what the host can do and how big it is.
+/// Tells the server what the host can do and how big the panes are.
 fn introduce(
     ui: &DefaultTerminal,
     link: &ServerLink,
     host: HostInfo,
+    opts: &AttachOptions,
 ) -> Result<ScreenSize, TuiError> {
     let area = ui
         .size()
         .map_err(|e| TuiError::io("reading terminal size", e))?;
     let size = ScreenSize::new(area.width, area.height);
     link.send(&ClientMsg::HostInfo(host))?;
-    link.send(&ClientMsg::Resize(AttachView::pane_area(size)))?;
+    let left = sidebar::sidebar_cols(opts, opts.sidebar, size);
+    link.send(&ClientMsg::Resize(AttachView::pane_area(size, left)))?;
     Ok(size)
 }
 

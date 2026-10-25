@@ -30,11 +30,13 @@ HOST_REPLIES = b"\x1b]11;rgb:2828/2c2c/3434\x1b\\\x1b[?2026;2$y\x1b[?62;22c"
 class Client:
     """One `monarch attach` run in a pseudo-terminal."""
 
-    def __init__(self, binary, env):
+    def __init__(self, binary, env, session=SESSION, cols=80, cwd=None):
         self.pid, self.fd = pty.fork()
         if self.pid == 0:
-            os.execve(binary, [binary, "attach", "-s", SESSION], env)
-        fcntl.ioctl(self.fd, termios.TIOCSWINSZ, struct.pack("HHHH", 24, 80, 0, 0))
+            if cwd:
+                os.chdir(cwd)
+            os.execve(binary, [binary, "attach", "-s", session], env)
+        fcntl.ioctl(self.fd, termios.TIOCSWINSZ, struct.pack("HHHH", 24, cols, 0, 0))
         self.seen = b""
         self.wait_for(b"\x1b[c", "probe query")
         os.write(self.fd, HOST_REPLIES)
@@ -160,7 +162,42 @@ def run_all(binary):
         second.finish()
         assert not os.path.exists(os.path.join(run, "monarch", f"{SESSION}.sock")), "socket left behind"
         print("  reattach: screen restored; exiting every shell ends the session")
+        sidebar_groups_and_focuses(binary, env, run)
     print("spike4 attach smoke: ok")
+
+
+def sidebar_groups_and_focuses(binary, env, run):
+    """A 120-column host shows the sidebar: panes grouped by git checkout,
+    a click focuses one, prefix t hides it and the panes get the room."""
+    proj = os.path.join(run, "proj")
+    os.mkdir(proj)
+    subprocess.run(["git", "init", "-q", "-b", "trunk", proj], check=True)
+    wide = Client(binary, env, session=f"{SESSION}-wide", cols=120, cwd=proj)
+    wide.wait_for(b"proj", "the repository heading")
+    wide.wait_for(b"trunk", "the branch")
+    os.write(wide.fd, b"echo cols-$(tput cols)\r")
+    wide.wait_for(b"cols-88", "panes beside a 32-column sidebar")
+    os.write(wide.fd, b"\x02c")
+    wide.idle(0.5)
+    os.write(wide.fd, b"cd /\r")
+    wide.wait_for(b"Scratch", "the pane outside a repository")
+    wide.idle(0.3)
+    wide.seen = b""
+    os.write(wide.fd, b"\x1b[<0;4;2M\x1b[<0;4;2m")  # "1 sh" under proj
+    wide.idle(0.5)
+    os.write(wide.fd, b"pwd\r")
+    wide.wait_for(b"/proj", "the clicked pane focused in tab 1")
+    wide.seen = b""
+    os.write(wide.fd, b"\x02t")
+    wide.idle(0.3)
+    os.write(wide.fd, b"echo cols-$(tput cols)\r")
+    wide.wait_for(b"cols-120", "panes take the whole width")
+    for _ in range(2):
+        os.write(wide.fd, b"exit\r")
+        wide.idle(0.5)
+    wide.wait_for(b"ended]", "session end message")
+    wide.finish()
+    print("  sidebar: grouped by repo/branch, click focused a pane in another tab, prefix t hid it")
 
 
 if __name__ == "__main__":

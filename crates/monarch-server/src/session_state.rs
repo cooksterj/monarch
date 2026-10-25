@@ -14,7 +14,7 @@ use std::collections::BTreeMap;
 
 use monarch_core::{ClientId, PaneId, Rect, Tab};
 use monarch_proto::{
-    HostInfo, LayoutMsg, PaneLayout, PaneSummary, ScreenSize, ServerMsg, TabSummary,
+    HostInfo, LayoutMsg, PaneLayout, PanePlace, ScreenSize, ServerMsg, TabSummary,
 };
 use monarch_term::{HostProfile, ShadowGrid};
 use tokio::sync::mpsc::Sender;
@@ -34,6 +34,8 @@ struct PaneEntry {
     title: Option<String>,
     /// The foreground program's name.
     command: Option<String>,
+    /// Where the foreground program works.
+    place: Option<PanePlace>,
     /// The size the pane was last given.
     size: ScreenSize,
 }
@@ -95,6 +97,7 @@ impl SessionState {
             seq: 0,
             title: None,
             command: None,
+            place: None,
             size: ScreenSize::new(0, 0),
         };
         self.panes.insert(id, entry);
@@ -265,16 +268,6 @@ impl SessionState {
             panes,
             tabs,
             active_tab: self.active,
-        }
-    }
-
-    /// A pane's names for tab labels and the go-to picker.
-    fn summary(&self, pane: PaneId) -> PaneSummary {
-        let entry = self.panes.get(&pane);
-        PaneSummary {
-            pane,
-            title: entry.and_then(|e| e.title.clone()),
-            command: entry.and_then(|e| e.command.clone()),
         }
     }
 

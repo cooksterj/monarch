@@ -1,8 +1,9 @@
-//! Naming panes after their foreground program, for panes whose program
-//! sets no title.
+//! What each pane runs and where: its foreground program, which names
+//! panes whose program sets no title, and its directory and git checkout,
+//! which group panes in the sidebar.
 
 use monarch_core::PaneId;
-use monarch_proto::ServerMsg;
+use monarch_proto::{PanePlace, PaneSummary, ServerMsg};
 
 use super::SessionState;
 
@@ -28,5 +29,31 @@ impl SessionState {
         entry.command.clone_from(&command);
         self.broadcast(&ServerMsg::Command { pane: id, command });
         true
+    }
+
+    /// Records where a pane works and tells every client if it changed.
+    /// Returns whether it did.
+    pub fn set_place(&mut self, id: PaneId, place: Option<PanePlace>) -> bool {
+        let Some(entry) = self.panes.get_mut(&id) else {
+            return false;
+        };
+        if entry.place == place {
+            return false;
+        }
+        entry.place.clone_from(&place);
+        self.broadcast(&ServerMsg::Place { pane: id, place });
+        true
+    }
+
+    /// A pane's names and place for tab labels, the go-to picker and the
+    /// sidebar.
+    pub(super) fn summary(&self, pane: PaneId) -> PaneSummary {
+        let entry = self.panes.get(&pane);
+        PaneSummary {
+            pane,
+            title: entry.and_then(|e| e.title.clone()),
+            command: entry.and_then(|e| e.command.clone()),
+            place: entry.and_then(|e| e.place.clone()),
+        }
     }
 }

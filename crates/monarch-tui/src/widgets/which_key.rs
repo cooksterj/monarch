@@ -133,8 +133,8 @@ mod tests {
         │ % |        split right    =          equalize       [          copy mode    │
         │ x          close pane     HJKL       resize         g w        go to pane   │
         │ z          zoom           1-9        go to tab      m          toggle mouse │
-        │ hjkl ←↓↑→  focus          c          new tab        d          detach       │
-        │ o          focus next     n          next tab                               │
+        │ hjkl ←↓↑→  focus          c          new tab        t          sidebar      │
+        │ o          focus next     n          next tab       d          detach       │
         │ {          swap prev      p          prev tab                               │
         └─────────────────────────────────────────────────────────────────────────────┘
         "#);
