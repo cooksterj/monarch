@@ -172,6 +172,9 @@ impl AttachState {
 
     /// A pane's name from what the layout said and later messages.
     fn name<'a>(&'a self, sent: &'a PaneSummary) -> &'a str {
+        if let Some(kind) = self.agent(sent).agent {
+            return kind.name();
+        }
         let latest = |map: &'a BTreeMap<PaneId, String>| map.get(&sent.pane).map(String::as_str);
         let title = latest(&self.titles).or(sent.title.as_deref());
         let command = latest(&self.commands).or(sent.command.as_deref());

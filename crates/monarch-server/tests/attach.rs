@@ -213,6 +213,7 @@ async fn agent_reports_reach_attached_clients() {
     let status = AgentStatus {
         state: AgentState::Blocked,
         activity: Some("Allow Bash?".into()),
+        agent: Some(monarch_core::AgentKind::Claude),
     };
     until(&mut rx, |m| {
         *m == ServerMsg::Agent {

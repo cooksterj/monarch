@@ -48,7 +48,7 @@ impl AttachState {
 
     /// What a pane's agent does, from the latest `Agent` or else the
     /// layout.
-    fn agent<'a>(&'a self, sent: &'a PaneSummary) -> &'a AgentStatus {
+    pub(super) fn agent<'a>(&'a self, sent: &'a PaneSummary) -> &'a AgentStatus {
         self.agents.get(&sent.pane).unwrap_or(&sent.agent)
     }
 
@@ -219,17 +219,19 @@ mod tests {
         );
     }
 
-    #[test]
-    fn agent_rows_show_their_state_and_activity() {
+    /// The test state with pane 1 blocked and pane 3 working, both Claude.
+    fn with_agents() -> Vec<SidebarRow> {
         let mut state = state();
         let status = |state, activity: Option<&str>| AgentStatus {
             state,
             activity: activity.map(Into::into),
+            agent: Some(monarch_core::AgentKind::Claude),
         };
+        let blocked = status(AgentState::Blocked, Some("Allow Bash: rm -rf target?"));
         let msgs = [
             ServerMsg::Agent {
                 pane: PaneId(1),
-                status: status(AgentState::Blocked, Some("Allow Bash: rm -rf target?")),
+                status: blocked,
             },
             ServerMsg::Agent {
                 pane: PaneId(3),
@@ -238,26 +240,34 @@ mod tests {
         ];
         msgs.into_iter()
             .for_each(|m| state.apply(m, &mut Applied::default()));
-        let rows: Vec<_> = state
+        state
             .sidebar_groups()
             .into_iter()
             .flat_map(|g| g.rows)
+            .collect()
+    }
+
+    #[test]
+    fn agent_rows_show_their_state_and_activity() {
+        let rows: Vec<_> = with_agents()
+            .into_iter()
             .map(|r| (r.state, r.detail))
             .collect();
+        let blocked = Some("Allow Bash: rm -rf target?".into());
         assert_eq!(
             rows[..2],
             [
-                (
-                    AgentState::Blocked,
-                    Some("Allow Bash: rm -rf target?".into())
-                ),
+                (AgentState::Blocked, blocked),
                 (AgentState::Working, Some("Working".into())),
             ]
         );
-        assert_eq!(
-            rows[2],
-            (AgentState::Unknown, Some("x".into())),
-            "a shell keeps its place"
-        );
+        let shell = (AgentState::Unknown, Some("x".into()));
+        assert_eq!(rows[2], shell, "a shell keeps its place");
+    }
+
+    #[test]
+    fn agent_panes_are_named_after_their_agent() {
+        let labels: Vec<String> = with_agents().into_iter().map(|r| r.label).collect();
+        assert_eq!(labels, ["1 claude", "2 claude", "1 zsh", "2 sh"]);
     }
 }
