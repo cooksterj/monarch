@@ -112,7 +112,7 @@ impl Client {
                 detach: None,
                 pending: false,
                 message: None,
-                mouse_terminal: false,
+                mouse: monarch_tui::MouseOwner::Monarch,
             },
             sidebar: None,
             selection: None,

@@ -142,7 +142,7 @@ mod tests {
             detach: Some(monarch_core::Key::Char('d')),
             pending: false,
             message: None,
-            mouse_terminal: false,
+            mouse: crate::MouseOwner::Monarch,
         }
     }
 
