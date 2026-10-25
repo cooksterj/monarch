@@ -22,6 +22,7 @@ impl AttachApp {
             Action::Inbox => self.open_picker(self.inbox()),
             Action::NextBlocked => self.next_blocked(),
             Action::Review => self.open_review(),
+            Action::NewWorktree => self.open_worktree_form(),
             Action::CopyMode => self.open_copy(),
             Action::ToggleSidebar => self.toggle_sidebar(),
             Action::ReloadConfig => self.reload_config(),
@@ -40,9 +41,11 @@ impl AttachApp {
         }
         if self.review.is_some() {
             self.review_input(bytes);
-            return None;
-        }
-        if self.picker.is_none() {
+        } else if self.form.is_some() {
+            self.worktree_input(bytes);
+        } else if self.picker.is_some() {
+            return self.picker_input(bytes);
+        } else {
             for key in OverlayKey::decode(bytes) {
                 if self.copy.is_none() {
                     break;
@@ -52,8 +55,12 @@ impl AttachApp {
             if self.copy.is_none() {
                 self.focus.set_overlay(false);
             }
-            return None;
         }
+        None
+    }
+
+    /// Keys while the palette, go-to picker or inbox is open.
+    fn picker_input(&mut self, bytes: &[u8]) -> Option<AttachOutcome> {
         for key in OverlayKey::decode(bytes) {
             let Some(picker) = self.picker.as_mut() else {
                 break;
@@ -83,8 +90,7 @@ impl AttachApp {
 
     fn close_picker(&mut self) {
         self.picker = None;
-        self.focus
-            .set_overlay(self.copy.is_some() || self.menu.is_some());
+        self.focus.set_overlay(self.any_overlay());
         self.dirty = true;
     }
 

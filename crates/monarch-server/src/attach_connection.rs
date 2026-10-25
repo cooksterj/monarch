@@ -15,6 +15,7 @@ use crate::{ActionEffect, RENDER_LANE, ServerContext, ServerError, SessionState}
 
 mod history;
 mod review;
+mod worktree;
 
 type Codec = FrameCodec<ClientMsg, ServerMsg>;
 
@@ -78,6 +79,7 @@ fn handle(ctx: &Arc<ServerContext>, id: ClientId, msg: ClientMsg) -> bool {
         msg @ (ClientMsg::Search { .. } | ClientMsg::Copy { .. }) => history::reply(ctx, id, msg),
         ClientMsg::Review(pane) => review::request(ctx, id, pane),
         ClientMsg::Edit { pane, path, editor } => review::edit(ctx, pane, &path, &editor),
+        ClientMsg::NewWorktree(request) => worktree::request(ctx, id, request),
         msg => apply(ctx, id, msg),
     }
     true

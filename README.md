@@ -72,6 +72,7 @@ programs running inside it. Press the prefix and wait briefly to see every avail
 | `prefix a` | attention inbox: every agent waiting on you |
 | `prefix Tab` | jump to the next agent waiting on a decision |
 | `prefix v` | review the focused pane's uncommitted changes |
+| `prefix N` | new worktree: branch name, then shell, Claude Code or Codex |
 | `prefix :` | command palette |
 | `prefix d` | detach |
 | `prefix ?` | all keys |

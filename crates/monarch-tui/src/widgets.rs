@@ -15,6 +15,7 @@ mod status_line;
 mod style_convert;
 mod which_key;
 mod which_key_entry;
+mod worktree_form_view;
 
 pub use context_menu_view::ContextMenuView;
 pub use glyph_look::GlyphLook;
@@ -31,3 +32,4 @@ pub use status_line::StatusLine;
 pub use style_convert::StyleConverter;
 pub use which_key::WhichKey;
 pub use which_key_entry::WhichKeyEntry;
+pub use worktree_form_view::WorktreeFormView;

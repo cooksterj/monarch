@@ -3,7 +3,7 @@
 
 use std::path::Path;
 
-use monarch_core::AgentState;
+use monarch_core::{AgentState, PaneId};
 use monarch_proto::{AgentStatus, PanePlace, PaneSummary};
 
 use super::AttachState;
@@ -50,6 +50,14 @@ impl AttachState {
     /// layout.
     pub(super) fn agent<'a>(&'a self, sent: &'a PaneSummary) -> &'a AgentStatus {
         self.agents.get(&sent.pane).unwrap_or(&sent.agent)
+    }
+
+    /// Where `pane` works, if it is in the layout and its place is known.
+    #[must_use]
+    pub fn place_of(&self, pane: PaneId) -> Option<&PanePlace> {
+        let layout = self.layout.as_ref()?;
+        let mut panes = layout.tabs.iter().flat_map(|t| &t.panes);
+        self.place(panes.find(|p| p.pane == pane)?)
     }
 
     /// Where a pane works, from the latest `Place` or else the layout.
@@ -162,6 +170,15 @@ mod tests {
         let mut state = AttachState::new();
         state.apply(ServerMsg::Layout(layout), &mut Applied::default());
         state
+    }
+
+    #[test]
+    fn places_are_found_by_pane() {
+        let state = state();
+        let vim = state.place_of(PaneId(3)).map(|p| p.cwd.as_str());
+        assert_eq!(vim, Some("/w/api/src"));
+        assert_eq!(state.place_of(PaneId(4)), None, "not known yet");
+        assert_eq!(state.place_of(PaneId(9)), None, "no such pane");
     }
 
     #[test]

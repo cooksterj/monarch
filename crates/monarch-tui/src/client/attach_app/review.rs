@@ -75,8 +75,7 @@ impl AttachApp {
 
     fn close_review(&mut self) {
         self.review = None;
-        let others = self.picker.is_some() || self.copy.is_some() || self.menu.is_some();
-        self.focus.set_overlay(others);
+        self.focus.set_overlay(self.any_overlay());
     }
 }
 

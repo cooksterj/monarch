@@ -70,6 +70,9 @@ pub enum Action {
     /// Review the uncommitted changes in the focused pane's checkout:
     /// changed files and their diffs.
     Review,
+    /// Make a git worktree for a new or existing branch and open a tab in
+    /// it, running an agent or a shell.
+    NewWorktree,
     /// Focus this pane, showing its tab (what the go-to picker runs; not
     /// bindable).
     FocusPane(PaneId),
@@ -91,6 +94,7 @@ impl Action {
                 | Self::Inbox
                 | Self::NextBlocked
                 | Self::Review
+                | Self::NewWorktree
         )
     }
 
@@ -119,6 +123,7 @@ mod tests {
         assert!(Action::ReloadConfig.is_local());
         assert!(Action::Inbox.is_local() && Action::NextBlocked.is_local());
         assert!(Action::Review.is_local());
+        assert!(Action::NewWorktree.is_local());
         assert!(!Action::FocusPane(PaneId(1)).is_local());
         assert!(!Action::Split(SplitAxis::Rows).is_local());
         assert!(!Action::SelectTab(1).is_local());
