@@ -68,6 +68,7 @@ fn dispatch(ctx: &ServerContext, request: Request) -> Result<Value, RpcError> {
                 let message = format!("no pane {} in this session", report.pane);
                 return Err(RpcError::new(RpcError::NO_SUCH_PANE, message));
             }
+            ctx.record_session(&report);
             Ok(Value::Object(serde_json::Map::new()))
         }
         other => Err(RpcError::new(
@@ -103,6 +104,29 @@ mod tests {
         let response = ApiConnection::answer(&ctx, &line);
         assert_eq!(response, Response::ok(7, serde_json::json!({})));
         assert_eq!(ctx.lock().agent_status(pane).state, AgentState::Blocked);
+    }
+
+    #[test]
+    fn agent_panes_remember_the_reported_session() {
+        let ctx = context();
+        let codex = ctx.insert_for_test(PaneSpec::agent(AgentKind::Codex), FakePane::shell());
+        let shell = ctx.insert_for_test(PaneSpec::shell_command("sh"), FakePane::shell());
+        for pane in [codex, shell] {
+            let report = AgentReport {
+                session_id: Some("019a-thread".into()),
+                ..AgentReport::new(pane, AgentKind::Codex)
+            };
+            let request = Request::new(1, AgentReport::METHOD, &report).expect("request");
+            ApiConnection::answer(&ctx, &serde_json::to_string(&request).expect("json"));
+        }
+        let specs = ctx.specs();
+        let session = |p| specs[&p].agent.as_ref().and_then(|a| a.session_id.clone());
+        assert_eq!(session(codex).as_deref(), Some("019a-thread"));
+        assert_eq!(
+            session(shell),
+            None,
+            "a shell pane is not made an agent pane"
+        );
     }
 
     #[test]

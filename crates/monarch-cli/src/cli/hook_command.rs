@@ -9,6 +9,19 @@ use clap::Subcommand;
 pub enum HookCommand {
     /// A Claude Code hook (any event).
     Claude,
+    /// A Codex hook (any event).
+    Codex,
+}
+
+impl HookCommand {
+    /// The agent whose hook this is.
+    #[must_use]
+    pub fn agent(self) -> monarch_core::AgentKind {
+        match self {
+            Self::Claude => monarch_core::AgentKind::Claude,
+            Self::Codex => monarch_core::AgentKind::Codex,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -26,6 +39,10 @@ mod tests {
             cli.command,
             Some(Command::Hook(HookCommand::Claude))
         ));
+        let codex = Cli::try_parse_from(["monarch", "hook", "codex"]).expect("parses");
+        assert!(
+            matches!(codex.command, Some(Command::Hook(c)) if c.agent() == monarch_core::AgentKind::Codex)
+        );
         assert!(Cli::try_parse_from(["monarch", "hook", "gemini"]).is_err());
     }
 }

@@ -15,16 +15,27 @@ pub(crate) struct ToolActivity<'a> {
 }
 
 impl ToolActivity<'_> {
-    /// `<tool> <detail>`, or just the tool when nothing stands out.
+    /// `<tool> <detail>`, or just the tool when nothing stands out;
+    /// Codex's `apply_patch` reads as `Edit <file>`.
     pub fn line(&self) -> String {
+        let tool = if self.tool == "apply_patch" {
+            "Edit"
+        } else {
+            self.tool
+        };
         match self.detail() {
-            Some(detail) => format!("{} {detail}", self.tool),
-            None => self.tool.to_owned(),
+            Some(detail) => format!("{tool} {detail}"),
+            None => tool.to_owned(),
         }
     }
 
     fn detail(&self) -> Option<String> {
         let field = |key: &str| self.input?.get(key)?.as_str();
+        if self.tool == "apply_patch" {
+            return field("command")
+                .and_then(patched_file)
+                .map(|p| self.relative(p));
+        }
         let text = match self.tool {
             "Edit" | "MultiEdit" | "Write" | "Read" => {
                 return field("file_path").map(|p| self.relative(p));
@@ -47,6 +58,16 @@ impl ToolActivity<'_> {
             .filter(|p| !p.as_os_str().is_empty())
             .map_or_else(|| path.to_owned(), |p| p.to_string_lossy().into_owned())
     }
+}
+
+/// The first file a Codex patch touches (`*** Update File: src/x.rs`).
+fn patched_file(patch: &str) -> Option<&str> {
+    patch.lines().find_map(|line| {
+        ["*** Update File: ", "*** Add File: ", "*** Delete File: "]
+            .iter()
+            .find_map(|head| line.strip_prefix(head))
+            .map(str::trim)
+    })
 }
 
 #[cfg(test)]
@@ -91,6 +112,13 @@ mod tests {
             line("Task", &json!({"description": "Find uses"})),
             "Task Find uses"
         );
+    }
+
+    #[test]
+    fn codex_patches_name_their_first_file() {
+        let patch = json!({"command": "*** Begin Patch\n*** Add File: /w/api/new.rs\n+x\n"});
+        assert_eq!(line("apply_patch", &patch), "Edit new.rs");
+        assert_eq!(line("apply_patch", &json!({"command": "garbage"})), "Edit");
     }
 
     #[test]

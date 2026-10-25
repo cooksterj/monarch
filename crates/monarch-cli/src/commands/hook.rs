@@ -15,7 +15,7 @@ use monarch_proto::AgentReport;
 use serde_json::Value;
 
 use crate::HookCommand;
-use crate::hook::{ApiClient, ClaudeHook};
+use crate::hook::{AgentHook, ApiClient};
 
 /// Largest hook input read; tool inputs (a whole file for `Write`) can be
 /// big, and anything past this is not needed for a report.
@@ -56,10 +56,7 @@ fn report(cmd: HookCommand, env: &HookEnv, input: impl Read) -> anyhow::Result<(
     let mut text = Vec::new();
     input.take(MAX_INPUT).read_to_end(&mut text)?;
     let json: Value = serde_json::from_slice(&text)?;
-    let report = match cmd {
-        HookCommand::Claude => ClaudeHook::new(&json).report(pane),
-    };
-    if let Some(report) = report {
+    if let Some(report) = AgentHook::new(cmd.agent(), &json).report(pane) {
         ApiClient::connect(socket)?.call(AgentReport::METHOD, &report)?;
     }
     Ok(())

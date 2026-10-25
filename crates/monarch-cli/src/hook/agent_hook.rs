@@ -1,9 +1,11 @@
-//! A Claude Code hook event as an `agent.report`.
+//! An agent's hook event as an `agent.report`.
 //!
-//! Event names and fields follow the Claude Code hooks reference:
-//! `hook_event_name`, `session_id` and `cwd` on every event, plus
-//! `prompt`, `tool_name`/`tool_input`, `notification_type`/`message` and
-//! `last_assistant_message` on the events that carry them.
+//! Claude Code and Codex share one hook format: `hook_event_name`,
+//! `session_id` and `cwd` on every event, plus `prompt`,
+//! `tool_name`/`tool_input` and `last_assistant_message` on the events
+//! that carry them. Claude adds `Notification` (`notification_type`,
+//! `message`); Codex adds `Interrupt`. Events one agent never sends cost
+//! nothing, so a single mapping serves both.
 
 use monarch_core::{AgentKind, AgentState, PaneId};
 use monarch_proto::AgentReport;
@@ -11,15 +13,16 @@ use serde_json::Value;
 
 use super::tool_activity::ToolActivity;
 
-/// One hook call's JSON input.
-pub(crate) struct ClaudeHook<'a> {
+/// One hook call's JSON input, from `agent`.
+pub(crate) struct AgentHook<'a> {
+    agent: AgentKind,
     input: &'a Value,
 }
 
-impl<'a> ClaudeHook<'a> {
-    /// Wraps the JSON a hook received on stdin.
-    pub fn new(input: &'a Value) -> Self {
-        Self { input }
+impl<'a> AgentHook<'a> {
+    /// Wraps the JSON `agent`'s hook received on stdin.
+    pub fn new(agent: AgentKind, input: &'a Value) -> Self {
+        Self { agent, input }
     }
 
     /// What to tell the server about `pane`, or `None` for events that
@@ -30,7 +33,7 @@ impl<'a> ClaudeHook<'a> {
             state: Some(state),
             activity,
             session_id: self.field("session_id").map(str::to_owned),
-            ..AgentReport::new(pane, AgentKind::Claude)
+            ..AgentReport::new(pane, self.agent)
         })
     }
 
@@ -50,6 +53,7 @@ impl<'a> ClaudeHook<'a> {
             "Notification" if self.needs_input() => (AgentState::Blocked, text("message")),
             "Stop" => (AgentState::Done, text("last_assistant_message")),
             "StopFailure" => (AgentState::Error, text("error").or_else(|| text("message"))),
+            "Interrupt" => (AgentState::Idle, Some("Interrupted".into())),
             "SessionEnd" => (AgentState::Unknown, Some(String::new())),
             _ => return None,
         })
@@ -86,7 +90,7 @@ mod tests {
     use super::*;
 
     fn report(input: &Value) -> Option<(Option<AgentState>, Option<String>)> {
-        let report = ClaudeHook::new(input).report(PaneId(4))?;
+        let report = AgentHook::new(AgentKind::Claude, input).report(PaneId(4))?;
         assert_eq!((report.pane, report.agent), (PaneId(4), AgentKind::Claude));
         Some((report.state, report.activity))
     }
@@ -146,12 +150,29 @@ mod tests {
     #[test]
     fn sessions_start_idle_and_end_as_a_shell() {
         let start = json!({"hook_event_name": "SessionStart", "session_id": "abc"});
-        let sent = ClaudeHook::new(&start).report(PaneId(1)).expect("report");
+        let sent = AgentHook::new(AgentKind::Claude, &start)
+            .report(PaneId(1))
+            .expect("report");
         assert_eq!(sent.session_id.as_deref(), Some("abc"));
         assert_eq!(report(&start), says(AgentState::Idle, ""));
         let end = json!({"hook_event_name": "SessionEnd"});
         assert_eq!(report(&end), says(AgentState::Unknown, ""));
         let failed = json!({"hook_event_name": "StopFailure", "error": "rate limited"});
         assert_eq!(report(&failed), says(AgentState::Error, "rate limited"));
+    }
+
+    #[test]
+    fn codex_events_report_as_codex() {
+        let patch = json!({
+            "hook_event_name": "PreToolUse", "cwd": "/w", "tool_name": "apply_patch",
+            "tool_input": {"command": "*** Begin Patch\n*** Update File: /w/src/lib.rs\n@@\n-a\n+b\n"}
+        });
+        let sent = AgentHook::new(AgentKind::Codex, &patch)
+            .report(PaneId(2))
+            .expect("report");
+        assert_eq!(sent.agent, AgentKind::Codex);
+        assert_eq!(sent.activity.as_deref(), Some("Edit src/lib.rs"));
+        let interrupt = json!({"hook_event_name": "Interrupt", "turn_id": "t1"});
+        assert_eq!(report(&interrupt), says(AgentState::Idle, "Interrupted"));
     }
 }
