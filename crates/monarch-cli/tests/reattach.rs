@@ -123,6 +123,7 @@ impl Client {
             picker: None,
             review: None,
             form: None,
+            help: None,
             menu: None,
         };
         term.draw(|frame| view.draw(frame)).expect("draw");

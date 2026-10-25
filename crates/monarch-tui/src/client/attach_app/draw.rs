@@ -37,6 +37,7 @@ impl AttachApp {
         self.ui.backend_mut().write_all(&self.out).map_err(io)?;
         self.out.clear();
         self.size_review();
+        self.size_help();
         self.paint()?;
         if self.host.sync_output {
             execute!(self.ui.backend_mut(), EndSynchronizedUpdate).map_err(io)?;
@@ -78,6 +79,7 @@ impl AttachApp {
             menu,
             review,
             form,
+            help: self.popups.help_view(&self.opts.prefix_label, chrome),
             which_key: (self.popup && !self.any_overlay()).then_some(WhichKey {
                 entries: &self.which_key,
                 title: &self.opts.prefix_label,

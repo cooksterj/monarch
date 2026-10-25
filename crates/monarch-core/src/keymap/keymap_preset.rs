@@ -115,6 +115,7 @@ fn monarch() -> Vec<(Key, Action)> {
         (ch('N'), Action::NewWorktree),
         (ch('s'), Action::Projects),
         (ch('S'), Action::Sessions),
+        (ch('?'), Action::Help),
     ];
     out.extend(arrows());
     out.extend(vi(false, Action::Focus));
@@ -147,6 +148,7 @@ fn tmux() -> Vec<(Key, Action)> {
         (ch('N'), Action::NewWorktree),
         (ch('s'), Action::Projects),
         (ch('S'), Action::Sessions),
+        (ch('?'), Action::Help),
     ];
     out.extend(arrows());
     out
@@ -173,6 +175,7 @@ fn herdr() -> Vec<(Key, Action)> {
         (ch('N'), Action::NewWorktree),
         (ch('s'), Action::Projects),
         (ch('S'), Action::Sessions),
+        (ch('?'), Action::Help),
     ];
     out.extend(arrows());
     out.extend(vi(false, Action::Focus));
@@ -218,6 +221,7 @@ mod tests {
             assert!(has(preset, ch('['), Action::CopyMode));
             assert!(has(preset, ch('t'), Action::ToggleSidebar));
             assert!(has(preset, ch('R'), Action::ReloadConfig));
+            assert!(has(preset, ch('?'), Action::Help));
         }
         assert!(has(
             KeymapPreset::Herdr,

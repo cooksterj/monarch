@@ -115,7 +115,7 @@ programs running inside it. Press the prefix and wait briefly to see every avail
 | `prefix S` | sessions: switch to another, or type a new name to start one |
 | `prefix :` | command palette |
 | `prefix d` | detach |
-| `prefix ?` | all keys |
+| `prefix ?` | help: every key (from your own keymap), mouse gesture and command; type to search |
 
 ## Development
 

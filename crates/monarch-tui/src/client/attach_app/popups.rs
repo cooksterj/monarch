@@ -4,8 +4,8 @@
 use monarch_core::Theme;
 
 use crate::{
-    ContextMenu, ContextMenuView, Picker, PickerView, ProjectPicker, ReviewState, ReviewView,
-    SessionPicker, WorktreeForm, WorktreeFormView,
+    Chrome, ContextMenu, ContextMenuView, HelpState, HelpView, Picker, PickerView, ProjectPicker,
+    ReviewState, ReviewView, SessionPicker, WorktreeForm, WorktreeFormView,
 };
 
 /// Every pop-up; each takes the keys while open.
@@ -23,6 +23,8 @@ pub(super) struct Popups {
     pub review: Option<ReviewState>,
     /// The new-worktree form.
     pub form: Option<WorktreeForm>,
+    /// The help page.
+    pub help: Option<HelpState>,
 }
 
 /// What [`Popups::views`] draws: a picker, the menu, the review and the
@@ -43,6 +45,16 @@ impl Popups {
             || self.menu.is_some()
             || self.review.is_some()
             || self.form.is_some()
+            || self.help.is_some()
+    }
+
+    /// The help as drawn, when open; `prefix` is named in its title.
+    pub fn help_view<'a>(&'a self, prefix: &'a str, chrome: Chrome<'a>) -> Option<HelpView<'a>> {
+        self.help.as_ref().map(|state| HelpView {
+            state,
+            prefix,
+            chrome,
+        })
     }
 
     /// The widgets for those open, coloured by `theme`.
@@ -77,5 +89,8 @@ mod tests {
         let (picker, menu, review, form) = popups.views(None);
         assert!(picker.is_some(), "the project picker draws as a picker");
         assert!(menu.is_none() && review.is_none() && form.is_none());
+        assert!(popups.help_view("ctrl+b", Chrome::default()).is_none());
+        popups.help = Some(HelpState::new(&monarch_core::Keymap::default()));
+        assert!(popups.help_view("ctrl+b", Chrome::default()).is_some());
     }
 }

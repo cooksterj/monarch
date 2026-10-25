@@ -9,6 +9,8 @@ pub struct WhichKeyEntry {
     pub keys: String,
     /// What they do.
     pub label: String,
+    /// One of the actions they run (the first bound, for a family).
+    pub action: Action,
 }
 
 /// Actions that share one popup line.
@@ -26,20 +28,21 @@ impl WhichKeyEntry {
     /// The keymap's bindings, grouped and in a stable reading order.
     #[must_use]
     pub fn from_keymap(keymap: &Keymap) -> Vec<Self> {
-        let mut families: Vec<(Family, Vec<Key>)> = Vec::new();
+        let mut families: Vec<(Family, Action, Vec<Key>)> = Vec::new();
         for (key, action) in keymap.bindings() {
             let family = family(action);
-            match families.iter_mut().find(|(f, _)| *f == family) {
-                Some((_, keys)) => keys.push(key),
-                None => families.push((family, vec![key])),
+            match families.iter_mut().find(|(f, _, _)| *f == family) {
+                Some((_, _, keys)) => keys.push(key),
+                None => families.push((family, action, vec![key])),
             }
         }
-        families.sort_by_key(|(f, _)| rank(*f));
+        families.sort_by_key(|(f, _, _)| rank(*f));
         families
             .into_iter()
-            .map(|(family, keys)| Self {
+            .map(|(family, action, keys)| Self {
                 keys: keys_text(family, keys),
                 label: label(family),
+                action,
             })
             .collect()
     }

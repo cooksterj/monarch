@@ -1,0 +1,9 @@
+---
+source: crates/monarch-tui/src/widgets/help_view.rs
+expression: "draw(&state, 70, 5).join(\"\\n\")"
+---
+┌ help · keys follow ctrl+b ─────────────────────────────────────────┐
+│ Session                                                            │
+│   d  detach; the session keeps running                             │
+│                                                                    │
+└ search: detach · esc clears ───────────────────────────────────────┘
