@@ -8,6 +8,8 @@ mod auto_start;
 mod config;
 mod hook;
 mod keys;
+mod kill;
+mod ls;
 mod new;
 mod server;
 mod setup;
@@ -33,6 +35,8 @@ pub(crate) fn dispatch(cli: Cli, out: &mut dyn Write) -> anyhow::Result<ExitCode
         Some(Command::Hook(_)) => Ok(ExitCode::SUCCESS),
         Some(Command::Config(cmd)) => config::run(&cmd, &loader, out),
         Some(Command::Setup(args)) => setup::run(args, &setup::SetupEnv::from_env(), out),
+        Some(Command::Ls) => ls::run(out),
+        Some(Command::Kill(args)) => kill::run(&args, out),
         Some(Command::Keys) => keys::run(&loader.load()?.config, out),
         Some(Command::Server(args)) => server::run(&args, &loader.load()?.config),
         Some(Command::New(args)) => new::run(&args, &loader.load()?, out),

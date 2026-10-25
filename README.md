@@ -46,6 +46,8 @@ monarch config default  # print the default config
 monarch config check    # validate your config and flag unknown keys
 monarch setup           # let Claude Code and Codex report their state to Monarch
 monarch new feat/x --agent claude   # worktree for branch feat/x, Claude Code working in it
+monarch ls              # running sessions
+monarch kill work       # end the session named work (it won't be restored)
 ```
 
 `monarch new <branch>` adds a git worktree for the branch (created from the current commit, or

@@ -3,7 +3,9 @@
 use std::sync::Arc;
 
 use futures_util::{SinkExt, StreamExt};
-use monarch_proto::{AgentReport, NewWorktree, Request, Response, RpcError};
+use monarch_proto::{
+    AgentReport, KillSession, NewWorktree, Request, Response, RpcError, SessionInfo,
+};
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 use tokio::net::UnixStream;
@@ -86,6 +88,12 @@ fn dispatch(ctx: &ServerContext, request: Request) -> Result<Value, RpcError> {
                 return Err(RpcError::new(RpcError::NO_SUCH_PANE, message));
             };
             ctx.record_session(pane, &report);
+            Ok(Value::Object(serde_json::Map::new()))
+        }
+        SessionInfo::METHOD => serde_json::to_value(ctx.info())
+            .map_err(|e| RpcError::new(RpcError::FAILED, e.to_string())),
+        KillSession::METHOD => {
+            ctx.kill();
             Ok(Value::Object(serde_json::Map::new()))
         }
         other => Err(RpcError::new(

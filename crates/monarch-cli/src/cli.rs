@@ -2,6 +2,7 @@
 
 mod attach_args;
 mod hook_command;
+mod kill_args;
 mod new_args;
 mod server_args;
 mod setup_args;
@@ -10,6 +11,7 @@ use clap::{Parser, Subcommand};
 
 pub use attach_args::AttachArgs;
 pub use hook_command::HookCommand;
+pub use kill_args::KillArgs;
 pub use new_args::NewArgs;
 pub use server_args::ServerArgs;
 pub use setup_args::SetupArgs;
@@ -31,6 +33,12 @@ pub enum Command {
     /// Make a git worktree for a branch and open a tab in it, optionally
     /// running an agent.
     New(NewArgs),
+    /// List running sessions: panes, tabs and whether one is attached.
+    #[command(visible_alias = "list")]
+    Ls,
+    /// End a session: hang up its panes and stop its server. It is not
+    /// restored afterwards.
+    Kill(KillArgs),
     /// Run a session server (normally started for you by `monarch`).
     Server(ServerArgs),
     /// List what each key after the prefix does.
