@@ -4,7 +4,8 @@ use std::sync::Arc;
 
 use futures_util::{SinkExt, StreamExt};
 use monarch_proto::{
-    AgentReport, ExplainPanes, KillSession, NewWorktree, Request, Response, RpcError, SessionInfo,
+    AgentReport, AgentWait, ExplainPanes, KillSession, NewWorktree, Request, Response, RpcError,
+    SessionInfo,
 };
 use serde::de::DeserializeOwned;
 use serde_json::Value;
@@ -87,6 +88,16 @@ fn dispatch(ctx: &ServerContext, request: Request) -> Result<Value, RpcError> {
                     format!("no pane {pane_name} in this session"),
                 )
             })?)
+        }
+        AgentWait::METHOD => {
+            let wait: AgentWait = params(request.params)?;
+            let reply = ctx.lock().agent_wait(&wait).ok_or_else(|| {
+                RpcError::new(
+                    RpcError::NO_SUCH_PANE,
+                    format!("no pane {} in this session", wait.pane),
+                )
+            })?;
+            json(reply)
         }
         SessionInfo::METHOD => json(ctx.info()),
         KillSession::METHOD => {
@@ -175,6 +186,24 @@ mod tests {
     }
 
     #[test]
+    fn agent_methods_name_missing_panes() {
+        let ctx = context();
+        let explain = r#"{"id":5,"method":"agent.explain","params":{"pane":42}}"#;
+        assert_eq!(
+            code(&ApiConnection::answer(&ctx, explain)),
+            Some(RpcError::NO_SUCH_PANE)
+        );
+        let wait = r#"{"id":7,"method":"agent.wait","params":{"pane":42,"until":["idle"]}}"#;
+        assert_eq!(
+            code(&ApiConnection::answer(&ctx, wait)),
+            Some(RpcError::NO_SUCH_PANE)
+        );
+        let all = r#"{"id":6,"method":"agent.explain","params":{}}"#;
+        let listed = ApiConnection::answer(&ctx, all).result;
+        assert_eq!(listed, Some(serde_json::json!([])), "no panes yet");
+    }
+
+    #[test]
     fn bad_requests_get_errors() {
         let ctx = context();
         let report = AgentReport::new(PaneId(42), AgentKind::Claude);
@@ -184,14 +213,6 @@ mod tests {
             code(&ApiConnection::answer(&ctx, &line)),
             Some(RpcError::NO_SUCH_PANE)
         );
-        let explain = r#"{"id":5,"method":"agent.explain","params":{"pane":42}}"#;
-        assert_eq!(
-            code(&ApiConnection::answer(&ctx, explain)),
-            Some(RpcError::NO_SUCH_PANE)
-        );
-        let all = r#"{"id":6,"method":"agent.explain","params":{}}"#;
-        let listed = ApiConnection::answer(&ctx, all).result;
-        assert_eq!(listed, Some(serde_json::json!([])), "no panes yet");
         let unknown = r#"{"id":2,"method":"pane.explode"}"#;
         assert_eq!(
             code(&ApiConnection::answer(&ctx, unknown)),

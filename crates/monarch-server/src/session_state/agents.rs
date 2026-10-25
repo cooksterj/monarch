@@ -5,7 +5,7 @@ use std::path::Path;
 
 use monarch_core::{AgentKind, PaneId};
 use monarch_detect::OscSignal;
-use monarch_proto::{AgentReport, AgentStatus, ServerMsg, StatusSource};
+use monarch_proto::{AgentReport, AgentStatus, StatusSource};
 
 use super::SessionState;
 
@@ -22,7 +22,7 @@ impl SessionState {
     pub fn report_agent(&mut self, report: &AgentReport) -> Option<PaneId> {
         let pane = self.locate(report)?;
         if let Some(status) = self.agents.report(pane, report) {
-            self.broadcast(&ServerMsg::Agent { pane, status });
+            self.agent_changed(pane, status);
         }
         Some(pane)
     }
@@ -36,7 +36,7 @@ impl SessionState {
     /// Monarch started `kind` in `pane`; tells every client.
     pub fn launched_agent(&mut self, pane: PaneId, kind: AgentKind) {
         if let Some(status) = self.agents.launched(pane, kind) {
-            self.broadcast(&ServerMsg::Agent { pane, status });
+            self.agent_changed(pane, status);
         }
     }
 
@@ -46,7 +46,7 @@ impl SessionState {
         let command = self.panes.get(&pane).and_then(|e| e.command.as_deref());
         let agent = command.and_then(AgentKind::for_program);
         if let Some(status) = self.agents.signal(pane, signal, agent) {
-            self.broadcast(&ServerMsg::Agent { pane, status });
+            self.agent_changed(pane, status);
         }
     }
 
@@ -54,7 +54,7 @@ impl SessionState {
     /// is Idle now.
     pub fn saw(&mut self, pane: PaneId) {
         if let Some(status) = self.agents.seen(pane) {
-            self.broadcast(&ServerMsg::Agent { pane, status });
+            self.agent_changed(pane, status);
         }
     }
 
@@ -64,7 +64,7 @@ impl SessionState {
         let reply = bytes.iter().any(|b| matches!(b, b'\r' | b'\n'))
             || (!bytes.contains(&0x1b) && bytes.iter().any(u8::is_ascii_graphic));
         if reply && let Some(status) = self.agents.answered(pane) {
-            self.broadcast(&ServerMsg::Agent { pane, status });
+            self.agent_changed(pane, status);
         }
     }
 
@@ -100,6 +100,7 @@ impl SessionState {
 #[cfg(test)]
 mod tests {
     use monarch_core::{AgentKind, AgentState};
+    use monarch_proto::ServerMsg;
     use tokio::sync::mpsc;
 
     use super::*;

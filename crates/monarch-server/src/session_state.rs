@@ -12,6 +12,7 @@ mod arrange;
 mod commands;
 mod render;
 mod screens;
+mod waits;
 
 use std::collections::BTreeMap;
 

@@ -1,6 +1,10 @@
 //! The lifecycle state of an agent running in a pane.
 
+use std::str::FromStr;
+
 use serde::{Deserialize, Serialize};
+
+use crate::CoreError;
 
 /// What an agent in a pane is doing, as fused from hooks, OSC
 /// notifications, screen manifests and quiescence timers.
@@ -72,9 +76,40 @@ impl AgentState {
     }
 }
 
+impl FromStr for AgentState {
+    type Err = CoreError;
+
+    /// Reads a state by its label (`blocked`, `Done`); `unknown` and
+    /// `shell` both name a plain shell.
+    fn from_str(text: &str) -> Result<Self, CoreError> {
+        if text.eq_ignore_ascii_case("unknown") {
+            return Ok(Self::Unknown);
+        }
+        Self::ALL
+            .into_iter()
+            .find(|s| s.label().eq_ignore_ascii_case(text))
+            .ok_or_else(|| CoreError::UnknownState(text.to_owned()))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn states_parse_by_label() {
+        assert_eq!(
+            "blocked".parse::<AgentState>().ok(),
+            Some(AgentState::Blocked)
+        );
+        assert_eq!("Done".parse::<AgentState>().ok(), Some(AgentState::Done));
+        assert_eq!(
+            "unknown".parse::<AgentState>().ok(),
+            Some(AgentState::Unknown)
+        );
+        let err = "busy".parse::<AgentState>().expect_err("not a state");
+        assert!(err.to_string().starts_with("unknown state \"busy\""));
+    }
 
     #[test]
     fn only_blocked_done_and_error_need_attention() {

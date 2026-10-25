@@ -2,15 +2,19 @@
 
 use clap::Subcommand;
 
-use crate::ExplainArgs;
+use crate::{ExplainArgs, WaitArgs};
 
 /// What to ask.
-#[derive(Debug, Clone, PartialEq, Eq, Subcommand)]
+#[derive(Debug, Clone, PartialEq, Subcommand)]
 pub enum AgentCommand {
     /// Why Monarch shows a pane's agent in its state: where the status
     /// came from, and what the agent's detection manifest makes of the
     /// screen. Without a pane, one line per pane.
     Explain(ExplainArgs),
+    /// Wait until a pane's agent reaches a state (by default, until it
+    /// needs you), then print its status. Exit status 0 when reached, 2
+    /// on timeout.
+    Wait(WaitArgs),
 }
 
 #[cfg(test)]
