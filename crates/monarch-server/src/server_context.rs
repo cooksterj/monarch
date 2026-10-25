@@ -1,7 +1,7 @@
 //! What every server task shares.
 
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use monarch_core::{AgentState, PaneId};
@@ -66,6 +66,34 @@ impl ServerContext {
         let mut review = self.diffs.review(Path::new(place.worktree.as_deref()?));
         review.branch = place.branch;
         Some(review)
+    }
+
+    /// Opens `path` from `pane`'s checkout with `editor`, zoomed over the
+    /// focused pane. Returns the new pane, or `None` when `pane` isn't in
+    /// a checkout or `path` would leave it.
+    ///
+    /// # Errors
+    /// The PTY or program could not be started.
+    pub fn edit(
+        &self,
+        pane: PaneId,
+        path: &str,
+        editor: &str,
+    ) -> Result<Option<PaneId>, ServerError> {
+        match self.edit_spec(pane, path, editor) {
+            Some(spec) => self.spawn(&spec, None, Placement::Zoomed).map(Some),
+            None => Ok(None),
+        }
+    }
+
+    /// What [`Self::edit`] would run, if the file is inside the checkout.
+    fn edit_spec(&self, pane: PaneId, path: &str, editor: &str) -> Option<PaneSpec> {
+        let inside = Path::new(path)
+            .components()
+            .all(|c| matches!(c, Component::Normal(_)));
+        let root = self.lock().place(pane)?.worktree?;
+        (inside && !path.is_empty() && !editor.trim().is_empty())
+            .then(|| PaneSpec::edit(editor, path, PathBuf::from(root)))
     }
 
     /// Locks the session. Never hold this across an `.await`.
@@ -208,8 +236,30 @@ impl ServerContext {
 
 #[cfg(test)]
 mod tests {
+    use monarch_proto::PanePlace;
+
     use crate::PaneSpec;
     use crate::test_support::{FakePane, context};
+
+    #[test]
+    fn edits_stay_inside_the_checkout() {
+        let ctx = context();
+        let id = ctx.insert_for_test(PaneSpec::default(), FakePane::shell());
+        assert_eq!(ctx.edit_spec(id, "src/a.rs", "vi"), None, "no checkout");
+        let place = PanePlace {
+            cwd: "/repo/src".into(),
+            project: Some("repo".into()),
+            worktree: Some("/repo".into()),
+            branch: Some("main".into()),
+        };
+        ctx.lock().set_place(id, Some(place));
+        let spec = ctx.edit_spec(id, "src/a.rs", "vi").expect("inside");
+        assert_eq!(spec.cwd.as_deref(), Some(std::path::Path::new("/repo")));
+        for bad in ["../x", "/etc/passwd", "a/../../b", ""] {
+            assert_eq!(ctx.edit_spec(id, bad, "vi"), None, "{bad}");
+        }
+        assert_eq!(ctx.edit_spec(id, "a.rs", " "), None, "no editor");
+    }
 
     #[test]
     fn specs_follow_panes_in_and_out() {

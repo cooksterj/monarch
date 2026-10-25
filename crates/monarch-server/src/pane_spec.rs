@@ -22,6 +22,25 @@ pub struct PaneSpec {
 }
 
 impl PaneSpec {
+    /// A spec opening `file` with `editor` in `cwd`. The editor text is
+    /// run by `sh` with the file as its last argument, as git runs
+    /// `$EDITOR`, so `code --wait` works; the file is never parsed as
+    /// shell text.
+    #[must_use]
+    pub fn edit(editor: &str, file: &str, cwd: PathBuf) -> Self {
+        Self {
+            argv: vec![
+                "/bin/sh".into(),
+                "-c".into(),
+                format!("{editor} \"$@\""),
+                editor.into(),
+                file.into(),
+            ],
+            cwd: Some(cwd),
+            agent: None,
+        }
+    }
+
     /// A spec running `sh -c <command>` style shell text with the user's shell.
     #[must_use]
     pub fn shell_command(command: &str) -> Self {
@@ -107,6 +126,14 @@ mod tests {
         };
         let argv = spec.command(PaneId(1), &env()).get_argv().clone();
         assert_eq!(argv, ["printf", "%s", "a b"]);
+    }
+
+    #[test]
+    fn edit_passes_the_file_as_an_argument() {
+        let spec = PaneSpec::edit("code --wait", "a b;rm x.rs", "/repo".into());
+        assert_eq!(spec.argv[2], "code --wait \"$@\"");
+        assert_eq!(spec.argv[4], "a b;rm x.rs", "never shell text");
+        assert_eq!(spec.cwd.as_deref(), Some(std::path::Path::new("/repo")));
     }
 
     #[test]

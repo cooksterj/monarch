@@ -74,6 +74,17 @@ pub enum ClientMsg {
     /// Read the uncommitted changes in the checkout a pane works in;
     /// answered with `ServerMsg::Review`.
     Review(PaneId),
+    /// Open a file from a pane's checkout in an editor, in a pane zoomed
+    /// over the focused one; closing the editor gives the layout back.
+    Edit {
+        /// The pane whose checkout holds the file.
+        pane: PaneId,
+        /// The file, relative to the checkout's top directory.
+        path: String,
+        /// The editor command, run by `sh` with the file as its last
+        /// argument (as git runs `$EDITOR`).
+        editor: String,
+    },
 }
 
 #[cfg(test)]

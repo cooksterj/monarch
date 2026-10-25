@@ -108,6 +108,7 @@ impl SessionState {
         let first = self.tabs.is_empty();
         match (placement, self.tabs.get_mut(self.active)) {
             (Placement::Split(axis), Some(tab)) => tab.split(id, axis),
+            (Placement::Zoomed, Some(tab)) => tab.split_zoomed(id),
             (Placement::Tab { activate }, _) if activate || first => {
                 self.tabs.push(Tab::new(id));
                 self.active = self.tabs.len() - 1;

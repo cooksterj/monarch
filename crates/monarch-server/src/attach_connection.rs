@@ -77,6 +77,7 @@ fn handle(ctx: &Arc<ServerContext>, id: ClientId, msg: ClientMsg) -> bool {
         ClientMsg::Action(action) => run_action(ctx, action),
         msg @ (ClientMsg::Search { .. } | ClientMsg::Copy { .. }) => history::reply(ctx, id, msg),
         ClientMsg::Review(pane) => review::request(ctx, id, pane),
+        ClientMsg::Edit { pane, path, editor } => review::edit(ctx, pane, &path, &editor),
         msg => apply(ctx, id, msg),
     }
     true

@@ -1,6 +1,7 @@
-//! Answers a client's request to review a pane's checkout. Git can take a
-//! while on a big repository, so it runs on a blocking thread and never
-//! holds up this client's keystrokes or anyone's frames.
+//! Answers a client's request to review a pane's checkout, or to open one
+//! of its files. Git can take a while on a big repository, so it runs on a
+//! blocking thread and never holds up this client's keystrokes or anyone's
+//! frames.
 
 use std::sync::Arc;
 
@@ -14,6 +15,15 @@ use crate::ServerContext;
 pub(super) fn request(ctx: &Arc<ServerContext>, id: ClientId, pane: PaneId) {
     let ctx = Arc::clone(ctx);
     tokio::task::spawn_blocking(move || reply(&ctx, id, pane));
+}
+
+/// Opens `path` from `pane`'s checkout in `editor`, zoomed over the
+/// focused pane.
+pub(super) fn edit(ctx: &ServerContext, pane: PaneId, path: &str, editor: &str) {
+    if let Err(e) = ctx.edit(pane, path, editor) {
+        eprintln!("monarch: {e}");
+    }
+    ctx.wake();
 }
 
 fn reply(ctx: &ServerContext, id: ClientId, pane: PaneId) {
