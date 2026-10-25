@@ -1,0 +1,7 @@
+ Which package manager should I use?
+
+ ❯ 1. npm
+   2. pnpm
+   3. yarn
+ ↑/↓ Navigate · enter Select · esc Skip
+ esc to cancel

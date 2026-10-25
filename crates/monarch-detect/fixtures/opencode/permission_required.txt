@@ -1,0 +1,7 @@
+  ~ I'll run the tests.
+
+△ Permission required
+  $ npm test
+
+  Allow once   Allow always   Reject
+  ⇆ tab select · enter confirm · esc dismiss

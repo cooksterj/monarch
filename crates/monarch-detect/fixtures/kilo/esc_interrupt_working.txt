@@ -1,0 +1,5 @@
+  → Read src/index.ts
+
+┃
+┃  Code  Claude Sonnet 4.5 Anthropic
+  ■■■⬝⬝⬝⬝⬝  esc interrupt                       ctrl+p commands

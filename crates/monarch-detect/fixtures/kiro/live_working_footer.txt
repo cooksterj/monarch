@@ -1,0 +1,6 @@
+ ● Read src/main.rs
+
+ ◐ Thinking...
+
+ >
+ Kiro is working · type to steer · ctrl+s to queue

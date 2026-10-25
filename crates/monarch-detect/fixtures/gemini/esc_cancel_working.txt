@@ -1,0 +1,8 @@
+✦ I'll look at the failing test.
+
+⠏ Reading the test harness (esc to cancel, 4s)
+
+╭──────────────────────────────────────────────────────────────╮
+│ >   Type your message or @path/to/file                       │
+╰──────────────────────────────────────────────────────────────╯
+~/app (main*)          no sandbox          gemini-2.5-pro (98% context left)

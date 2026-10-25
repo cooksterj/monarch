@@ -1035,6 +1035,10 @@ name = "monarch-mux-detect"
 version = "0.1.0"
 dependencies = [
  "monarch-mux-core",
+ "regex",
+ "serde",
+ "thiserror 2.0.21",
+ "toml",
 ]
 
 [[package]]

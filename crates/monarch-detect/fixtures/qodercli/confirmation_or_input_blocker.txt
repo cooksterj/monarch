@@ -1,0 +1,6 @@
+● Bash(npm test)
+
+  Waiting for user confirmation
+  ❯ Yes
+    Yes, and don't ask again this session
+    No, provide feedback

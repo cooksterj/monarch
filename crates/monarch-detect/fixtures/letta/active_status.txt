@@ -1,0 +1,7 @@
+● Read(src/index.ts)
+  └ Read 120 lines
+
+✻ Letta is thinking… (esc to interrupt · 12s)
+
+›
+  claude-sonnet-4.5 · ~/app

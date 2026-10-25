@@ -1,0 +1,9 @@
+ ⛬ I'll run the tests.
+
+ EXECUTE  (npm test, impact: low)
+
+ > Yes, allow
+   Yes, and always allow low impact commands
+   No, cancel
+
+ Use ↑↓ to navigate, Enter to select, Esc to cancel

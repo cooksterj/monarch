@@ -1,0 +1,10 @@
+ ● I'll run the tests.
+
+ ● shell  npm test
+   requires approval
+
+ ❯ Yes, single permission
+   Trust, always allow in this session
+   No (tab to edit)
+
+ esc to close · ↑↓ to navigate · enter to select

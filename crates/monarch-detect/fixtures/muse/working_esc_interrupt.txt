@@ -1,0 +1,6 @@
+◆ Read src/index.ts
+
+◆ Working (12s · esc to interrupt)
+
+⟩
+gpt-5 · medium · ~/app

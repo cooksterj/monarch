@@ -1,0 +1,8 @@
+ ┊ 💻 terminal  rm -rf build/
+
+ ⚠ Dangerous command — approval required
+   rm -rf build/
+ ▸ 1. Allow once
+   2. Allow for this session
+   3. Deny
+ ↑/↓ to select · enter to confirm · v show full command

@@ -1,0 +1,10 @@
+• I'll run the tests.
+
+╭─ approval ───────────────────────────────────────────────────╮
+│ Run this command?                                            │
+│   npm test                                                   │
+│ ▶ Approve once                                               │
+│   Approve for this session                                   │
+│   Reject, tell Kimi what to do instead                       │
+╰──────────────────────────────────────────────────────────────╯
+ ↑↓ choose · ↵ confirm · esc reject

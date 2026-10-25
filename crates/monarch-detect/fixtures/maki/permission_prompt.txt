@@ -1,0 +1,7 @@
+ I'll clean the build output.
+
+┌ Permission required ─────────────────────────────────────────┐
+│ bash: rm -rf dist                                            │
+└──────────────────────────────────────────────────────────────┘
+ y allow · a always · n deny · esc cancel
+ [BUILD] claude-sonnet-4.5 · 12k tokens

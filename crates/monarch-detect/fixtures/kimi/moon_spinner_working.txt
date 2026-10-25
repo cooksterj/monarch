@@ -1,0 +1,6 @@
+• Used ReadFile (src/main.py)
+
+🌖
+
+me@app✨
+ agent (kimi-k2)  ctrl-x: switch mode  context: 4.1%

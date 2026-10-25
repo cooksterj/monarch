@@ -1,0 +1,6 @@
+● Read(src/index.ts)
+
+⠋ Thinking… (esc to cancel, 4s)
+
+>
+  ? for shortcuts

@@ -1,0 +1,4 @@
+⏺ Read(src/lib.rs)
+  ⎿  Read 120 lines
+
+  Showing detailed transcript · ctrl+o to toggle

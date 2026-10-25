@@ -1,0 +1,6 @@
+Monarch
+Copyright the Monarch contributors. Licensed under MIT OR Apache-2.0.
+
+This product includes agent-detection manifests from Herdr
+(https://github.com/herdrdev/herdr), licensed under the Apache License,
+Version 2.0. See crates/monarch-detect/manifests/ATTRIBUTION.md.

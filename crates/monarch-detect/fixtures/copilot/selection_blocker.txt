@@ -1,0 +1,9 @@
+● Run shell command
+  $ npm test
+
+  Do you want to run this command?
+  ❯ 1. Yes
+    2. Yes, and approve npm for the rest of the session
+    3. No, and tell Copilot what to do differently
+
+  ↑↓ to navigate · Enter to select · Esc to cancel

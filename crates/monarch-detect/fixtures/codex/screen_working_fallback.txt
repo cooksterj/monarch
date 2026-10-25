@@ -1,0 +1,8 @@
+› fix the tests
+
+• Working (12s • esc to interrupt)
+
+
+› Summarize recent commits
+
+  100% context left · ? for shortcuts
