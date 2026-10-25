@@ -72,7 +72,6 @@ fn prefix_then_esc_alone_is_the_esc_key() {
 fn unbound_sequences_after_the_prefix_are_swallowed() {
     assert_eq!(parse(&[b"\x02\x1b[15~a"]), [fwd(b"a")], "F5");
     assert_eq!(parse(&[b"\x02\x1bxa"]), [fwd(b"a")], "alt+x");
-    assert_eq!(parse(&[b"\x02\x01a"]), [fwd(b"a")], "ctrl+a");
 }
 
 #[test]
@@ -260,4 +259,21 @@ proptest! {
         let expected = if bytes.is_empty() { vec![] } else { vec![fwd(&bytes)] };
         prop_assert_eq!(normalise(parse(&[&bytes])), expected);
     }
+}
+
+#[test]
+fn ctrl_held_through_the_command_key_still_runs_it() {
+    // Ctrl-b Ctrl-s, Ctrl-b Ctrl-v: legacy control bytes.
+    assert_eq!(parse(&[b"\x02\x13", b"\x02\x16"]), [cmd('s'), cmd('v')]);
+    // The same in kitty encoding.
+    assert_eq!(parse(&[b"\x1b[98;5u\x1b[115;5u"]), [cmd('s')]);
+    // Tab and Enter keep their meaning; the prefix twice is still literal.
+    assert_eq!(
+        parse(&[b"\x02\t\x02\r"]),
+        [
+            InputEvent::Command(Key::Tab),
+            InputEvent::Command(Key::Enter)
+        ]
+    );
+    assert_eq!(normalise(parse(&[b"\x02\x02"])), [fwd(b"\x02")]);
 }

@@ -66,6 +66,12 @@ impl ProjectPicker {
         }
     }
 
+    /// Shows `text` as the title until the next key, where the eye already
+    /// is: a refusal flashed on the status line is easy to miss.
+    pub fn tell(&mut self, text: &str) {
+        self.picker.set_title(text);
+    }
+
     /// The first Ctrl-x asks, the second on the same row removes.
     fn remove(
         &mut self,
@@ -74,11 +80,16 @@ impl ProjectPicker {
         confirm: Option<usize>,
     ) -> ProjectStep {
         if e.main {
-            return ProjectStep::Notice("the main checkout can't be removed".into());
+            self.tell("the main checkout can't be removed");
+            return ProjectStep::Open;
         }
         if !e.panes.is_empty() {
             let s = if e.panes.len() == 1 { "" } else { "s" };
-            return ProjectStep::Notice(format!("close its {} pane{s} first", e.panes.len()));
+            self.tell(&format!(
+                "can't remove: close its {} pane{s} first",
+                e.panes.len()
+            ));
+            return ProjectStep::Open;
         }
         if confirm.is_some() && confirm == at {
             return ProjectStep::Remove(e.path);
@@ -185,9 +196,8 @@ mod tests {
     #[test]
     fn removal_needs_two_ctrl_x_on_a_free_worktree() {
         let mut p = loaded();
-        assert!(
-            matches!(p.key(OverlayKey::Ctrl('x')), ProjectStep::Notice(n) if n.contains("main"))
-        );
+        assert_eq!(p.key(OverlayKey::Ctrl('x')), ProjectStep::Open);
+        assert_eq!(p.picker().title(), "the main checkout can't be removed");
         p.key(OverlayKey::Down);
         assert_eq!(p.key(OverlayKey::Ctrl('x')), ProjectStep::Open);
         assert_eq!(p.picker().title(), "remove feat-x? ctrl-x again");
@@ -203,8 +213,9 @@ mod tests {
             ProjectStep::Remove("/w/app/feat-x".into())
         );
         p.key(OverlayKey::Down);
-        assert!(
-            matches!(p.key(OverlayKey::Ctrl('x')), ProjectStep::Notice(n) if n.contains("1 pane"))
-        );
+        assert_eq!(p.key(OverlayKey::Ctrl('x')), ProjectStep::Open);
+        assert_eq!(p.picker().title(), "can't remove: close its 1 pane first");
+        p.key(OverlayKey::Down);
+        assert_eq!(p.picker().title(), "projects", "the next key clears it");
     }
 }
