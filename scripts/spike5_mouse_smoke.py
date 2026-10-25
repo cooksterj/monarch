@@ -137,6 +137,25 @@ def selection_copies(host):
     print("  selection: double-click copies a word, drag copies a range (OSC 52), notice shown")
 
 
+def copy_mode_copies(host):
+    host.type(b"clear; echo copy-me-now\r")
+    host.wait_for(b"now", "echo output")
+    host.pump(0.5)
+    # Up to the output line, select to its end, yank.
+    host.type(b"\x02[")
+    host.wait_for(b"opy]", "copy-mode status")
+    host.type(b"k0v$y")
+    host.wait_for(osc52("copy-me-now"), "copy-mode yank")
+    # A search moves the cursor to the match; the yank starts there.
+    host.type(b"\x02[")
+    host.wait_for(b"opy]", "copy-mode status again")
+    host.type(b"/me-n\r")
+    host.pump(0.5)
+    host.type(b"v$y")
+    host.wait_for(osc52("me-now"), "yank from a search hit")
+    print("  copy mode: vi keys select and yank (OSC 52); / search moves the cursor")
+
+
 def pane_copy_reaches_host(host):
     host.type(b"printf '\\033]52;c;%s\\007' $(printf from-vim | base64)\r")
     host.wait_for(osc52("from-vim"), "pane OSC 52 forwarded")
@@ -197,6 +216,7 @@ def run_all(binary):
         host = Host(binary, run, "shell")
         wheel_scrolls_history(host)
         selection_copies(host)
+        copy_mode_copies(host)
         pane_copy_reaches_host(host)
         passthrough_toggles(host)
         host.end()

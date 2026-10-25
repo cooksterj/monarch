@@ -3,7 +3,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use monarch_core::{PaneId, Rect};
-use monarch_proto::{LayoutMsg, ModeFlags, PaneSummary, Screen, ServerMsg, StyleCache};
+use monarch_proto::{Delta, LayoutMsg, ModeFlags, PaneSummary, Screen, ServerMsg, StyleCache};
 
 use super::{Applied, FocusView, PaneReplica};
 
@@ -45,14 +45,7 @@ impl AttachState {
                 self.panes.insert(snapshot.pane, replica);
                 out.redraw = true;
             }
-            ServerMsg::Delta(delta) => match self.panes.get_mut(&delta.pane) {
-                Some(replica) if replica.accepts(&delta) => {
-                    replica.apply(&delta, &self.styles);
-                    out.redraw = true;
-                }
-                _ if self.resyncing.insert(delta.pane) => out.resync.push(delta.pane),
-                _ => {}
-            },
+            ServerMsg::Delta(delta) => self.apply_delta(&delta, out),
             ServerMsg::DefineStyle(def) => self.styles.define(def),
             ServerMsg::ResetStyles => self.styles.clear(),
             ServerMsg::Title { pane, title } => {
@@ -64,12 +57,25 @@ impl AttachState {
                 out.redraw = true;
             }
             ServerMsg::HostWrite(bytes) => out.host_write.extend(bytes),
+            ServerMsg::SearchResult { pane, found } => out.found.push((pane, found)),
             ServerMsg::Clipboard(text) => out.clipboard.push(text),
             ServerMsg::PaneExited { pane } => {
                 self.panes.remove(&pane);
                 out.exited.push(pane);
                 out.redraw = true;
             }
+            _ => {}
+        }
+    }
+
+    /// Applies a delta, or asks for a snapshot when it does not fit.
+    fn apply_delta(&mut self, delta: &Delta, out: &mut Applied) {
+        match self.panes.get_mut(&delta.pane) {
+            Some(replica) if replica.accepts(delta) => {
+                replica.apply(delta, &self.styles);
+                out.redraw = true;
+            }
+            _ if self.resyncing.insert(delta.pane) => out.resync.push(delta.pane),
             _ => {}
         }
     }

@@ -2,7 +2,7 @@
 
 use monarch_proto::ScreenSize;
 use ratatui::Frame;
-use ratatui::layout::Rect;
+use ratatui::layout::{Position, Rect};
 
 use super::AttachState;
 use crate::{PaneBorders, PaneView, PickerView, SelectionSpan, StatusLine, WhichKey};
@@ -18,6 +18,11 @@ pub struct AttachView<'a> {
     pub status: StatusLine<'a>,
     /// The focused pane's selection, in its viewport coordinates.
     pub selection: Option<SelectionSpan>,
+    /// Search matches in the focused pane (copy mode).
+    pub matches: &'a [SelectionSpan],
+    /// The copy-mode cursor's cell in the focused pane, replacing the
+    /// pane's own cursor.
+    pub copy_cursor: Option<(u16, u16)>,
     /// The key popup, drawn over the panes while it is up.
     pub which_key: Option<WhichKey<'a>>,
     /// The palette or go-to picker, drawn over everything; the cursor
@@ -78,8 +83,15 @@ impl AttachView<'_> {
             let rect =
                 Rect::new(pane.x, pane.y, pane.size.cols, pane.size.rows).intersection(pane_rect);
             let focused = Some(pane.pane) == layout.focus;
-            let view = PaneView::new(screen).with_selection(self.selection.filter(|_| focused));
-            if focused && let Some(pos) = view.cursor_position(rect) {
+            let view = PaneView::new(screen)
+                .with_selection(self.selection.filter(|_| focused))
+                .with_matches(if focused { self.matches } else { &[] });
+            let cursor = match self.copy_cursor {
+                Some((row, col)) => (col < rect.width && row < rect.height)
+                    .then(|| Position::new(rect.x + col, rect.y + row)),
+                None => view.cursor_position(rect),
+            };
+            if focused && let Some(pos) = cursor {
                 frame.set_cursor_position(pos);
             }
             frame.render_widget(view, rect);
@@ -126,6 +138,8 @@ mod tests {
             state: &state,
             status: status(),
             selection: None,
+            matches: &[],
+            copy_cursor: None,
             which_key: None,
             picker: None,
         };
@@ -166,6 +180,8 @@ mod tests {
             state: &state,
             status: status(),
             selection: None,
+            matches: &[],
+            copy_cursor: None,
             which_key: None,
             picker: None,
         };

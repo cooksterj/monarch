@@ -18,6 +18,8 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// Longest handshake line accepted.
 const MAX_HELLO: usize = 4096;
 
+mod history;
+
 type Codec = FrameCodec<ClientMsg, ServerMsg>;
 
 /// Serves one accepted socket until the client detaches or disconnects.
@@ -107,6 +109,17 @@ async fn read_messages(
 
 /// Applies one client message; `false` ends the connection.
 fn handle(ctx: &ServerContext, id: ClientId, msg: ClientMsg) -> bool {
+    match msg {
+        ClientMsg::Detach => return false,
+        ClientMsg::Action(action) => run_action(ctx, action),
+        msg @ (ClientMsg::Search { .. } | ClientMsg::Copy { .. }) => history::reply(ctx, id, msg),
+        msg => apply(ctx, id, msg),
+    }
+    true
+}
+
+/// Applies a message that changes the session or this client.
+fn apply(ctx: &ServerContext, id: ClientId, msg: ClientMsg) {
     let mut state = ctx.lock();
     match msg {
         ClientMsg::Input { pane, bytes } => {
@@ -119,12 +132,8 @@ fn handle(ctx: &ServerContext, id: ClientId, msg: ClientMsg) -> bool {
         ClientMsg::Focus(pane) => {
             state.set_focus(pane);
         }
-        ClientMsg::Scroll { pane, lines } => {
-            if let Some(io) = state.pane(pane) {
-                io.shared().lock().scroll(ScrollRequest::Lines(lines));
-                io.shared().mark_dirty();
-            }
-        }
+        ClientMsg::Scroll { pane, lines } => scroll(&state, pane, ScrollRequest::Lines(lines)),
+        ClientMsg::ScrollTo { pane, top } => scroll(&state, pane, ScrollRequest::TopLine(top)),
         ClientMsg::Resync(pane) => {
             if let Some(client) = state.client_mut(id) {
                 client.mark_stale(pane);
@@ -134,19 +143,19 @@ fn handle(ctx: &ServerContext, id: ClientId, msg: ClientMsg) -> bool {
             if let Some(client) = state.client_mut(id) {
                 client.push(vec![ServerMsg::Pong(token)]);
             }
-            return true;
+            return;
         }
-        ClientMsg::Detach => return false,
-        ClientMsg::Action(action) => {
-            drop(state);
-            run_action(ctx, action);
-            return true;
-        }
-        _ => return true,
+        _ => return,
     }
     drop(state);
     ctx.wake();
-    true
+}
+
+fn scroll(state: &crate::SessionState, pane: monarch_core::PaneId, request: ScrollRequest) {
+    if let Some(io) = state.pane(pane) {
+        io.shared().lock().scroll(request);
+        io.shared().mark_dirty();
+    }
 }
 
 /// Applies a session command, starting a shell when it asks for one.

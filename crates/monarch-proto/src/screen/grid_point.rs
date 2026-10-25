@@ -1,10 +1,12 @@
 //! A cell addressed by absolute line, so it stays put as output scrolls.
 
-use monarch_proto::Screen;
+use serde::{Deserialize, Serialize};
+
+use super::Screen;
 
 /// A cell in a pane's whole grid: line 0 is the oldest scrollback line, so
 /// the same text keeps the same line while new output pushes it upwards.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct GridPoint {
     /// Absolute line, scrollback included.
     pub line: i64,
@@ -37,9 +39,8 @@ impl GridPoint {
 
 #[cfg(test)]
 mod tests {
-    use monarch_proto::ScreenSize;
-
     use super::*;
+    use crate::ScreenSize;
 
     #[test]
     fn points_keep_their_line_as_history_grows() {

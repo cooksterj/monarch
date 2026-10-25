@@ -39,26 +39,31 @@ impl Picker {
         picker
     }
 
-    /// Applies one key.
+    /// Applies one key: type to search, Backspace, Ctrl-w (word), Ctrl-u
+    /// (clear), Up/Down/Tab/Shift-Tab/Ctrl-n/Ctrl-p to move, Enter to run,
+    /// Esc/Ctrl-c/Ctrl-g to close.
     pub fn key(&mut self, key: OverlayKey) -> PickerStep {
         match key {
             OverlayKey::Char(c) => self.edit(|q| q.push(c)),
             OverlayKey::Backspace => self.edit(|q| {
                 q.pop();
             }),
-            OverlayKey::DeleteWord => self.edit(|q| {
+            OverlayKey::Ctrl('w') => self.edit(|q| {
                 let kept = q.trim_end().rfind(' ').map_or(0, |i| i + 1);
                 q.truncate(kept);
             }),
-            OverlayKey::Clear => self.edit(String::clear),
-            OverlayKey::Up => self.step(self.matches.len().saturating_sub(1)),
-            OverlayKey::Down => self.step(1),
+            OverlayKey::Ctrl('u') => self.edit(String::clear),
+            OverlayKey::Up | OverlayKey::BackTab | OverlayKey::Ctrl('p') => {
+                self.step(self.matches.len().saturating_sub(1));
+            }
+            OverlayKey::Down | OverlayKey::Tab | OverlayKey::Ctrl('n') => self.step(1),
             OverlayKey::Enter => {
                 return self
                     .selected_item()
                     .map_or(PickerStep::Open, |item| PickerStep::Run(item.action));
             }
-            OverlayKey::Cancel => return PickerStep::Close,
+            OverlayKey::Esc | OverlayKey::Ctrl('c' | 'g') => return PickerStep::Close,
+            _ => {}
         }
         PickerStep::Open
     }
@@ -189,9 +194,9 @@ mod tests {
         let mut p = palette();
         typed(&mut p, "tab new");
         assert_eq!(labels(&p), ["new tab"]);
-        p.key(OverlayKey::DeleteWord);
+        p.key(OverlayKey::Ctrl('w'));
         assert_eq!(p.query(), "tab ");
-        p.key(OverlayKey::Clear);
+        p.key(OverlayKey::Ctrl('u'));
         assert_eq!(labels(&p).len(), 4);
         typed(&mut p, "q");
         p.key(OverlayKey::Backspace);
@@ -209,6 +214,6 @@ mod tests {
         assert_eq!(p.rows().len(), 0);
         p.key(OverlayKey::Down);
         assert_eq!(p.key(OverlayKey::Enter), PickerStep::Open);
-        assert_eq!(p.key(OverlayKey::Cancel), PickerStep::Close);
+        assert_eq!(p.key(OverlayKey::Esc), PickerStep::Close);
     }
 }

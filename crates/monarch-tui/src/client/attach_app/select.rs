@@ -3,6 +3,7 @@
 use std::thread;
 
 use monarch_core::{Action, MouseMode};
+use monarch_proto::{ClientMsg, SelectShape};
 use std::time::{Duration, Instant};
 
 use super::AttachApp;
@@ -10,12 +11,15 @@ use crate::client::{SelectEvent, SelectUnit, Selection};
 use crate::{HostClipboard, LocalClipboard, SelectionSpan, SystemClipboard};
 
 /// How long a status-line notice stays up.
-const NOTICE: Duration = Duration::from_secs(2);
+pub(super) const NOTICE: Duration = Duration::from_secs(2);
 
 impl AttachApp {
     /// Applies a selection gesture to the focused pane.
     pub(super) fn on_select(&mut self, gesture: SelectEvent) {
-        let Some(screen) = self.state.focus().and_then(|p| self.state.screen(p)) else {
+        let Some(pane) = self.state.focus() else {
+            return;
+        };
+        let Some(screen) = self.state.screen(pane) else {
             return;
         };
         match gesture {
@@ -32,16 +36,20 @@ impl AttachApp {
                     selection.extend(screen, row, col);
                 }
             }
-            SelectEvent::End => {
-                let text = self
-                    .selection
-                    .filter(|s| !s.is_empty())
-                    .map(|s| s.text(screen));
-                match text.filter(|t| !t.is_empty()) {
-                    Some(text) => self.copy(text),
-                    None => self.selection = None,
+            SelectEvent::End => match self.selection.filter(|s| !s.is_empty()) {
+                // The server reads the text: lines scrolled out of view
+                // are included and wrapped lines come back whole.
+                Some(selection) => {
+                    let (start, end) = selection.bounds();
+                    let _ = self.link.send(&ClientMsg::Copy {
+                        pane,
+                        start,
+                        end,
+                        shape: SelectShape::Chars,
+                    });
                 }
-            }
+                None => self.selection = None,
+            },
         }
         self.dirty = true;
     }

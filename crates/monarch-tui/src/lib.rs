@@ -12,8 +12,8 @@ mod widgets;
 
 pub use client::{
     Applied, AttachApp, AttachOptions, AttachOutcome, AttachState, AttachView, ClickCounter,
-    ClientEvent, FocusView, GridPoint, MULTI_CLICK, MouseAction, MouseRouter, PaneReplica, Picker,
-    PickerItem, PickerStep, SelectEvent, SelectUnit, Selection, ServerLink, SharedFocus,
+    ClientEvent, CopyMode, CopyStep, FocusView, MULTI_CLICK, MouseAction, MouseRouter, PaneReplica,
+    Picker, PickerItem, PickerStep, SelectEvent, SelectUnit, Selection, ServerLink, SharedFocus,
     WHEEL_LINES, WindowTitle,
 };
 pub use error::TuiError;

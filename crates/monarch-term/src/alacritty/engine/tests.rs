@@ -146,3 +146,83 @@ fn resize_reflows_and_scrollback_scrolls() {
     assert_eq!((s.row_text(0), s.display_offset), ("1".into(), 2));
     assert!(!s.cursor.visible);
 }
+
+fn at(line: i64, col: u16) -> GridPoint {
+    GridPoint { line, col }
+}
+
+#[test]
+fn text_ranges_reach_into_scrollback_and_join_wrapped_lines() {
+    let mut e = engine(10, 2);
+    feed(&mut e, b"first\r\nabcdefghijKLM\r\nlast");
+    // Lines: 0 "first", 1 "abcdefghij" + wrap, 2 "KLM", 3 "last"; two in history.
+    assert_eq!(e.pane_state().history, 2);
+    assert_eq!(
+        e.text_range(at(0, 0), at(2, 9), SelectShape::Chars),
+        "first\nabcdefghijKLM"
+    );
+    assert_eq!(
+        e.text_range(at(2, 1), at(0, 2), SelectShape::Chars),
+        "rst\nabcdefghijKL",
+        "ends in either order"
+    );
+    assert_eq!(
+        e.text_range(at(1, 1), at(2, 2), SelectShape::Block),
+        "bc\nLM"
+    );
+    assert_eq!(
+        e.text_range(at(3, 0), at(3, 0), SelectShape::Lines),
+        "last\n"
+    );
+    assert_eq!(
+        e.text_range(at(-5, 0), at(0, 99), SelectShape::Chars),
+        "first"
+    );
+}
+
+#[test]
+fn search_finds_text_in_history_both_ways_and_wraps() {
+    let mut e = engine(20, 2);
+    feed(&mut e, b"one needle\r\ntwo\r\nthree Needle\r\nfour");
+    let found = |e: &AlacrittyEngine, q: &str, from: GridPoint, back: bool| e.search(q, from, back);
+    assert_eq!(
+        found(&e, "needle", at(3, 0), true),
+        Some((at(2, 6), at(2, 11))),
+        "lower case matches any case, searching back"
+    );
+    assert_eq!(
+        found(&e, "needle", at(2, 6), true),
+        Some((at(0, 4), at(0, 9)))
+    );
+    assert_eq!(
+        found(&e, "Needle", at(0, 4), false),
+        Some((at(2, 6), at(2, 11))),
+        "a capital makes it exact"
+    );
+    assert_eq!(
+        found(&e, "Needle", at(2, 6), false),
+        Some((at(2, 6), at(2, 11))),
+        "wraps around to the only match"
+    );
+    assert_eq!(found(&e, "t.o", at(3, 0), true), None, "not a pattern");
+    assert_eq!(found(&e, "", at(3, 0), true), None);
+}
+
+#[test]
+fn scrolling_to_a_top_line_is_absolute_and_clamped() {
+    let mut e = engine(10, 2);
+    feed(&mut e, b"0\r\n1\r\n2\r\n3\r\n4");
+    assert_eq!(e.pane_state().history, 3);
+    e.scroll(ScrollRequest::TopLine(1));
+    assert_eq!(e.screen().row_text(0), "1");
+    e.scroll(ScrollRequest::TopLine(1));
+    assert_eq!(
+        e.pane_state().display_offset,
+        2,
+        "repeating changes nothing"
+    );
+    e.scroll(ScrollRequest::TopLine(-4));
+    assert_eq!(e.screen().row_text(0), "0", "clamped to the oldest line");
+    e.scroll(ScrollRequest::TopLine(99));
+    assert_eq!(e.pane_state().display_offset, 0, "clamped to live output");
+}
