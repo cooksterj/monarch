@@ -11,6 +11,7 @@ mod agents;
 mod arrange;
 mod commands;
 mod render;
+mod screens;
 
 use std::collections::BTreeMap;
 

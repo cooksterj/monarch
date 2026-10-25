@@ -2,10 +2,11 @@
 //!
 //! Hooks are authoritative: a reported state replaces the current one,
 //! and once a pane's agent has reported, weaker signals are ignored there.
-//! OSC notifications are the fallback for agents without hooks (see
-//! `guesses`); screen manifests and quiescence join later.
+//! OSC notifications (see `guesses`) and screen manifests (see `screen`)
+//! are the fallback for agents without hooks.
 
 mod guesses;
+mod screen;
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -23,6 +24,8 @@ pub struct StateEngine {
     hooked: BTreeSet<PaneId>,
     /// Panes whose status was guessed from a weaker signal.
     guessed: BTreeSet<PaneId>,
+    /// Panes running an agent known by its screen manifest.
+    screened: BTreeSet<PaneId>,
 }
 
 impl StateEngine {
@@ -82,7 +85,7 @@ impl StateEngine {
         if status.state != AgentState::Done {
             return None;
         }
-        if status.agent.is_none() {
+        if status.agent.is_none() && !self.screened.contains(&pane) {
             self.panes.remove(&pane);
             self.guessed.remove(&pane);
             return Some(AgentStatus::default());
@@ -97,6 +100,7 @@ impl StateEngine {
         self.sessions.retain(|_, p| *p != pane);
         self.hooked.remove(&pane);
         self.guessed.remove(&pane);
+        self.screened.remove(&pane);
     }
 }
 
