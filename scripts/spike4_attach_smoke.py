@@ -24,6 +24,9 @@ import time
 # Unique per run, so cleanup can never touch a real session.
 SESSION = f"smoke-{os.getpid()}"
 
+# A cursor move (group 1), another escape sequence, or a run of text (group 2).
+ESCAPE_OR_TEXT = re.compile(r"\x1b\[(\d+;\d+)H|\x1b(?:\[[0-9;?<=>$ ]*[A-Za-z@`~]|\][^\x07\x1b]*(?:\x07|\x1b\\)|[()][0-9A-Za-z]|.)|([^\x1b]+)")
+
 HOST_REPLIES = b"\x1b]11;rgb:2828/2c2c/3434\x1b\\\x1b[?2026;2$y\x1b[?62;22c"
 
 
@@ -63,12 +66,27 @@ class Client:
             self.pump(0.05)
 
     def wait_for_bar(self, text, what, seconds=10):
-        """Waits for `text` written on the bottom row (the tab bar)."""
-        pattern = re.compile(rb"\x1b\[24;\d+H(?:[^\x1b]|\x1b\[[0-9;]*m)*?" + re.escape(text))
+        """Waits for `text` on the bottom row (the tab bar). Only changed
+        cells are redrawn, so the row is rebuilt from every write to it."""
         deadline = time.time() + seconds
-        while not pattern.search(self.seen):
-            assert time.time() < deadline, f"timed out waiting for {what}: {self.seen[-300:]!r}"
+        while text.decode() not in self.row(24):
+            assert time.time() < deadline, f"timed out waiting for {what}: {self.row(24)!r}"
             self.pump(0.05)
+
+    def row(self, number):
+        """Row `number` (1-based) as drawn so far: cursor moves and text,
+        other escape sequences skipped."""
+        cells, row, col = {}, 0, 0
+        for move, text in ESCAPE_OR_TEXT.findall(self.seen.decode(errors="replace")):
+            if move:
+                row, col = (int(n) for n in move.split(";"))
+            elif row == number:
+                for ch in text:
+                    cells[col] = ch
+                    col += 1
+            else:
+                col += len(text)
+        return "".join(cells.get(c, " ") for c in range(1, max(cells, default=0) + 1))
 
     def finish(self):
         deadline = time.time() + 5
