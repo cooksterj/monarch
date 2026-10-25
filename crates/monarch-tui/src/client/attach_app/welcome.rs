@@ -1,7 +1,7 @@
 //! The welcome screen: opened on the first attach (or from the palette),
 //! animated while open, closed by any key.
 
-use std::time::Instant;
+use std::time::{Instant, SystemTime};
 
 use super::AttachApp;
 use crate::{WELCOME_STEP, WelcomeState};
@@ -10,7 +10,13 @@ impl AttachApp {
     /// Shows the welcome.
     pub(super) fn open_welcome(&mut self) {
         let now = Instant::now();
-        let welcome = WelcomeState::new(&self.opts.keymap, &self.opts.prefix_label, now);
+        // A different swarm each time; the clock is random enough.
+        let seed = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .map_or(0, |d| {
+                u64::try_from(d.as_nanos() & u128::from(u64::MAX)).unwrap_or(0)
+            });
+        let welcome = WelcomeState::new(&self.opts.keymap, &self.opts.prefix_label, now, seed);
         self.popups.welcome = Some(welcome);
         self.focus.set_overlay(true);
         self.dirty = true;

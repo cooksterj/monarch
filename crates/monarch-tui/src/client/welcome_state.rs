@@ -8,7 +8,7 @@ use monarch_core::{Action, Direction, Keymap, SplitAxis};
 use crate::WhichKeyEntry;
 
 /// Time between frames of the welcome animation.
-pub const WELCOME_STEP: Duration = Duration::from_millis(150);
+pub const WELCOME_STEP: Duration = Duration::from_millis(100);
 
 /// The actions the welcome lists, in order, said for a newcomer and
 /// short enough for two columns at 80 (focus stands for its family).
@@ -30,12 +30,14 @@ const FIRST_KEYS: [(Action, &str); 10] = [
 pub struct WelcomeState {
     keys: Vec<(String, String)>,
     since: Instant,
+    seed: u64,
 }
 
 impl WelcomeState {
-    /// The welcome for `keymap`, keys shown after `prefix`, opened `now`.
+    /// The welcome for `keymap`, keys shown after `prefix`, opened `now`;
+    /// `seed` picks where its butterflies fly.
     #[must_use]
-    pub fn new(keymap: &Keymap, prefix: &str, now: Instant) -> Self {
+    pub fn new(keymap: &Keymap, prefix: &str, now: Instant, seed: u64) -> Self {
         let entries = WhichKeyEntry::from_keymap(keymap);
         let keys = FIRST_KEYS
             .iter()
@@ -46,13 +48,23 @@ impl WelcomeState {
                 Some((format!("{prefix} {key}"), (*text).to_owned()))
             })
             .collect();
-        Self { keys, since: now }
+        Self {
+            keys,
+            since: now,
+            seed,
+        }
     }
 
     /// `(keys, what they do)` for each bound action.
     #[must_use]
     pub fn keys(&self) -> &[(String, String)] {
         &self.keys
+    }
+
+    /// What picks where its butterflies fly.
+    #[must_use]
+    pub fn seed(&self) -> u64 {
+        self.seed
     }
 
     /// Animation frames since it opened.
@@ -80,7 +92,7 @@ mod tests {
 
     #[test]
     fn keys_come_from_the_keymap_with_the_prefix() {
-        let welcome = WelcomeState::new(&Keymap::default(), "ctrl+b", Instant::now());
+        let welcome = WelcomeState::new(&Keymap::default(), "ctrl+b", Instant::now(), 1);
         let keys = welcome.keys();
         assert_eq!(keys[0].0, "ctrl+b %");
         let focus = ("ctrl+b hjkl".to_owned(), "move between panes".to_owned());
@@ -94,7 +106,8 @@ mod tests {
         let mut keymap = Keymap::preset(KeymapPreset::Herdr);
         keymap.bind("a", "none").expect("unbind");
         let now = Instant::now();
-        let welcome = WelcomeState::new(&keymap, "ctrl+b", now);
+        let welcome = WelcomeState::new(&keymap, "ctrl+b", now, 9);
+        assert_eq!(welcome.seed(), 9);
         let texts: Vec<&str> = welcome.keys().iter().map(|(_, t)| t.as_str()).collect();
         assert!(!texts.contains(&"agents that need you"), "{texts:?}");
         assert_eq!(welcome.tick(now), 0);

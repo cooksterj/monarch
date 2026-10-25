@@ -75,6 +75,7 @@ impl Popups {
             welcome: self.welcome.as_ref().map(|state| WelcomeView {
                 keys: state.keys(),
                 tick: state.tick(now),
+                seed: state.seed(),
                 animate,
                 chrome,
             }),
