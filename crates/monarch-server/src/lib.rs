@@ -6,6 +6,7 @@
 //! mutex; the [`FrameCoalescer`] task renders visible dirty panes into
 //! per-client snapshots and deltas at most once per frame budget.
 
+mod agent_history;
 mod api_connection;
 mod attach_connection;
 mod cli_git_runner;
@@ -47,6 +48,7 @@ mod system_probe;
 mod test_support;
 mod worktree_manager;
 
+pub use agent_history::AgentHistory;
 pub use api_connection::{ApiConnection, MAX_REQUEST};
 pub use attach_connection::AttachConnection;
 pub use cli_git_runner::CliGitRunner;

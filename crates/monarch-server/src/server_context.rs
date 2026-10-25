@@ -206,15 +206,19 @@ impl ServerContext {
     /// resumes that session (Codex picks its own id). Panes Monarch did
     /// not launch as that agent are left alone.
     pub fn record_session(&self, pane: PaneId, report: &AgentReport) {
-        let Some(id) = &report.session_id else {
-            return;
-        };
         let mut specs = self.lock_specs();
         let Some(agent) = specs.get_mut(&pane).and_then(|s| s.agent.as_mut()) else {
             return;
         };
-        if agent.kind == report.agent && agent.session_id.as_ref() != Some(id) {
+        if agent.kind != report.agent {
+            return;
+        }
+        let before = agent.clone();
+        agent.history = agent.history.after(report.state);
+        if let Some(id) = &report.session_id {
             agent.session_id = Some(id.clone());
+        }
+        if *agent != before {
             drop(specs);
             self.persist.notify_one();
         }
@@ -283,5 +287,40 @@ mod tests {
         ctx.forget_pane(id);
         assert!(ctx.specs().is_empty());
         ctx.forget_pane(id); // twice is harmless
+    }
+
+    #[test]
+    fn hook_reports_record_the_session_and_whether_it_talked() {
+        use monarch_core::{AgentKind, AgentState};
+        use monarch_proto::AgentReport;
+
+        use crate::AgentHistory;
+
+        let ctx = context();
+        let id = ctx.insert_for_test(PaneSpec::agent(AgentKind::Codex), FakePane::shell());
+        let history = |ctx: &super::ServerContext| ctx.specs()[&id].agent.clone().expect("agent");
+        let start = AgentReport {
+            state: Some(AgentState::Idle),
+            session_id: Some("s1".into()),
+            ..AgentReport::new(id, AgentKind::Codex)
+        };
+        ctx.record_session(id, &start);
+        let agent = history(&ctx);
+        assert_eq!(
+            (agent.history, agent.session_id.as_deref()),
+            (AgentHistory::Empty, Some("s1"))
+        );
+        let prompt = AgentReport {
+            state: Some(AgentState::Working),
+            ..AgentReport::new(id, AgentKind::Codex)
+        };
+        ctx.record_session(id, &prompt);
+        assert_eq!(history(&ctx).history, AgentHistory::Started);
+        ctx.record_session(id, &AgentReport::new(id, AgentKind::Claude));
+        assert_eq!(
+            history(&ctx).history,
+            AgentHistory::Started,
+            "another agent's report"
+        );
     }
 }
