@@ -14,6 +14,7 @@ use crate::{
     ProcessProbe, ServerError, SessionState, SpawnParams, SystemProbe, WorktreeManager,
 };
 
+mod session;
 mod worktrees;
 
 /// The session state plus the wake-ups and channels around it.
