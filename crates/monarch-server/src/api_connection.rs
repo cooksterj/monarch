@@ -64,11 +64,14 @@ fn dispatch(ctx: &ServerContext, request: Request) -> Result<Value, RpcError> {
         AgentReport::METHOD => {
             let report: AgentReport = serde_json::from_value(request.params)
                 .map_err(|e| RpcError::new(RpcError::INVALID_PARAMS, e.to_string()))?;
-            if !ctx.lock().report_agent(&report) {
-                let message = format!("no pane {} in this session", report.pane);
+            let Some(pane) = ctx.lock().report_agent(&report) else {
+                let message = match report.pane {
+                    Some(pane) => format!("no pane {pane} in this session"),
+                    None => format!("no {} pane here for this report", report.agent.name()),
+                };
                 return Err(RpcError::new(RpcError::NO_SUCH_PANE, message));
-            }
-            ctx.record_session(&report);
+            };
+            ctx.record_session(pane, &report);
             Ok(Value::Object(serde_json::Map::new()))
         }
         other => Err(RpcError::new(
