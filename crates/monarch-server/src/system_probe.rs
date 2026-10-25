@@ -80,7 +80,14 @@ mod tests {
             .arg("5")
             .spawn()
             .expect("sleep");
-        let name = SystemProbe::new().name(child.id());
+        // Until the child execs, it still carries the test thread's name.
+        let name = (0..200)
+            .map(|_| {
+                std::thread::sleep(std::time::Duration::from_millis(5));
+                SystemProbe::new().name(child.id())
+            })
+            .find(|n| n.as_deref() == Some("sleep"))
+            .flatten();
         let _ = child.kill();
         let _ = child.wait();
         assert_eq!(name.as_deref(), Some("sleep"));
