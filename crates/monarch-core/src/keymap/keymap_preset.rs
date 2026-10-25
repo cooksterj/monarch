@@ -105,6 +105,7 @@ fn monarch() -> Vec<(Key, Action)> {
         (ch('m'), Action::ToggleMouse),
         (ch(':'), Action::CommandPalette),
         (ch('['), Action::CopyMode),
+        (ch('t'), Action::ToggleSidebar),
         (ch('g'), Action::GoToPane),
         (ch('w'), Action::GoToPane),
     ];
@@ -130,6 +131,7 @@ fn tmux() -> Vec<(Key, Action)> {
         (ch('m'), Action::ToggleMouse),
         (ch(':'), Action::CommandPalette),
         (ch('['), Action::CopyMode),
+        (ch('t'), Action::ToggleSidebar),
         (ch('w'), Action::GoToPane),
     ];
     out.extend(arrows());
@@ -149,6 +151,7 @@ fn herdr() -> Vec<(Key, Action)> {
         (ch('m'), Action::ToggleMouse),
         (ch(':'), Action::CommandPalette),
         (ch('['), Action::CopyMode),
+        (ch('t'), Action::ToggleSidebar),
         (ch('g'), Action::GoToPane),
     ];
     out.extend(arrows());
@@ -193,6 +196,7 @@ mod tests {
         for preset in KeymapPreset::ALL {
             assert!(has(preset, ch(':'), Action::CommandPalette));
             assert!(has(preset, ch('['), Action::CopyMode));
+            assert!(has(preset, ch('t'), Action::ToggleSidebar));
         }
         assert!(has(
             KeymapPreset::Herdr,

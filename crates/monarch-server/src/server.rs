@@ -7,10 +7,12 @@ use std::sync::Arc;
 
 use tokio::net::UnixListener;
 use tokio::sync::mpsc;
+use tokio::task::JoinHandle;
 
 use crate::{
-    AttachConnection, CommandWatcher, EventLoop, FrameCoalescer, PaneEnv, Persister, ServerConfig,
-    ServerContext, ServerError, SocketPath, SystemProbe,
+    AttachConnection, CliGitRunner, CommandWatcher, EventLoop, FrameCoalescer, PaneEnv, PaneEvent,
+    Persister, PlaceWatcher, RepoProbe, ServerConfig, ServerContext, ServerError, SocketPath,
+    SystemProbe,
 };
 
 mod restore;
@@ -50,15 +52,7 @@ impl Server {
         };
         let ctx = Arc::new(ServerContext::new(env, events, config.scrollback));
         restore::start_panes(&ctx, &config)?;
-        let mut tasks = vec![
-            tokio::spawn(FrameCoalescer::default().run(Arc::clone(&ctx))),
-            tokio::spawn(EventLoop::run(Arc::clone(&ctx), events_rx)),
-            tokio::spawn(CommandWatcher::new(Box::new(SystemProbe::new())).run(Arc::clone(&ctx))),
-        ];
-        if let Some(file) = config.state.clone() {
-            let persister = Persister::new(file, Box::new(SystemProbe::new()));
-            tasks.push(tokio::spawn(persister.run(Arc::clone(&ctx))));
-        }
+        let tasks = background(&ctx, &config, events_rx);
         loop {
             tokio::select! {
                 accepted = listener.accept() => {
@@ -77,6 +71,30 @@ impl Server {
         let _ = fs::remove_file(&socket);
         Ok(())
     }
+}
+
+/// Starts the session's long-running tasks: frames, pane events, the
+/// watchers and, with a state file, the persister.
+fn background(
+    ctx: &Arc<ServerContext>,
+    config: &ServerConfig,
+    events: mpsc::UnboundedReceiver<PaneEvent>,
+) -> Vec<JoinHandle<()>> {
+    let places = PlaceWatcher::new(
+        Box::new(SystemProbe::new()),
+        RepoProbe::new(Box::new(CliGitRunner)),
+    );
+    let mut tasks = vec![
+        tokio::spawn(FrameCoalescer::default().run(Arc::clone(ctx))),
+        tokio::spawn(EventLoop::run(Arc::clone(ctx), events)),
+        tokio::spawn(CommandWatcher::new(Box::new(SystemProbe::new())).run(Arc::clone(ctx))),
+        tokio::spawn(places.run(Arc::clone(ctx))),
+    ];
+    if let Some(file) = config.state.clone() {
+        let persister = Persister::new(file, Box::new(SystemProbe::new()));
+        tasks.push(tokio::spawn(persister.run(Arc::clone(ctx))));
+    }
+    tasks
 }
 
 /// Binds the socket, replacing a stale one but never a live server's.

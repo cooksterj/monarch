@@ -57,6 +57,8 @@ pub enum Action {
     /// Browse the focused pane's history with the keyboard: move, search,
     /// select and copy.
     CopyMode,
+    /// Show or hide the sidebar of panes grouped by project.
+    ToggleSidebar,
     /// Focus this pane, showing its tab (what the go-to picker runs; not
     /// bindable).
     FocusPane(PaneId),
@@ -73,6 +75,7 @@ impl Action {
                 | Self::CommandPalette
                 | Self::GoToPane
                 | Self::CopyMode
+                | Self::ToggleSidebar
         )
     }
 
@@ -97,6 +100,7 @@ mod tests {
         assert!(Action::Detach.is_local() && Action::ToggleMouse.is_local());
         assert!(Action::CommandPalette.is_local() && Action::GoToPane.is_local());
         assert!(Action::CopyMode.is_local());
+        assert!(Action::ToggleSidebar.is_local());
         assert!(!Action::FocusPane(PaneId(1)).is_local());
         assert!(!Action::Split(SplitAxis::Rows).is_local());
         assert!(!Action::SelectTab(1).is_local());

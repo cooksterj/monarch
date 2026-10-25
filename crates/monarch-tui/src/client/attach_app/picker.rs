@@ -20,6 +20,7 @@ impl AttachApp {
             Action::CommandPalette => self.open_picker(self.palette()),
             Action::GoToPane => self.open_picker(self.go_to()),
             Action::CopyMode => self.open_copy(),
+            Action::ToggleSidebar => self.toggle_sidebar(),
             action => {
                 let _ = self.link.send(&ClientMsg::Action(action));
             }

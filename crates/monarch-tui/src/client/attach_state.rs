@@ -3,9 +3,13 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use monarch_core::{PaneId, Rect};
-use monarch_proto::{Delta, LayoutMsg, ModeFlags, PaneSummary, Screen, ServerMsg, StyleCache};
+use monarch_proto::{
+    Delta, LayoutMsg, ModeFlags, PanePlace, PaneSummary, Screen, ServerMsg, StyleCache,
+};
 
 use super::{Applied, FocusView, PaneReplica};
+
+mod sidebar;
 
 /// Longest pane title shown in a tab label, in characters.
 const TAB_TITLE: usize = 20;
@@ -20,7 +24,11 @@ pub struct AttachState {
     panes: BTreeMap<PaneId, PaneReplica>,
     titles: BTreeMap<PaneId, String>,
     commands: BTreeMap<PaneId, String>,
+    places: BTreeMap<PaneId, Option<PanePlace>>,
     resyncing: BTreeSet<PaneId>,
+    /// Columns left of the panes (the sidebar); layout coordinates are
+    /// shifted right by this on the host.
+    left: u16,
 }
 
 impl AttachState {
@@ -56,6 +64,10 @@ impl AttachState {
                 self.commands.insert(pane, command.unwrap_or_default());
                 out.redraw = true;
             }
+            ServerMsg::Place { pane, place } => {
+                self.places.insert(pane, place);
+                out.redraw = true;
+            }
             ServerMsg::HostWrite(bytes) => out.host_write.extend(bytes),
             ServerMsg::SearchResult { pane, found } => out.found.push((pane, found)),
             ServerMsg::Clipboard(text) => out.clipboard.push(text),
@@ -78,6 +90,17 @@ impl AttachState {
             _ if self.resyncing.insert(delta.pane) => out.resync.push(delta.pane),
             _ => {}
         }
+    }
+
+    /// Moves the panes right of a `left`-column sidebar.
+    pub fn set_left(&mut self, left: u16) {
+        self.left = left;
+    }
+
+    /// Columns left of the panes.
+    #[must_use]
+    pub fn left(&self) -> u16 {
+        self.left
     }
 
     /// The current layout, once received.
@@ -164,7 +187,12 @@ impl AttachState {
             layout
                 .panes
                 .iter()
-                .map(|p| (p.pane, Rect::new(p.x, p.y, p.size.cols, p.size.rows)))
+                .map(|p| {
+                    (
+                        p.pane,
+                        Rect::new(p.x + self.left, p.y, p.size.cols, p.size.rows),
+                    )
+                })
                 .collect()
         })
     }
@@ -178,7 +206,7 @@ impl AttachState {
         let screen = self.screen(pane.pane);
         FocusView {
             pane: Some(pane.pane),
-            x: pane.x,
+            x: pane.x + self.left,
             y: pane.y,
             cols: pane.size.cols,
             rows: pane.size.rows,

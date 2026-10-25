@@ -3,7 +3,7 @@
 use monarch_core::PaneId;
 use serde::{Deserialize, Serialize};
 
-use super::{Delta, LayoutMsg, Snapshot, StyleDef};
+use super::{Delta, LayoutMsg, PanePlace, Snapshot, StyleDef};
 use crate::GridPoint;
 
 /// One server → client attach-stream message.
@@ -54,6 +54,13 @@ pub enum ServerMsg {
         pane: PaneId,
         /// Where the match is.
         found: Option<(GridPoint, GridPoint)>,
+    },
+    /// A pane's working directory or git checkout changed.
+    Place {
+        /// The pane.
+        pane: PaneId,
+        /// Where it is now.
+        place: Option<PanePlace>,
     },
 }
 

@@ -81,6 +81,7 @@ fn label(family: Family) -> String {
     match family {
         // Short, so three columns still fit an 80-column host.
         Family::One(_, Action::CommandPalette) => "palette".into(),
+        Family::One(_, Action::ToggleSidebar) => "sidebar".into(),
         Family::One(_, action) => action.to_string().replace('-', " "),
         Family::Focus => "focus".into(),
         Family::Swap => "swap".into(),

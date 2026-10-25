@@ -50,7 +50,7 @@ impl Client {
         };
         let (tx, events) = mpsc::channel();
         ServerLink::spawn_reader(reader, tx);
-        link.send(&ClientMsg::Resize(AttachView::pane_area(HOST)))
+        link.send(&ClientMsg::Resize(AttachView::pane_area(HOST, 0)))
             .expect("resize");
         Self {
             link,
@@ -113,6 +113,7 @@ impl Client {
                 pending: false,
                 message: None,
             },
+            sidebar: None,
             selection: None,
             matches: &[],
             copy_cursor: None,

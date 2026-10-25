@@ -12,6 +12,7 @@ fn pane(id: u32, title: Option<&str>) -> PaneSummary {
         pane: PaneId(id),
         title: title.map(Into::into),
         command: None,
+        place: None,
     }
 }
 

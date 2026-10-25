@@ -10,7 +10,7 @@ use ratatui::crossterm::{execute, queue};
 
 use super::AttachApp;
 use crate::client::{AttachView, WindowTitle};
-use crate::{PickerView, StatusLine, TuiError, WhichKey};
+use crate::{PickerView, Sidebar, StatusLine, TuiError, WhichKey};
 
 impl AttachApp {
     /// Mirrors the focused pane onto the host, then draws every visible
@@ -48,6 +48,11 @@ impl AttachApp {
         let (tabs, active_tab) = self.state.tab_labels();
         let copy = self.copy_view();
         let notice = self.notice.as_ref().map(|(text, _)| text.as_str());
+        let groups = if self.state.left() > 0 {
+            self.state.sidebar_groups()
+        } else {
+            Vec::new()
+        };
         let view = AttachView {
             state: &self.state,
             status: StatusLine {
@@ -59,6 +64,7 @@ impl AttachApp {
                 pending: self.prefix_pending,
                 message: notice.or(copy.as_ref().map(|c| c.status.as_str())),
             },
+            sidebar: Some(Sidebar { groups: &groups }),
             selection: match &copy {
                 Some(c) => c.selection,
                 None => self.selection_span(),

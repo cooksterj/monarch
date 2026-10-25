@@ -208,8 +208,13 @@ def main():
 
 def run_all(binary):
     with tempfile.TemporaryDirectory(prefix="monarch-spike6-") as run:
+        # No sidebar: it would show the directory name, and the full path
+        # printed by pwd must fit on one row.
+        config = os.path.join(run, "config.toml")
+        with open(config, "w") as f:
+            f.write("[ui]\nsidebar = false\n")
         env = dict(os.environ, XDG_RUNTIME_DIR=run, XDG_STATE_HOME=run, SHELL="/bin/sh",
-                   PS1="$ ", MONARCH_CONFIG=os.path.join(run, "none.toml"))
+                   PS1="$ ", MONARCH_CONFIG=config)
         for var in ("MONARCH_PANE", "MONARCH_SESSION", "TMUX"):
             env.pop(var, None)
         shell_comes_back_in_its_directory(binary, env, run)

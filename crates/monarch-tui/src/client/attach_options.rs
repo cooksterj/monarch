@@ -20,6 +20,12 @@ pub struct AttachOptions {
     pub window_title: String,
     /// `[ui].mouse` capture policy.
     pub mouse: MouseMode,
+    /// `[ui].sidebar`: start with the sidebar shown.
+    pub sidebar: bool,
+    /// `[ui].sidebar_width` in columns, its divider included.
+    pub sidebar_width: u16,
+    /// `[ui].sidebar_min_columns`: narrower hosts hide the sidebar.
+    pub sidebar_min_columns: u16,
     /// What each key after the prefix does.
     pub keymap: Keymap,
     /// How long the prefix waits before the key popup appears.
@@ -43,6 +49,9 @@ mod tests {
             prefix_label: "ctrl+b".into(),
             window_title: "{title}".into(),
             mouse: MouseMode::Auto,
+            sidebar: true,
+            sidebar_width: 32,
+            sidebar_min_columns: 100,
             keymap: Keymap::default(),
             which_key_delay: Duration::from_millis(300),
             repeat: Duration::from_millis(500),

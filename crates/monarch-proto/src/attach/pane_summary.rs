@@ -3,9 +3,11 @@
 use monarch_core::PaneId;
 use serde::{Deserialize, Serialize};
 
+use super::PanePlace;
+
 /// A pane's names when the layout was sent: the title its program set and
-/// the program in the foreground. Later changes arrive as
-/// `ServerMsg::Title` and `ServerMsg::Command`.
+/// the program in the foreground, and where it works. Later changes arrive
+/// as `ServerMsg::Title`, `ServerMsg::Command` and `ServerMsg::Place`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PaneSummary {
     /// The pane.
@@ -14,6 +16,8 @@ pub struct PaneSummary {
     pub title: Option<String>,
     /// The foreground program's name (`zsh`, `vim`), if known.
     pub command: Option<String>,
+    /// Its working directory and git checkout, if known.
+    pub place: Option<PanePlace>,
 }
 
 impl PaneSummary {
@@ -40,6 +44,7 @@ mod tests {
             pane: PaneId(1),
             title: Some(" vim main.rs ".into()),
             command: Some("vim".into()),
+            place: None,
         };
         assert_eq!(pane.name(), Some("vim main.rs"));
         pane.title = Some("  ".into());

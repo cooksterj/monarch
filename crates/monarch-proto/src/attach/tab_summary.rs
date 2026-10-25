@@ -34,6 +34,7 @@ mod tests {
             pane: PaneId(id),
             title: title.map(Into::into),
             command: None,
+            place: None,
         }
     }
 
