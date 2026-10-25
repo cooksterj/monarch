@@ -3,12 +3,14 @@
 mod attach_args;
 mod hook_command;
 mod server_args;
+mod setup_args;
 
 use clap::{Parser, Subcommand};
 
 pub use attach_args::AttachArgs;
 pub use hook_command::HookCommand;
 pub use server_args::ServerArgs;
+pub use setup_args::SetupArgs;
 
 /// An attention-first terminal multiplexer for AI coding agents.
 #[derive(Debug, Parser)]
@@ -28,6 +30,8 @@ pub enum Command {
     Server(ServerArgs),
     /// List what each key after the prefix does.
     Keys,
+    /// Install Monarch's hooks into Claude Code and Codex (safe to re-run).
+    Setup(SetupArgs),
     /// Report an agent's hook event to its pane (called by agents' hooks).
     #[command(subcommand)]
     Hook(HookCommand),
