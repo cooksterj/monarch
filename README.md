@@ -99,6 +99,9 @@ set, Monarch draws its chrome with reverse video and bold instead of colours.
 
 ## Keys
 
+The first time you attach, a welcome screen shows the handful of keys you need; it is in the
+command palette as `welcome` if you want it again.
+
 The sidebar groups panes by repository and worktree, with a badge for uncommitted files and
 commits ahead of or behind upstream (`±3 ↑2 ↓1`).
 

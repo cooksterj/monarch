@@ -16,7 +16,8 @@ pub(super) struct Glyphs {
     animator: GlyphAnimator,
     /// `None` under `NO_COLOR`.
     theme: Option<Theme>,
-    next_frame: Instant,
+    /// When the next animation frame is due.
+    pub(super) next_frame: Instant,
 }
 
 impl Glyphs {
@@ -46,6 +47,9 @@ impl AttachApp {
     /// sidebar is shown and the mouse is Monarch's (frames while the host
     /// terminal owns the mouse could disturb its native selection).
     pub(super) fn animate(&mut self) {
+        if self.animate_welcome() {
+            return;
+        }
         if !self.opts.animations || self.passthrough || self.state.left() == 0 {
             return;
         }

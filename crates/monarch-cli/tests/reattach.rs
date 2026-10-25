@@ -120,11 +120,7 @@ impl Client {
             matches: &[],
             copy_cursor: None,
             which_key: None,
-            picker: None,
-            review: None,
-            form: None,
-            help: None,
-            menu: None,
+            popups: monarch_tui::PopupViews::default(),
         };
         term.draw(|frame| view.draw(frame)).expect("draw");
         term.backend().buffer().clone()

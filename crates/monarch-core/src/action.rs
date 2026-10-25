@@ -82,6 +82,8 @@ pub enum Action {
     Sessions,
     /// Show every key, mouse gesture and command, searchable.
     Help,
+    /// Show the welcome screen first-time users see.
+    Welcome,
     /// Focus this pane, showing its tab (what the go-to picker runs; not
     /// bindable).
     FocusPane(PaneId),
@@ -107,6 +109,7 @@ impl Action {
                 | Self::Projects
                 | Self::Sessions
                 | Self::Help
+                | Self::Welcome
         )
     }
 

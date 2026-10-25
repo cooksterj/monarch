@@ -11,4 +11,4 @@ expression: "draw(&state, 70, 10).join(\"\\n\")"
 │   hjkl ←↓↑→  focus the pane in that direction                      │
 │   o          focus the next pane                                   │
 │   {          swap with the previous pane                           │
-└ 1–8 of 55 · type to search · ↑↓ PgUp PgDn scroll · esc close ──────┘
+└ 1–8 of 56 · type to search · ↑↓ PgUp PgDn scroll · esc close ──────┘

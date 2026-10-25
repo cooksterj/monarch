@@ -122,7 +122,12 @@ def run_all(binary):
         env.pop("TMUX", None)
 
         first = Client(binary, env)
-        # Typed at once: keys sent before the first layout must not be lost.
+        # A fresh state directory is a first run: the welcome comes up, and
+        # the key that closes it never reaches the pane.
+        first.wait_for(b"press", "the welcome on the first attach")
+        os.write(first.fd, b"q")
+        first.idle(0.5)
+        assert os.path.exists(os.path.join(run, "monarch", "welcomed")), "welcome remembered"
         os.write(first.fd, b"echo monarch-$((40+2))\r")
         first.wait_for(b"monarch-42", "echo output")
         os.write(first.fd, binary.encode() + b"\r")
@@ -174,6 +179,8 @@ def run_all(binary):
         os.write(first.fd, b"d")
         first.wait_for(f"[detached from session {SESSION}]".encode(), "detach message")
         first.finish()
+        assert b"qecho" not in first.seen, "the key closing the welcome leaked into the pane"
+        print("  welcome: shown on the first attach only; the key that closed it was swallowed")
         print("  attach: auto-started server, nested attach refused, status line + title shown, typed, prefix shown, detached")
 
         second = Client(binary, env)
@@ -195,6 +202,7 @@ def two_clients_share_a_session(binary, env):
     the latest one, and fits the other again when it detaches."""
     session = f"{SESSION}-two"
     small = Client(binary, env, session=session, cols=80)
+    # Typed at once: keys sent before the first layout must not be lost.
     os.write(small.fd, b"echo one-$((0+1))\r")
     small.wait_for(b"one-1", "output in the first client")
     big = Client(binary, env, session=session, cols=120)

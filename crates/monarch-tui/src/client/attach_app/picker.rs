@@ -29,6 +29,7 @@ impl AttachApp {
             Action::ToggleSidebar => self.toggle_sidebar(),
             Action::ReloadConfig => self.reload_config(),
             Action::Help => self.open_help(),
+            Action::Welcome => self.open_welcome(),
             action => {
                 let _ = self.link.send(&ClientMsg::Action(action));
             }
@@ -42,7 +43,9 @@ impl AttachApp {
         if self.popups.menu.is_some() {
             return self.menu_input(bytes);
         }
-        if self.popups.help.is_some() {
+        if self.popups.welcome.is_some() {
+            self.welcome_input();
+        } else if self.popups.help.is_some() {
             self.help_input(bytes);
         } else if self.popups.review.is_some() {
             self.review_input(bytes);

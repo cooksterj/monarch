@@ -1,0 +1,25 @@
+---
+source: crates/monarch-tui/src/widgets/welcome_view.rs
+expression: "draw(view(&keys, 0, false), 80, 24).join(\"\\n\")"
+---
+
+
+ ┌────────────────────────────────────────────────────────────────────────────┐
+ │                                                                            │
+ │                           .-~~-.  \   /  .-~~-.                            │
+ │                         .'  o   `-.\ /.-'   o  `.                          │
+ │                        /  .--.    `.Y.'    .--.  \                         │
+ │                        \  `--'  _.-'|`-._  `--'  /                         │
+ │                         `-.   .'    |    `.   .-'                          │
+ │                          .'   `-._  |  _.-'   `.                           │
+ │                         (   o    `. | .'    o   )                          │
+ │                          `-.___.-'  v  `-.___.-'                           │
+ │                               M O N A R C H                                │
+ │    every agent in its own pane, and you always see which one needs you     │
+ │                                                                            │
+ │  ctrl+b %     split the pane side by ctrl+b ?     every key                │
+ │  ctrl+b a     agents waiting for you                                       │
+ │                                                                            │
+ │  `monarch setup` lets it see your agents · `monarch doctor` checks it all  │
+ │                           press any key to start                           │
+ └────────────────────────────────────────────────────────────────────────────┘

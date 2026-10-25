@@ -32,6 +32,7 @@ mod select;
 mod sessions;
 mod sidebar;
 mod startup;
+mod welcome;
 mod which_key;
 mod worktree;
 
@@ -118,7 +119,7 @@ impl AttachApp {
         lister: Arc<dyn SessionLister>,
     ) -> Result<Self, TuiError> {
         let s = Started::new(ui, link, reader, opts)?;
-        Ok(Self {
+        let mut app = Self {
             ui: s.ui,
             link: s.link,
             events: s.events,
@@ -149,7 +150,11 @@ impl AttachApp {
             size: s.size,
             dirty: true,
             last_draw: Instant::now() - FRAME,
-        })
+        };
+        if opts.welcome {
+            app.open_welcome();
+        }
+        Ok(app)
     }
 
     fn run(&mut self) -> Result<AttachOutcome, TuiError> {
