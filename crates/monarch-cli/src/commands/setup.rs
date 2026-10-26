@@ -1,5 +1,6 @@
 //! `monarch setup`: installs (or removes) Monarch's hooks in each agent's
-//! settings, leaving everything else in those files alone.
+//! settings, leaving everything else in those files alone, and the skill
+//! that teaches agents to use Monarch.
 //!
 //! Re-running is safe: hooks that are already right are not touched (Codex
 //! remembers which hooks the user trusted), wrong paths are fixed in
@@ -14,7 +15,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use anyhow::Context;
 
 use crate::setup::{
-    Change, ChangeKind, ClaudeSettings, CodexConfig, ConfigFile, HookConfig, HookLine,
+    Change, ChangeKind, ClaudeSettings, CodexConfig, ConfigFile, HookConfig, HookLine, SkillFile,
 };
 use crate::{HookCommand, SetupArgs};
 
@@ -25,6 +26,9 @@ pub(crate) struct SetupEnv {
     pub claude: PathBuf,
     /// Codex's home (`~/.codex`).
     pub codex: PathBuf,
+    /// The shared agents directory (`~/.agents`), where Codex finds
+    /// skills.
+    pub agents: PathBuf,
     /// What hooks run: `monarch` when that is this binary, else its path.
     pub program: PathBuf,
     /// Distinguishes this run's backups.
@@ -46,6 +50,7 @@ impl SetupEnv {
         Self {
             claude: dir("CLAUDE_CONFIG_DIR", ".claude"),
             codex: dir("CODEX_HOME", ".codex"),
+            agents: home.join(".agents"),
             program: program(&exe, std::env::var_os("PATH").as_deref()),
             stamp: stamp.map_or(0, |d| d.as_secs()),
         }
@@ -56,6 +61,14 @@ impl SetupEnv {
         match agent {
             HookCommand::Claude => (&self.claude, self.claude.join("settings.json")),
             HookCommand::Codex => (&self.codex, self.codex.join("config.toml")),
+        }
+    }
+
+    /// The directory `agent` finds user skills in.
+    pub(crate) fn skills(&self, agent: HookCommand) -> PathBuf {
+        match agent {
+            HookCommand::Claude => self.claude.join("skills"),
+            HookCommand::Codex => self.agents.join("skills"),
         }
     }
 }
@@ -130,6 +143,29 @@ fn setup_agent(
             )?;
         }
     }
+    setup_skill(agent, args, env, out)
+}
+
+/// Installs, updates or removes Monarch's skill for `agent`.
+fn setup_skill(
+    agent: HookCommand,
+    args: SetupArgs,
+    env: &SetupEnv,
+    out: &mut dyn Write,
+) -> anyhow::Result<()> {
+    let skill = SkillFile::read(&env.skills(agent))?;
+    let kind = skill.plan(args.uninstall);
+    if args.uninstall && kind == ChangeKind::Unchanged {
+        return Ok(());
+    }
+    let verb = kind.verb(args.dry_run);
+    writeln!(out, "  {verb:<10} skill {}", skill.path().display())?;
+    if kind.edits()
+        && !args.dry_run
+        && let Some(backup) = skill.apply(kind, env.stamp)?
+    {
+        writeln!(out, "  backup     {}", backup.display())?;
+    }
     Ok(())
 }
 
@@ -186,6 +222,7 @@ mod tests {
         SetupEnv {
             claude: home.join(".claude"),
             codex: home.join(".codex"),
+            agents: home.join(".agents"),
             program: PathBuf::from("/opt/monarch"),
             stamp: 1,
         }
@@ -209,10 +246,17 @@ mod tests {
             "{text}"
         );
         assert!(text.contains("Codex: not installed"), "{text}");
+        assert!(text.contains("  added      skill "), "{text}");
+        assert!(env.claude.join("skills/monarch/SKILL.md").is_file());
+        assert!(
+            !env.agents.exists(),
+            "Codex isn't installed: no skill for it"
+        );
         let written = fs::read_to_string(env.claude.join("settings.json")).expect("written");
         assert!(written.contains("\"command\": \"/opt/monarch hook claude\""));
         let (again, _) = run_with(SetupArgs::default(), &env);
         assert!(again.contains("  unchanged  SessionStart"), "{again}");
+        assert!(again.contains("  unchanged  skill "), "{again}");
         assert!(!again.contains("backup"), "nothing written: {again}");
     }
 
@@ -230,6 +274,8 @@ mod tests {
             text.contains("would add") && !env.codex.join("config.toml").exists(),
             "{text}"
         );
+        assert!(text.contains("  would add  skill "), "{text}");
+        assert!(!env.agents.exists(), "a dry run writes no skill");
         let (text, _) = run_with(SetupArgs::default(), &env);
         assert!(text.contains("open /hooks in Codex"), "{text}");
         let remove = SetupArgs {
@@ -241,6 +287,8 @@ mod tests {
             text.contains("removed") && text.contains("config.toml.monarch-backup-1"),
             "{text}"
         );
+        assert!(text.contains("  removed    skill "), "{text}");
+        assert!(!env.agents.join("skills/monarch").exists(), "skill removed");
         assert_eq!(
             fs::read_to_string(env.codex.join("config.toml")).expect("file"),
             ""

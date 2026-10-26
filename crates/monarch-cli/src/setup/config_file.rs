@@ -54,7 +54,7 @@ impl ConfigFile {
 }
 
 /// `path` with `.suffix` added to its file name.
-fn sibling(path: &Path, suffix: &str) -> PathBuf {
+pub(super) fn sibling(path: &Path, suffix: &str) -> PathBuf {
     let mut name = path.file_name().unwrap_or_default().to_owned();
     name.push(format!(".{suffix}"));
     path.with_file_name(name)

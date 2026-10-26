@@ -9,7 +9,7 @@ use super::super::config::warnings;
 use super::super::setup::plan;
 use super::{DoctorEnv, Finding, Status};
 use crate::HookCommand;
-use crate::setup::Change;
+use crate::setup::{Change, ChangeKind, SkillFile};
 
 /// The config file: loads, and without warnings.
 pub(super) fn config(loaded: Result<&LoadedConfig, String>) -> Finding {
@@ -97,25 +97,33 @@ fn hook_changes(topic: &str, file: &Path, changes: &[Change]) -> Finding {
     )
 }
 
-/// The skill that teaches Claude Code to drive Monarch (optional).
-pub(super) fn skill(env: &DoctorEnv) -> Finding {
-    let dir = env.setup.claude.join("skills/monarch");
-    if dir.join("SKILL.md").is_file() {
-        return Finding::new(
-            Status::Ok,
-            "skill",
-            format!("installed at {}", dir.display()),
-        );
+/// The skill that teaches each installed agent to drive Monarch.
+pub(super) fn skills(env: &DoctorEnv) -> Vec<Finding> {
+    HookCommand::ALL
+        .into_iter()
+        .filter(|agent| env.setup.files(*agent).0.is_dir())
+        .map(|agent| skill(agent, env))
+        .collect()
+}
+
+fn skill(agent: HookCommand, env: &DoctorEnv) -> Finding {
+    let topic = format!("{} skill", agent.title());
+    let Ok(skill) = SkillFile::read(&env.setup.skills(agent)) else {
+        let text = format!("{} can't be read", env.setup.skills(agent).display());
+        return Finding::new(Status::Warn, topic, text);
+    };
+    let path = skill.path().display().to_string();
+    match skill.plan(false) {
+        ChangeKind::Unchanged => Finding::new(Status::Ok, topic, format!("installed at {path}")),
+        ChangeKind::Added => Finding::new(Status::Warn, topic, "not installed")
+            .fix("monarch setup installs it, so agents can use Monarch"),
+        _ => Finding::new(
+            Status::Warn,
+            topic,
+            format!("{path} differs from this version's"),
+        )
+        .fix("monarch setup updates it (and backs up your copy)"),
     }
-    Finding::new(
-        Status::Note,
-        "skill",
-        "not installed (optional: lets agents use Monarch)",
-    )
-    .fix(format!(
-        "copy skills/monarch/SKILL.md from the repository to {}",
-        dir.display()
-    ))
 }
 
 #[cfg(test)]
@@ -130,6 +138,7 @@ mod tests {
             setup: SetupEnv {
                 claude: home.join(".claude"),
                 codex: home.join(".codex"),
+                agents: home.join(".agents"),
                 program: "/opt/monarch".into(),
                 stamp: 0,
             },
@@ -153,6 +162,29 @@ mod tests {
         let found = hooks(&env);
         assert_eq!(found[0].status, Status::Ok, "{found:?}");
         assert!(found[0].text.starts_with("hooks installed"));
+    }
+
+    #[test]
+    fn skills_are_missing_then_installed_then_outdated() {
+        let home = tempfile::tempdir().expect("dir");
+        let env = env(home.path());
+        std::fs::create_dir(&env.setup.codex).expect("dir");
+        let found = skills(&env);
+        assert_eq!(found.len(), 1, "only Codex is installed: {found:?}");
+        assert_eq!(
+            (found[0].status, found[0].topic.as_str()),
+            (Status::Warn, "Codex skill")
+        );
+        let args = crate::SetupArgs::default();
+        crate::commands::setup::run(args, &env.setup, &mut Vec::new()).expect("setup");
+        let installed = env.setup.agents.join("skills/monarch/SKILL.md");
+        assert_eq!(skills(&env)[0].status, Status::Ok, "{:?}", skills(&env));
+        std::fs::write(&installed, "an older skill").expect("write");
+        let found = &skills(&env)[0];
+        assert!(
+            found.status == Status::Warn && found.text.contains("differs"),
+            "{found:?}"
+        );
     }
 
     #[test]
@@ -183,6 +215,9 @@ mod tests {
         };
         assert_eq!(config(Ok(&found)).status, Status::Warn);
         assert_eq!(config(Err("bad".into())).status, Status::Fail);
-        assert_eq!(skill(&env(Path::new("/nonexistent"))).status, Status::Note);
+        assert!(
+            skills(&env(Path::new("/nonexistent"))).is_empty(),
+            "no agents"
+        );
     }
 }

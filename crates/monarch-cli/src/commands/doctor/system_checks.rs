@@ -149,6 +149,7 @@ mod tests {
             setup: SetupEnv {
                 claude: "/h/.claude".into(),
                 codex: "/h/.codex".into(),
+                agents: "/h/.agents".into(),
                 program: "/opt/bin/monarch".into(),
                 stamp: 0,
             },

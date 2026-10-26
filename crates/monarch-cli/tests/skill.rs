@@ -1,4 +1,4 @@
-//! Keeps `skills/monarch/SKILL.md` true to the CLI: its front matter is
+//! Keeps `crates/monarch-cli/skills/monarch/SKILL.md` true to the CLI: its front matter is
 //! complete, and every `monarch …` command it shows still parses.
 
 use std::path::Path;
@@ -7,7 +7,7 @@ use clap::{CommandFactory, Parser};
 use monarch_cli::Cli;
 
 fn skill() -> String {
-    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../skills/monarch/SKILL.md");
+    let path = Path::new(env!("CARGO_MANIFEST_DIR")).join("skills/monarch/SKILL.md");
     std::fs::read_to_string(path).expect("skills/monarch/SKILL.md")
 }
 

@@ -52,7 +52,7 @@ pub enum Command {
     Server(ServerArgs),
     /// List what each key after the prefix does.
     Keys,
-    /// Install Monarch's hooks into Claude Code and Codex (safe to re-run).
+    /// Install Monarch's hooks and skill into Claude Code and Codex (safe to re-run).
     Setup(SetupArgs),
     /// Check Monarch's setup: config, agent hooks, git, the terminal and
     /// running sessions, with a fix for each problem.
