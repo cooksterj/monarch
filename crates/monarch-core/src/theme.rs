@@ -36,10 +36,16 @@ pub struct Theme {
     pub removed: Rgb,
     /// A diff's hunk header (`@@ -1,3 +1,4 @@`).
     pub hunk: Rgb,
+    /// The welcome's butterflies: their wings…
+    pub wing: Rgb,
+    /// …the veins, borders and body…
+    pub wing_edge: Rgb,
+    /// …and the spots along the borders.
+    pub wing_spot: Rgb,
 }
 
 /// Every token's name, as `[theme.colors]` spells it.
-pub const THEME_TOKENS: [&str; 13] = [
+pub const THEME_TOKENS: [&str; 16] = [
     "bar",
     "bar_text",
     "accent",
@@ -53,6 +59,9 @@ pub const THEME_TOKENS: [&str; 13] = [
     "added",
     "removed",
     "hunk",
+    "wing",
+    "wing_edge",
+    "wing_spot",
 ];
 
 impl Theme {
@@ -108,6 +117,9 @@ impl Theme {
             "added" => &mut self.added,
             "removed" => &mut self.removed,
             "hunk" => &mut self.hunk,
+            "wing" => &mut self.wing,
+            "wing_edge" => &mut self.wing_edge,
+            "wing_spot" => &mut self.wing_spot,
             _ => return None,
         })
     }

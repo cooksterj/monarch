@@ -10,6 +10,12 @@ const fn c(rgb: u32) -> Rgb {
     Rgb::hex(rgb)
 }
 
+/// A real monarch's orange, black and white, which every built-in
+/// theme's butterflies share.
+const WING: Rgb = c(0xe8761b);
+const WING_EDGE: Rgb = c(0x1e1612);
+const WING_SPOT: Rgb = c(0xf5f0e6);
+
 /// Monarch's own theme for dark hosts: monarch-butterfly orange accents.
 pub(super) const MONARCH_DARK: Theme = Theme {
     bar: c(0x2b2d3a),
@@ -25,6 +31,9 @@ pub(super) const MONARCH_DARK: Theme = Theme {
     added: c(0x7ed37e),
     removed: c(0xf07178),
     hunk: c(0x6fb3d2),
+    wing: WING,
+    wing_edge: WING_EDGE,
+    wing_spot: WING_SPOT,
 };
 
 /// Monarch's own theme for light hosts, darker so it stays readable.
@@ -42,6 +51,9 @@ pub(super) const MONARCH_LIGHT: Theme = Theme {
     added: c(0x1a7f37),
     removed: c(0xb31d28),
     hunk: c(0x0550ae),
+    wing: WING,
+    wing_edge: WING_EDGE,
+    wing_spot: WING_SPOT,
 };
 
 /// One palette's colours, in the order [`from`] reads them.
@@ -76,6 +88,9 @@ const fn from(p: &Palette) -> Theme {
         added: c(p.green),
         removed: c(p.red),
         hunk: c(p.cyan),
+        wing: WING,
+        wing_edge: WING_EDGE,
+        wing_spot: WING_SPOT,
     }
 }
 
