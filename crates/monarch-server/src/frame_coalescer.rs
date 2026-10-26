@@ -44,7 +44,11 @@ impl FrameCoalescer {
         loop {
             ctx.wake.notified().await;
             sleep_until(self.next_frame(last, Instant::now())).await;
-            ctx.lock().render_frame();
+            // Rendering is CPU work under the session lock; on a worker it
+            // would hold up the tasks queued behind it there, among them
+            // the connection carrying the user's next key.
+            let render = Arc::clone(&ctx);
+            let _ = tokio::task::spawn_blocking(move || render.lock().render_frame()).await;
             last = Instant::now();
         }
     }

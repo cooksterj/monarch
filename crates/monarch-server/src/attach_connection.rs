@@ -36,6 +36,8 @@ impl AttachConnection {
         let writer = tokio::spawn(write_frames(wr, lane_rx));
         let result = read_messages(&ctx, id, rd).await;
         ctx.lock().remove_client(id);
+        // The window may now fit another client: send it the new layout.
+        ctx.wake();
         writer.abort();
         result
     }
@@ -75,6 +77,7 @@ async fn read_messages(
 fn handle(ctx: &Arc<ServerContext>, id: ClientId, msg: ClientMsg) -> bool {
     match msg {
         ClientMsg::Detach => return false,
+        ClientMsg::Input { pane, bytes } => ctx.send_input(pane, bytes),
         ClientMsg::Action(action) => run_action(ctx, action),
         msg @ (ClientMsg::Search { .. } | ClientMsg::Copy { .. }) => history::reply(ctx, id, msg),
         ClientMsg::Review(pane) => review::request(ctx, id, pane),
@@ -83,38 +86,32 @@ fn handle(ctx: &Arc<ServerContext>, id: ClientId, msg: ClientMsg) -> bool {
         ClientMsg::Worktrees => worktree::list(ctx, id),
         ClientMsg::OpenWorktree(path) => worktree::open(ctx, &path),
         ClientMsg::RemoveWorktree(path) => worktree::remove(ctx, id, path),
-        msg => apply(ctx, id, msg),
+        msg => apply(ctx, id, &msg),
     }
     true
 }
 
 /// Applies a message that changes the session or this client.
-fn apply(ctx: &ServerContext, id: ClientId, msg: ClientMsg) {
+fn apply(ctx: &ServerContext, id: ClientId, msg: &ClientMsg) {
     let mut state = ctx.lock();
     match msg {
-        ClientMsg::Input { pane, bytes } => {
-            state.answered(pane, &bytes);
-            if let Some(io) = state.pane(pane) {
-                io.send(bytes);
-            }
-        }
-        ClientMsg::Resize(size) => state.resize_client(id, size),
-        ClientMsg::HostInfo(info) => state.set_host(info),
+        ClientMsg::Resize(size) => state.resize_client(id, *size),
+        ClientMsg::HostInfo(info) => state.set_host(*info),
         ClientMsg::Focus(pane) => {
             let before = state.focus();
-            state.set_focus(pane);
+            state.set_focus(*pane);
             saw_new_focus(&mut state, before);
         }
-        ClientMsg::Scroll { pane, lines } => scroll(&state, pane, ScrollRequest::Lines(lines)),
-        ClientMsg::ScrollTo { pane, top } => scroll(&state, pane, ScrollRequest::TopLine(top)),
+        ClientMsg::Scroll { pane, lines } => scroll(&state, *pane, ScrollRequest::Lines(*lines)),
+        ClientMsg::ScrollTo { pane, top } => scroll(&state, *pane, ScrollRequest::TopLine(*top)),
         ClientMsg::Resync(pane) => {
             if let Some(client) = state.client_mut(id) {
-                client.mark_stale(pane);
+                client.mark_stale(*pane);
             }
         }
         ClientMsg::Ping(token) => {
             if let Some(client) = state.client_mut(id) {
-                client.push(vec![ServerMsg::Pong(token)]);
+                client.push(vec![ServerMsg::Pong(*token)]);
             }
             return;
         }

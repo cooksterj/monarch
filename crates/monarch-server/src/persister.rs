@@ -35,9 +35,20 @@ impl Persister {
                 () = tokio::time::sleep(PERSIST_INTERVAL) => {}
                 () = ctx.persist.notified() => {}
             }
-            if let Err(e) = self.save_if_changed(&ctx) {
-                eprintln!("monarch: {e}");
-            }
+            // Off the async threads: it asks the OS for directories and
+            // writes a file.
+            let shared = Arc::clone(&ctx);
+            self = match tokio::task::spawn_blocking(move || {
+                if let Err(e) = self.save_if_changed(&shared) {
+                    eprintln!("monarch: {e}");
+                }
+                self
+            })
+            .await
+            {
+                Ok(persister) => persister,
+                Err(_) => return,
+            };
         }
     }
 

@@ -53,7 +53,9 @@ screen snapshot, never the parser. Seams are traits (`Engine`, `NotificationChan
 
 **Performance.** Anything on the per-byte × panes × clients path is multiplicative: no allocation
 per byte, terminal locks held only to copy damaged rows, hidden panes parse but never render. Std
-threads for blocking PTY IO; tokio only for sockets and timers; bounded channels.
+threads for blocking PTY IO; tokio only for sockets and timers; bounded channels. CPU work and
+blocking calls (rendering, detection, git, files, OS probes) go in `spawn_blocking`, never on a
+tokio worker: tasks queued behind a busy worker, keystrokes among them, wait for it.
 
 **Platform.** OS code only in `platform/{macos,linux}.rs` behind traits. `unsafe_code` is forbidden
 workspace-wide (`[workspace.lints]`); a platform module that needs it must say why.

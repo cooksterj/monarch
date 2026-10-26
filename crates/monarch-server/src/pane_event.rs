@@ -40,6 +40,9 @@ pub enum PaneEvent {
         /// When to force it.
         deadline: Instant,
     },
+    /// The user typed what may answer the pane's agent (Enter, or a key
+    /// that isn't an escape sequence).
+    Replied(PaneId),
     /// The program exited.
     Exited {
         /// The pane.
@@ -57,6 +60,7 @@ impl PaneEvent {
             Self::Title { pane, .. }
             | Self::Signal { pane, .. }
             | Self::Bell(pane)
+            | Self::Replied(pane)
             | Self::Clipboard { pane, .. }
             | Self::SyncPending { pane, .. }
             | Self::Exited { pane, .. } => *pane,

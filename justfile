@@ -37,6 +37,11 @@ smoke:
     python3 scripts/spike5_mouse_smoke.py target/debug/monarch
     python3 scripts/spike6_restore_smoke.py target/debug/monarch
 
+# M6: 20 panes through the real attach client (release build; prints a table)
+bench-attach *ARGS:
+    cargo build --release --bin monarch
+    python3 scripts/perf_attach.py target/release/monarch {{ARGS}}
+
 # M1 spike 4: latency/load bench (release build; prints a table, non-zero on failure)
 bench-spike4 *ARGS:
     cargo build --release --bin monarch

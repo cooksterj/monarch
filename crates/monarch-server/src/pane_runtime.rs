@@ -84,6 +84,10 @@ impl PaneIo for PaneRuntime {
         let _ = self.input.send(bytes);
     }
 
+    fn input(&self) -> Option<Sender<Vec<u8>>> {
+        Some(self.input.clone())
+    }
+
     fn resize(&self, size: ScreenSize) {
         self.shared.lock().resize(size);
         let _ = self.master.resize(pty_size(size));

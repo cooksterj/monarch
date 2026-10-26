@@ -22,10 +22,18 @@ impl CommandWatcher {
         Self { probe }
     }
 
-    /// Checks every [`COMMAND_INTERVAL`] until aborted.
+    /// Checks every [`COMMAND_INTERVAL`] until aborted, off the async
+    /// threads (it asks the OS about every pane).
     pub async fn run(self, ctx: Arc<ServerContext>) {
+        let watcher = Arc::new(self);
         loop {
-            self.check(&ctx);
+            let (shared, w) = (Arc::clone(&ctx), Arc::clone(&watcher));
+            if tokio::task::spawn_blocking(move || w.check(&shared))
+                .await
+                .is_err()
+            {
+                return;
+            }
             tokio::time::sleep(COMMAND_INTERVAL).await;
         }
     }

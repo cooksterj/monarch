@@ -1,5 +1,7 @@
 //! The session's view of a pane: its emulator plus a way to reach the PTY.
 
+use std::sync::mpsc::Sender;
+
 use monarch_proto::ScreenSize;
 
 use crate::PaneShared;
@@ -13,6 +15,12 @@ pub trait PaneIo: Send {
 
     /// Queues bytes for the program's input, in order with query replies.
     fn send(&self, bytes: Vec<u8>);
+
+    /// The channel [`send`](Self::send) writes to, for routing input
+    /// without the session lock; `None` when there is none to share.
+    fn input(&self) -> Option<Sender<Vec<u8>>> {
+        None
+    }
 
     /// Resizes the pane. The default resizes only the emulator; PTY-backed
     /// panes must resize the emulator first, then the PTY, so the program's
