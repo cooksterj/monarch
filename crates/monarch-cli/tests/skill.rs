@@ -38,7 +38,7 @@ fn every_command_shown_parses() {
             "```sh" => in_sh = true,
             "```" => in_sh = false,
             command if in_sh && command.starts_with("monarch ") => {
-                let words = command.split_whitespace();
+                let words = shell_words(command);
                 Cli::try_parse_from(words).unwrap_or_else(|e| panic!("{command}: {e}"));
                 shown += 1;
             }
@@ -46,6 +46,38 @@ fn every_command_shown_parses() {
         }
     }
     assert!(shown >= 5, "found only {shown} commands");
+}
+
+/// `command`'s words as a shell splits them: quotes group, and a
+/// redirection or pipe ends the command.
+fn shell_words(command: &str) -> Vec<String> {
+    let mut words = Vec::new();
+    let mut word: Option<String> = None;
+    let mut quote = None;
+    for c in command.chars() {
+        match (quote, c) {
+            (Some(q), c) if c == q => quote = None,
+            (Some(_), c) => word.get_or_insert_with(String::new).push(c),
+            (None, '"' | '\'') => {
+                quote = Some(c);
+                word.get_or_insert_with(String::new);
+            }
+            (None, '<' | '>' | '|') => break,
+            (None, c) if c.is_whitespace() => words.extend(word.take()),
+            (None, c) => word.get_or_insert_with(String::new).push(c),
+        }
+    }
+    words.extend(word);
+    words
+}
+
+#[test]
+fn shell_words_group_quotes_and_stop_at_redirections() {
+    assert_eq!(
+        shell_words("monarch pane send p4 \"fix it\" --enter < task.md"),
+        ["monarch", "pane", "send", "p4", "fix it", "--enter"]
+    );
+    assert_eq!(shell_words("monarch ls | head"), ["monarch", "ls"]);
 }
 
 #[test]
