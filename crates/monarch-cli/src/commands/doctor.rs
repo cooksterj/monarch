@@ -28,7 +28,7 @@ pub(crate) fn findings(
         install_checks::config(config),
     ];
     found.extend(install_checks::hooks(env));
-    found.push(install_checks::skill(env));
+    found.extend(install_checks::skills(env));
     found.push(system_checks::agents(env));
     found.push(system_checks::git(env));
     found.extend(system_checks::terminal(env));

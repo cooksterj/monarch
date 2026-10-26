@@ -8,7 +8,7 @@ pub struct SetupArgs {
     /// Show what would change without writing anything.
     #[arg(long)]
     pub dry_run: bool,
-    /// Remove Monarch's hooks instead of installing them.
+    /// Remove Monarch's hooks and skill instead of installing them.
     #[arg(long)]
     pub uninstall: bool,
 }

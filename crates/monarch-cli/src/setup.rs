@@ -1,5 +1,6 @@
 //! `monarch setup`'s building blocks: the hook command Monarch installs,
-//! the two agents' config files it edits, and what changed.
+//! the two agents' config files it edits, the skill it adds, and what
+//! changed.
 
 mod change;
 mod change_kind;
@@ -9,6 +10,7 @@ mod config_file;
 mod hook_config;
 mod hook_line;
 mod hook_slot;
+mod skill_file;
 
 pub(crate) use change::Change;
 pub(crate) use change_kind::ChangeKind;
@@ -18,3 +20,4 @@ pub(crate) use config_file::ConfigFile;
 pub(crate) use hook_config::HookConfig;
 pub(crate) use hook_line::HookLine;
 pub(crate) use hook_slot::HookSlot;
+pub(crate) use skill_file::SkillFile;

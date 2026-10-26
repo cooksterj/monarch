@@ -90,6 +90,7 @@ mod tests {
             setup: SetupEnv {
                 claude: a.path().join(".claude"),
                 codex: a.path().join(".codex"),
+                agents: a.path().join(".agents"),
                 program: "monarch".into(),
                 stamp: 0,
             },

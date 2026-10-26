@@ -62,10 +62,11 @@ it inside Monarch and the tab just appears; outside, it attaches.
 first. It is safe to re-run; `--dry-run` shows what would change and `--uninstall` removes the
 hooks. Outside Monarch the hooks do nothing. Codex asks you to trust new hooks in `/hooks`.
 
-Agents can use these commands too. `skills/monarch/SKILL.md` is a Claude Code skill that teaches
-an agent inside Monarch to check on other panes, wait for them and start agents in worktrees.
-Install it for yourself with
-`mkdir -p ~/.claude/skills/monarch && cp skills/monarch/SKILL.md ~/.claude/skills/monarch/`.
+Agents can use these commands too. `monarch setup` also installs a skill that teaches an agent
+inside Monarch to check on other panes, wait for them and start agents in worktrees: Claude Code's
+in `~/.claude/skills/monarch/`, Codex's in `~/.agents/skills/monarch/`. A copy you edited is
+backed up before it is replaced; `monarch doctor` says when it is missing or out of date. Its
+source is `crates/monarch-cli/skills/monarch/SKILL.md`.
 
 Configuration lives at `~/.config/monarch/config.toml` (override with `MONARCH_CONFIG`).
 `monarch config default` prints every setting; `monarch config check` validates your file.
