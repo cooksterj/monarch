@@ -69,7 +69,7 @@ const POPUPS: [(&str, &str); 4] = [
     ("esc", "close"),
 ];
 
-const COMMANDS: [(&str, &str); 6] = [
+const COMMANDS: [(&str, &str); 8] = [
     ("monarch ls", "running sessions"),
     (
         "monarch new BRANCH",
@@ -77,8 +77,13 @@ const COMMANDS: [(&str, &str); 6] = [
     ),
     ("monarch agent explain", "each pane's agent state and why"),
     ("monarch agent wait PANE", "wait until an agent needs you"),
+    (
+        "monarch pane send PANE TEXT",
+        "type into a pane (--enter submits)",
+    ),
     ("monarch config check", "check your config file"),
-    ("monarch setup", "install the agent hooks"),
+    ("monarch setup", "install the agent hooks and skill"),
+    ("monarch doctor", "check the setup, with fixes"),
 ];
 
 #[cfg(test)]
