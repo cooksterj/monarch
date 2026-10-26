@@ -1,15 +1,17 @@
-//! Draws the welcome screen: a swarm of monarchs rising past a card with
+//! Draws the welcome screen: monarch butterflies rising past a card with
 //! the name, the keys a newcomer needs, and where to go next.
 
+mod sprite;
 mod swarm;
 
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
-use ratatui::style::{Modifier, Style};
+use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::Line;
 use ratatui::widgets::{Block, Borders, Clear, Widget};
 
 use super::Chrome;
+use sprite::Pixel;
 use swarm::{Depth, Flyer};
 
 /// Widest the card gets.
@@ -65,41 +67,57 @@ impl WelcomeView<'_> {
         Some((Rect::new(x, y, width, height), cols))
     }
 
-    /// How a butterfly at `depth` looks: faded toward the bar colour with
-    /// distance, or dim, plain and bold without a theme.
-    fn wing(&self, depth: Depth) -> Style {
-        let near = depth == Depth::Near;
-        let style = match self.chrome.theme {
-            Some(t) => Style::new().fg(Chrome::color(t.accent.lerp(t.bar, depth.fade()))),
-            None if depth == Depth::Far => Style::new().add_modifier(Modifier::DIM),
-            None => Style::new(),
+    /// The colour of `pixel` at `depth`: the theme's wing colours, faded
+    /// toward the bar with distance; without a theme, a silhouette.
+    fn ink(&self, pixel: Pixel, depth: Depth) -> Option<Color> {
+        let t = match (self.chrome.theme, pixel) {
+            (_, Pixel::Clear) => return None,
+            (None, _) => return Some(Color::Reset),
+            (Some(t), _) => t,
         };
-        if near {
-            style.add_modifier(Modifier::BOLD)
-        } else {
-            style
-        }
+        let rgb = match pixel {
+            Pixel::Wing => t.wing,
+            Pixel::Spot => t.wing_spot,
+            _ => t.wing_edge,
+        };
+        Some(Chrome::color(rgb.lerp(t.bar, depth.fade())))
     }
 
-    /// Draws `flyers` into `area`, clipped to it.
+    /// Draws `flyers` into `area`, clipped to it, two pixels a cell; a
+    /// cell's clear half keeps whatever is behind it.
     fn draw_flyers(&self, flyers: &[Flyer], area: Rect, buf: &mut Buffer) {
-        for flyer in flyers {
-            let style = self.wing(flyer.depth);
-            for (dy, row) in (0..).zip(flyer.depth.sprite(flyer.open)) {
-                for (dx, c) in (0..).zip(row.chars()) {
-                    let (x, y) = (flyer.x + dx, flyer.y + dy);
-                    if c == ' ' || x < 0 || y < 0 {
-                        continue;
-                    }
-                    let x = area.x.saturating_add(u16::try_from(x).unwrap_or(u16::MAX));
-                    let y = area.y.saturating_add(u16::try_from(y).unwrap_or(u16::MAX));
-                    if x < area.right() && y < area.bottom() {
-                        buf[(x, y)].set_char(c).set_style(style);
-                    }
-                }
+        let dim = self.chrome.theme.is_none();
+        for f in flyers {
+            let (wide, tall) = sprite::cells(f.depth);
+            for (dx, dy) in (0..tall).flat_map(|dy| (0..wide).map(move |dx| (dx, dy))) {
+                let ink =
+                    |half| self.ink(sprite::pixel(f.depth, f.wings, dx, dy * 2 + half), f.depth);
+                let Some(cell) = cell_at(area, f.x + dx, f.y + dy) else {
+                    continue;
+                };
+                let (glyph, style) = match (ink(0), ink(1)) {
+                    (None, None) => continue,
+                    (Some(top), None) => ('▀', Style::new().fg(top)),
+                    (None, Some(bottom)) => ('▄', Style::new().fg(bottom)),
+                    (Some(top), Some(bottom)) if top == bottom => ('█', Style::new().fg(top)),
+                    (Some(top), Some(bottom)) => ('▀', Style::new().fg(top).bg(bottom)),
+                };
+                let style = if dim && f.depth == Depth::Far {
+                    style.add_modifier(Modifier::DIM)
+                } else {
+                    style
+                };
+                buf[cell].set_char(glyph).set_style(style);
             }
         }
     }
+}
+
+/// The cell `(x, y)` from `area`'s corner, if inside it.
+fn cell_at(area: Rect, x: i32, y: i32) -> Option<(u16, u16)> {
+    let x = area.x.checked_add(u16::try_from(x).ok()?)?;
+    let y = area.y.checked_add(u16::try_from(y).ok()?)?;
+    (x < area.right() && y < area.bottom()).then_some((x, y))
 }
 
 impl WelcomeView<'_> {
@@ -156,18 +174,18 @@ impl WelcomeView<'_> {
 }
 
 impl Widget for WelcomeView<'_> {
-    /// Far and middle butterflies, then the card, then the near ones over
-    /// it, so the card sits in the middle of the swarm.
+    /// The butterflies, then the card over the far and middle ones; the
+    /// near ones fly beside it.
     fn render(self, area: Rect, buf: &mut Buffer) {
         Clear.render(area, buf);
         let tick = if self.animate { self.tick } else { STILL };
-        let flyers = swarm::flyers(self.seed, tick, area.width, area.height);
-        let near = flyers.partition_point(|f| f.depth < Depth::Near);
-        self.draw_flyers(&flyers[..near], area, buf);
-        if let Some((card, cols)) = self.card(area) {
+        let card = self.card(area);
+        let span = card.map(|(c, _)| (c.x - area.x, c.right() - area.x));
+        let flyers = swarm::flyers(self.seed, tick, area.width, area.height, span);
+        self.draw_flyers(&flyers, area, buf);
+        if let Some((card, cols)) = card {
             self.draw_card(card, cols, buf);
         }
-        self.draw_flyers(&flyers[near..], area, buf);
     }
 }
 
@@ -245,21 +263,27 @@ mod tests {
     }
 
     #[test]
-    fn near_butterflies_fly_over_the_card() {
+    fn butterflies_are_drawn_in_wing_colours_and_never_on_the_card() {
         let keys = keys();
-        let v = view(&keys, 0, true);
-        let area = Rect::new(0, 0, 80, 24);
+        let theme = monarch_core::Theme::dark();
+        let v = WelcomeView {
+            chrome: Chrome::new(Some(&theme)),
+            ..view(&keys, 0, true)
+        };
+        let area = Rect::new(0, 0, 160, 40);
         let (card, _) = v.card(area).expect("room");
-        let over = (0..400).any(|tick| {
-            swarm::flyers(v.seed, tick, 80, 24).iter().any(|f| {
-                f.depth == Depth::Near
-                    && f.y > i32::from(card.y) + 1
-                    && f.y < i32::from(card.bottom()) - 2
-                    && f.x > i32::from(card.x) + 2
-                    && f.x < i32::from(card.right()) - 6
-            })
+        let wing = Chrome::color(theme.wing);
+        let seen = (0..60).any(|tick| {
+            let mut buf = Buffer::empty(area);
+            WelcomeView { tick, ..v }.render(area, &mut buf);
+            let inside = |x, y| card.contains((x, y).into());
+            for (x, y) in (0..40).flat_map(|y| (0..160).map(move |x| (x, y))) {
+                let c = &buf[(x, y)];
+                assert!(!(inside(x, y) && "▀▄█".contains(c.symbol())), "{x},{y}");
+            }
+            buf.content.iter().any(|c| c.fg == wing || c.bg == wing)
         });
-        assert!(over, "some near butterfly crosses the card");
+        assert!(seen, "a near monarch in full colour");
     }
 
     #[test]

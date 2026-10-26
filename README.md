@@ -93,7 +93,8 @@ accent = "#ff8800"
 ```
 
 The tokens are `bar`, `bar_text`, `accent`, `accent_text`, `working`, `blocked_from`, `blocked_to`,
-`done_from`, `done_to`, `error`, `added`, `removed` and `hunk`. An unknown name or a bad colour
+`done_from`, `done_to`, `error`, `added`, `removed`, `hunk`, and the welcome butterflies' `wing`,
+`wing_edge` and `wing_spot` (a real monarch's orange, black and white). An unknown name or a bad colour
 is reported and the default is used instead. Changes apply when you save the file. With `NO_COLOR`
 set, Monarch draws its chrome with reverse video and bold instead of colours.
 
