@@ -13,13 +13,18 @@ mod keys;
 mod kill;
 mod ls;
 mod new;
+mod pane;
 mod server;
 mod setup;
 
 use std::io::Write;
 use std::process::ExitCode;
 
+use anyhow::bail;
 use monarch_core::{Config, ConfigLoader};
+use monarch_server::SocketPath;
+
+use crate::hook::ApiClient;
 
 use crate::{AttachArgs, Cli, Command};
 
@@ -47,11 +52,37 @@ pub(crate) fn dispatch(cli: Cli, out: &mut dyn Write) -> anyhow::Result<ExitCode
         Some(Command::Ls) => ls::run(out),
         Some(Command::Kill(args)) => kill::run(&args, out),
         Some(Command::Agent(cmd)) => agent::run(&cmd, &loader.load()?.config, out),
+        Some(Command::Pane(cmd)) => pane::run(
+            &cmd,
+            &loader.load()?.config,
+            &mut std::io::stdin().lock(),
+            out,
+        ),
         Some(Command::Keys) => keys::run(&loader.load()?.config, out),
         Some(Command::Server(args)) => server::run(&args, &loader.load()?.config),
         Some(Command::New(args)) => new::run(&args, &loader.load()?, out),
         Some(Command::Attach(args)) => attach::run(&args, &loader.load()?, out),
         None => attach::run(&AttachArgs::default(), &loader.load()?, out),
+    }
+}
+
+/// A client for `session`'s running server.
+pub(crate) fn connect(session: &str) -> anyhow::Result<ApiClient> {
+    let socket = SocketPath::for_session(session)?;
+    match ApiClient::connect(&socket) {
+        Ok(client) => Ok(client),
+        Err(_) => bail!("no session named {session:?} is running (see `monarch ls`)"),
+    }
+}
+
+/// `result`, with a server too old to know the method (`command`, as
+/// typed) named as such.
+pub(crate) fn older<T>(result: anyhow::Result<T>, command: &str) -> anyhow::Result<T> {
+    match result {
+        Err(e) if e.to_string().contains("unknown method") => {
+            bail!("that session runs an older Monarch without `monarch {command}`")
+        }
+        other => other,
     }
 }
 

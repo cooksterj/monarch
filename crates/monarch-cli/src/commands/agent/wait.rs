@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 use monarch_core::{AgentState, PaneId};
 use monarch_proto::{AgentStatus, AgentWait, AgentWaitReply};
 
-use super::older;
+use super::super::older;
 use crate::WaitArgs;
 use crate::hook::ApiClient;
 
@@ -35,7 +35,7 @@ pub(super) fn run(
     out: &mut dyn Write,
 ) -> anyhow::Result<ExitCode> {
     let timeout = args.timeout.map(Duration::from_secs_f64);
-    let ask = |w: &AgentWait| older(client.request(AgentWait::METHOD, w), "wait");
+    let ask = |w: &AgentWait| older(client.request(AgentWait::METHOD, w), "agent wait");
     match wait_for(ask, args.pane, &args.states(), timeout, PAUSE)? {
         Outcome::Reached(state, status) => {
             writeln!(out, "{}", line(args.pane, state, &status))?;

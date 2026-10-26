@@ -1,6 +1,6 @@
 ---
 name: monarch
-description: Use when running inside the Monarch terminal multiplexer (the MONARCH_PANE environment variable is set) to see what the agents in other panes are doing, wait for one to finish or to need input, or start another agent in its own git worktree.
+description: Use when running inside the Monarch terminal multiplexer (the MONARCH_PANE environment variable is set) to see what the agents in other panes are doing, wait for one to finish or to need input, or start another agent in its own git worktree and give it a task.
 ---
 
 # Working inside Monarch
@@ -72,8 +72,8 @@ status, for example `p3 ◆ Blocked: Allow Bash: cargo test?`.
   - **1:** error, for example no such pane, or the pane exited.
 - A state that comes and goes between checks still counts. A short `Blocked` won't
   be missed.
-- When an agent is `Blocked`, tell the user which pane needs them. You can't answer
-  another agent's prompt.
+- When an agent is `Blocked`, tell the user which pane needs them. Don't answer
+  another agent's permission prompt yourself.
 
 ## Start another agent on a branch
 
@@ -91,8 +91,29 @@ takes `claude` or `codex`. It prints the new pane:
 worktree /src/app-worktrees/feat-parser on new branch feat-parser; opened in pane p4 of session main
 ```
 
-The new agent starts with an empty prompt. Monarch can't type into another pane yet,
-so tell the user what to ask it. Then follow it with `monarch agent wait p4`.
+The new agent starts with an empty prompt. Give it its task with `monarch pane send`
+(below), then follow it with `monarch agent wait p4`.
+
+## Give an agent its task
+
+Wait until the new agent is ready for input, then type its prompt and press Enter:
+
+```sh
+monarch agent wait p4 --until idle --timeout 120
+monarch pane send p4 "Add a parser for the config format. Run cargo test before you stop." --enter
+monarch agent wait p4 --timeout 1800
+```
+
+- For a long or multi-line prompt, write it to a file and send it on standard input:
+  ```sh
+  monarch pane send p4 --enter < task.md
+  ```
+  It arrives as one paste, so its line breaks don't submit it early.
+- Leave out `--enter` to type without submitting.
+- `monarch pane send` types into any pane, a shell too. Only send to panes you
+  started, or that the user asked you to use. You can't send to your own pane.
+- Don't use it to answer another agent's permission prompt. Tell the user which pane
+  needs them.
 
 ## Other commands
 

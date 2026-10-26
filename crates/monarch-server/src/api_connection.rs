@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use futures_util::{SinkExt, StreamExt};
 use monarch_proto::{
-    AgentReport, AgentWait, ExplainPanes, KillSession, NewWorktree, Request, Response, RpcError,
-    SessionInfo,
+    AgentReport, AgentWait, ExplainPanes, KillSession, NewWorktree, PaneSend, Request, Response,
+    RpcError, SessionInfo,
 };
 use serde::de::DeserializeOwned;
 use serde_json::Value;
@@ -81,23 +81,20 @@ fn dispatch(ctx: &ServerContext, request: Request) -> Result<Value, RpcError> {
         AgentReport::METHOD => report(ctx, &params(request.params)?),
         ExplainPanes::METHOD => {
             let ExplainPanes { pane } = params(request.params)?;
-            let pane_name = pane.map(|p| p.to_string()).unwrap_or_default();
-            json(ctx.explain(pane).ok_or_else(|| {
-                RpcError::new(
-                    RpcError::NO_SUCH_PANE,
-                    format!("no pane {pane_name} in this session"),
-                )
-            })?)
+            let name = pane.map(|p| p.to_string()).unwrap_or_default();
+            json(ctx.explain(pane).ok_or_else(|| no_such_pane(&name))?)
         }
         AgentWait::METHOD => {
             let wait: AgentWait = params(request.params)?;
-            let reply = ctx.lock().agent_wait(&wait).ok_or_else(|| {
-                RpcError::new(
-                    RpcError::NO_SUCH_PANE,
-                    format!("no pane {} in this session", wait.pane),
-                )
-            })?;
-            json(reply)
+            let reply = ctx.lock().agent_wait(&wait);
+            json(reply.ok_or_else(|| no_such_pane(&wait.pane.to_string()))?)
+        }
+        PaneSend::METHOD => {
+            let send: PaneSend = params(request.params)?;
+            if !ctx.type_text(&send) {
+                return Err(no_such_pane(&send.pane.to_string()));
+            }
+            Ok(Value::Object(serde_json::Map::new()))
         }
         SessionInfo::METHOD => json(ctx.info()),
         KillSession::METHOD => {
@@ -111,11 +108,19 @@ fn dispatch(ctx: &ServerContext, request: Request) -> Result<Value, RpcError> {
     }
 }
 
+/// The error for a method naming a pane the session doesn't have.
+fn no_such_pane(pane: &str) -> RpcError {
+    RpcError::new(
+        RpcError::NO_SUCH_PANE,
+        format!("no pane {pane} in this session"),
+    )
+}
+
 /// `agent.report`: applies a hook report to the pane it is about.
 fn report(ctx: &ServerContext, report: &AgentReport) -> Result<Value, RpcError> {
     let Some(pane) = ctx.lock().report_agent(report) else {
         let message = match report.pane {
-            Some(pane) => format!("no pane {pane} in this session"),
+            Some(pane) => return Err(no_such_pane(&pane.to_string())),
             None => format!("no {} pane here for this report", report.agent.name()),
         };
         return Err(RpcError::new(RpcError::NO_SUCH_PANE, message));
@@ -196,6 +201,11 @@ mod tests {
         let wait = r#"{"id":7,"method":"agent.wait","params":{"pane":42,"until":["idle"]}}"#;
         assert_eq!(
             code(&ApiConnection::answer(&ctx, wait)),
+            Some(RpcError::NO_SUCH_PANE)
+        );
+        let send = r#"{"id":8,"method":"pane.send","params":{"pane":42,"text":"hi"}}"#;
+        assert_eq!(
+            code(&ApiConnection::answer(&ctx, send)),
             Some(RpcError::NO_SUCH_PANE)
         );
         let all = r#"{"id":6,"method":"agent.explain","params":{}}"#;

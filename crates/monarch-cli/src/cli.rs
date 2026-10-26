@@ -6,6 +6,8 @@ mod explain_args;
 mod hook_command;
 mod kill_args;
 mod new_args;
+mod pane_command;
+mod send_args;
 mod server_args;
 mod setup_args;
 mod wait_args;
@@ -18,6 +20,8 @@ pub use explain_args::ExplainArgs;
 pub use hook_command::HookCommand;
 pub use kill_args::KillArgs;
 pub use new_args::NewArgs;
+pub use pane_command::PaneCommand;
+pub use send_args::SendArgs;
 pub use server_args::ServerArgs;
 pub use setup_args::SetupArgs;
 pub use wait_args::WaitArgs;
@@ -48,6 +52,9 @@ pub enum Command {
     /// Ask a session about its agents.
     #[command(subcommand)]
     Agent(AgentCommand),
+    /// Act on a session's panes: type into one.
+    #[command(subcommand)]
+    Pane(PaneCommand),
     /// Run a session server (normally started for you by `monarch`).
     Server(ServerArgs),
     /// List what each key after the prefix does.

@@ -50,7 +50,13 @@ monarch ls              # running sessions
 monarch kill work       # end the session named work (it won't be restored)
 monarch agent explain   # every pane's agent state and where it came from
 monarch agent wait p3 --timeout 600   # until pane p3's agent needs you (blocked, done, error)
+monarch pane send p3 "run the tests" --enter   # type into pane p3 and press Enter
 ```
+
+`monarch pane send <pane> [text] [--enter]` types into a pane as if you had (the text comes from
+standard input when left out). Multi-line text arrives as one bracketed paste when the program
+accepts pastes, so its line breaks don't submit it early; `--enter` then submits. It refuses the
+pane it runs in. Agents use it to give a task to an agent they started with `monarch new`.
 
 `monarch new <branch>` adds a git worktree for the branch (created from the current commit, or
 `--base <ref>`, unless it exists) beside the repository as `<repo>-worktrees/<branch>` (or under

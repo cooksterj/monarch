@@ -17,7 +17,7 @@ mod worktree_entry;
 
 pub use api::{
     AgentReport, AgentWait, AgentWaitReply, ExplainPanes, KillSession, NewWorktree,
-    PaneExplanation, Request, Response, RpcError, RuleOutcome, SessionInfo, StatusSource,
+    PaneExplanation, PaneSend, Request, Response, RpcError, RuleOutcome, SessionInfo, StatusSource,
     WorktreeCreated,
 };
 pub use attach::{
