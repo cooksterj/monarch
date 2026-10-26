@@ -49,10 +49,20 @@ impl ScreenWatcher {
         }
     }
 
-    /// Checks every [`SCREEN_INTERVAL`] until aborted.
+    /// Checks every [`SCREEN_INTERVAL`] until aborted, off the async
+    /// threads (manifests are CPU work that would hold up keystrokes).
     pub async fn run(mut self, ctx: Arc<ServerContext>) {
         loop {
-            self.check(&ctx, Instant::now());
+            let shared = Arc::clone(&ctx);
+            self = match tokio::task::spawn_blocking(move || {
+                self.check(&shared, Instant::now());
+                self
+            })
+            .await
+            {
+                Ok(watcher) => watcher,
+                Err(_) => return,
+            };
             tokio::time::sleep(SCREEN_INTERVAL).await;
         }
     }

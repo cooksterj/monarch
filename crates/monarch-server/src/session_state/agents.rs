@@ -58,12 +58,25 @@ impl SessionState {
         }
     }
 
-    /// The user typed `bytes` into `pane`: a reply (Enter, or a key that
-    /// isn't an escape sequence) ends a guessed Blocked or Done.
+    /// The user typed `bytes` into `pane`: a reply ends a guessed Blocked
+    /// or Done.
     pub fn answered(&mut self, pane: PaneId, bytes: &[u8]) {
-        let reply = bytes.iter().any(|b| matches!(b, b'\r' | b'\n'))
-            || (!bytes.contains(&0x1b) && bytes.iter().any(u8::is_ascii_graphic));
-        if reply && let Some(status) = self.agents.answered(pane) {
+        if Self::is_reply(bytes) {
+            self.replied(pane);
+        }
+    }
+
+    /// Whether typing `bytes` answers an agent: Enter, or a key that isn't
+    /// an escape sequence (arrows and focus reports are not replies).
+    #[must_use]
+    pub fn is_reply(bytes: &[u8]) -> bool {
+        bytes.iter().any(|b| matches!(b, b'\r' | b'\n'))
+            || (!bytes.contains(&0x1b) && bytes.iter().any(u8::is_ascii_graphic))
+    }
+
+    /// The user replied in `pane`: a guessed Blocked or Done is over.
+    pub fn replied(&mut self, pane: PaneId) {
+        if let Some(status) = self.agents.answered(pane) {
             self.agent_changed(pane, status);
         }
     }

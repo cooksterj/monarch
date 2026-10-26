@@ -10,11 +10,13 @@ use tokio::sync::Notify;
 use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{
-    CliGitRunner, DiffReader, PaneEnv, PaneEvent, PaneRuntime, PaneSpec, PersistedPane, Placement,
-    ProcessProbe, ServerError, SessionState, SpawnParams, SystemProbe, WorktreeManager,
+    CliGitRunner, DiffReader, InputRouter, PaneEnv, PaneEvent, PaneIo, PaneRuntime, PaneSpec,
+    PersistedPane, Placement, ProcessProbe, ServerError, SessionState, SpawnParams, SystemProbe,
+    WorktreeManager,
 };
 
 mod explain;
+mod input;
 mod session;
 mod worktrees;
 
@@ -23,6 +25,8 @@ pub struct ServerContext {
     state: Mutex<SessionState>,
     /// What each live pane was started with, for the state file.
     specs: Mutex<BTreeMap<PaneId, PaneSpec>>,
+    /// Each pane's input, reachable without `state`.
+    inputs: InputRouter,
     /// Wakes the frame coalescer (new output, attach, resize, focus).
     pub wake: Arc<Notify>,
     /// Signalled when the last pane exits.
@@ -44,6 +48,7 @@ impl ServerContext {
         Self {
             state: Mutex::new(SessionState::default()),
             specs: Mutex::new(BTreeMap::new()),
+            inputs: InputRouter::default(),
             wake: Arc::new(Notify::new()),
             shutdown: Notify::new(),
             persist: Notify::new(),
@@ -183,6 +188,9 @@ impl ServerContext {
             events: self.events.clone(),
             wake: Arc::clone(&self.wake),
         })?;
+        if let Some(input) = runtime.input() {
+            self.inputs.add(id, input);
+        }
         let mut state = self.lock();
         state.insert_pane_at(id, Box::new(runtime), placement);
         if let Some(agent) = &spec.agent {
@@ -196,6 +204,7 @@ impl ServerContext {
 
     /// Drops what was recorded for an exited pane.
     pub fn forget_pane(&self, id: PaneId) {
+        self.inputs.remove(id);
         self.lock_specs().remove(&id);
         self.persist.notify_one();
     }
