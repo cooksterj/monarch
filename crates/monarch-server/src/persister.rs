@@ -4,6 +4,8 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use tokio::sync::Notify;
+
 use crate::{PersistedPane, PersistedSession, ProcessProbe, ServerContext, StateFile};
 
 /// How often working directories are re-read. A `kill -9` loses at most
@@ -28,10 +30,16 @@ impl Persister {
         }
     }
 
-    /// Saves on every pane change and every [`PERSIST_INTERVAL`].
-    pub async fn run(mut self, ctx: Arc<ServerContext>) {
+    /// Saves on every pane change and every [`PERSIST_INTERVAL`] until
+    /// `stop` is notified. A save under way finishes first, so once this
+    /// returns nothing writes the file: the server awaits it before
+    /// deleting the file (aborting the task would leave a blocking save
+    /// running, which could write the file back).
+    pub async fn run(mut self, ctx: Arc<ServerContext>, stop: Arc<Notify>) {
         loop {
             tokio::select! {
+                biased;
+                () = stop.notified() => return,
                 () = tokio::time::sleep(PERSIST_INTERVAL) => {}
                 () = ctx.persist.notified() => {}
             }
@@ -129,6 +137,34 @@ mod tests {
         assert_eq!(saved.focus, Some(0));
         assert_eq!(saved.panes[0].cwd, Some(PathBuf::from("/live")));
         assert_eq!(saved.panes[0].argv, PaneSpec::shell_command("htop").argv);
+    }
+
+    #[tokio::test]
+    async fn once_stopped_nothing_writes_the_file() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let file = StateFile::new(dir.path().join("state.json"));
+        let ctx = Arc::new(context());
+        ctx.insert_for_test(PaneSpec::shell_command("htop"), FakePane::with_pid(42));
+        let persister = Persister::new(file.clone(), Box::new(EveryoneIn("/live".into())));
+        let stop = Arc::new(Notify::new());
+        let task = tokio::spawn(persister.run(Arc::clone(&ctx), Arc::clone(&stop)));
+        ctx.persist.notify_one();
+        while file.load().ok().flatten().is_none() {
+            tokio::task::yield_now().await;
+        }
+        stop.notify_one();
+        ctx.persist.notify_one();
+        tokio::time::timeout(Duration::from_secs(5), task)
+            .await
+            .expect("stops")
+            .expect("joins");
+        file.remove();
+        ctx.insert_for_test(PaneSpec::shell_command("top"), FakePane::with_pid(43));
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        assert!(
+            file.load().expect("load").is_none(),
+            "removed stays removed"
+        );
     }
 
     #[test]
