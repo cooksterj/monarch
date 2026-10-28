@@ -9,6 +9,10 @@ use monarch_core::{Action, Config, Keymap, LoadedConfig};
 use monarch_server::{SocketPath, StateFile};
 use monarch_tui::{AttachApp, AttachOptions, AttachOutcome, SessionLister};
 
+mod near_command;
+
+pub(crate) use near_command::refuse_near_command;
+
 use super::auto_start::ensure_server;
 use super::ls::SocketSessions;
 use crate::AttachArgs;

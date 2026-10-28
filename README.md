@@ -42,7 +42,7 @@ Prebuilt binaries and a Homebrew formula will come with the first release.
 
 ```sh
 monarch                 # attach to the session `main`, starting it if needed
-monarch attach -s work  # another session
+monarch work            # the session `work`, started if it isn't running
 monarch ls              # running sessions
 monarch new feat/x --agent claude   # a worktree for branch feat/x, with Claude Code in it
 ```

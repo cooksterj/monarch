@@ -27,6 +27,7 @@ Build and install it from source (see the [README](../README.md#install)), then:
 monarch setup    # once: let Claude Code and Codex report their state, install the skill
 monarch doctor   # check everything is in place
 monarch          # attach to the session named main, starting it if needed
+monarch concept  # or to a session of your own: here, concept
 ```
 
 The first time you attach, a welcome screen shows the few keys you need. Any key closes it. It is
@@ -161,7 +162,9 @@ close the terminal; `monarch` attaches again, from anywhere, over SSH too. Two t
 attached at once.
 
 - `prefix S` lists sessions; pick one to switch, or type a new name to start it.
-- `monarch attach -s work` attaches to (or starts) the session `work`.
+- `monarch work` attaches to (or starts) the session `work`. A name that is also a command
+  needs the long form, `monarch attach -s ls`, and so does a name one letter away from a command
+  (`monarch doctr` asks whether you meant `doctor` rather than starting a session).
 - `monarch ls` lists running sessions; `monarch kill work` ends one for good.
 
 Monarch saves each session's layout as it changes. If the server dies (a crash, a reboot,
