@@ -1,5 +1,6 @@
 //! Draws the sidebar: panes grouped under their project and branch, the
-//! focused one marked, with a divider on its right edge.
+//! focused one marked, scrolled to an offset, with a divider on its right
+//! edge that carries a scroll thumb when the groups don't all fit.
 
 use monarch_core::PaneId;
 use ratatui::buffer::{Buffer, Cell};
@@ -27,6 +28,8 @@ pub struct Sidebar<'a> {
     pub groups: &'a [SidebarGroup],
     /// The colours; headings take the accent.
     pub chrome: Chrome<'a>,
+    /// Lines scrolled past at the top.
+    pub offset: u16,
 }
 
 impl<'a> Sidebar<'a> {
@@ -42,15 +45,49 @@ impl<'a> Sidebar<'a> {
             .collect()
     }
 
-    /// Every line that fits in `area`, with its row.
-    fn lines(&self, area: Rect) -> impl Iterator<Item = (u16, Line<'a>)> + 'a {
-        let lines = self.groups.iter().enumerate().flat_map(|(i, group)| {
+    /// How many lines the groups take, scrolled or not.
+    #[must_use]
+    pub fn total_lines(&self) -> u16 {
+        u16::try_from(self.all_lines().count()).unwrap_or(u16::MAX)
+    }
+
+    /// The line `pane`'s row is on, counted from the top of the groups.
+    #[must_use]
+    pub fn line_of(&self, pane: PaneId) -> Option<u16> {
+        let at = self
+            .all_lines()
+            .position(|line| matches!(line, Line::Pane(row) if row.pane == pane))?;
+        u16::try_from(at).ok()
+    }
+
+    /// Every line, from the top of the groups.
+    fn all_lines(&self) -> impl Iterator<Item = Line<'a>> + 'a {
+        self.groups.iter().enumerate().flat_map(|(i, group)| {
             let gap = (i > 0).then_some(Line::Gap);
             gap.into_iter()
                 .chain(std::iter::once(Line::Heading(group)))
                 .chain(group.rows.iter().map(Line::Pane))
-        });
+        })
+    }
+
+    /// Every line that fits in `area` past the offset, with its row.
+    fn lines(&self, area: Rect) -> impl Iterator<Item = (u16, Line<'a>)> + 'a {
+        let lines = self.all_lines().skip(usize::from(self.offset));
         (area.y..area.bottom()).zip(lines)
+    }
+
+    /// The divider rows the scroll thumb covers, when the groups overflow
+    /// `rows`.
+    fn thumb(&self, rows: u16) -> Option<std::ops::Range<u16>> {
+        let total = self.total_lines();
+        if total <= rows || rows == 0 {
+            return None;
+        }
+        let size = (u32::from(rows) * u32::from(rows) / u32::from(total)).max(1);
+        let travel = u32::from(rows) - size;
+        let top = u32::from(self.offset.min(total - rows)) * travel / u32::from(total - rows);
+        let start = u16::try_from(top).unwrap_or(0);
+        Some(start..start + u16::try_from(size).unwrap_or(1))
     }
 }
 
@@ -61,8 +98,14 @@ impl Widget for Sidebar<'_> {
         }
         let width = area.width - 1;
         let dim = Style::new().add_modifier(Modifier::DIM);
+        let thumb = self.thumb(area.height).unwrap_or_default();
         for y in area.y..area.bottom() {
-            buf.set_string(area.x + width, y, "│", dim);
+            let (bar, style) = if thumb.contains(&(y - area.y)) {
+                ("┃", Style::new())
+            } else {
+                ("│", dim)
+            };
+            buf.set_string(area.x + width, y, bar, style);
         }
         for (y, line) in self.lines(area) {
             let row = Rect::new(area.x, y, width, 1);
@@ -198,12 +241,22 @@ mod tests {
     }
 
     fn draw(groups: &[SidebarGroup], width: u16, height: u16) -> (String, Buffer) {
+        draw_from(groups, width, height, 0)
+    }
+
+    fn draw_from(
+        groups: &[SidebarGroup],
+        width: u16,
+        height: u16,
+        offset: u16,
+    ) -> (String, Buffer) {
         let mut term = Terminal::new(TestBackend::new(width, height)).expect("terminal");
         term.draw(|f| {
             f.render_widget(
                 Sidebar {
                     groups,
                     chrome: Chrome::default(),
+                    offset,
                 },
                 f.area(),
             );
@@ -237,6 +290,7 @@ mod tests {
         Sidebar {
             groups: &groups(),
             chrome: Chrome::new(Some(&theme)),
+            offset: 0,
         }
         .render(themed.area, &mut themed);
         assert_eq!(themed[(2, 0)].fg, Chrome::color(theme.accent), "heading");
@@ -252,17 +306,17 @@ mod tests {
         });
         let (text, buf) = draw(&groups, 28, 2);
         insta::assert_snapshot!(text, @r"
-        ▾ monarch  feat/side… ±3 ↑2│
+        ▾ monarch  feat/side… ±3 ↑2┃
           ▸ $ 1 claude             │
         ");
         let (wide, _) = draw(&groups, 36, 1);
         assert_eq!(
-            wide, "▾ monarch  feat/sidebar ±3 ↑2      │",
+            wide, "▾ monarch  feat/sidebar ±3 ↑2      ┃",
             "right after it"
         );
         groups[0].detail = None;
         let (no_branch, _) = draw(&groups, 20, 1);
-        assert_eq!(no_branch, "▾ monarch  ±3 ↑2   │");
+        assert_eq!(no_branch, "▾ monarch  ±3 ↑2   ┃");
         groups[0].detail = Some("feat/sidebar".into());
         assert!(
             !buf[(24, 0)].modifier.contains(Modifier::DIM),
@@ -273,11 +327,11 @@ mod tests {
             "branch is dim"
         );
         let (narrow, _) = draw(&groups, 22, 1);
-        assert_eq!(narrow, "▾ monarch  fea… ±3 ↑2│");
+        assert_eq!(narrow, "▾ monarch  fea… ±3 ↑2┃");
         let (tight, _) = draw(&groups, 15, 1);
-        assert_eq!(tight, "▾ monarch  fe…│", "no room for the badge");
+        assert_eq!(tight, "▾ monarch  fe…┃", "no room for the badge");
         let (tiny, _) = draw(&groups, 11, 1);
-        assert_eq!(tiny, "▾ monarch │");
+        assert_eq!(tiny, "▾ monarch ┃");
     }
 
     #[test]
@@ -325,6 +379,7 @@ mod tests {
         let sidebar = Sidebar {
             groups: &groups,
             chrome: Chrome::default(),
+            offset: 0,
         };
         let targets = sidebar.targets(Rect::new(0, 0, 24, 5));
         assert_eq!(
@@ -337,5 +392,35 @@ mod tests {
         );
         let (text, _) = draw(&groups, 1, 2);
         assert_eq!(text.trim(), "", "too narrow to draw");
+    }
+
+    #[test]
+    fn scrolled_groups_start_at_the_offset_with_a_thumb() {
+        let groups = groups();
+        let sidebar = Sidebar {
+            groups: &groups,
+            chrome: Chrome::default(),
+            offset: 3,
+        };
+        assert_eq!(sidebar.total_lines(), 6);
+        assert_eq!(sidebar.line_of(PaneId(3)), Some(5));
+        assert_eq!(sidebar.line_of(PaneId(9)), None);
+        let (text, buf) = draw_from(&groups, 20, 3, 3);
+        insta::assert_snapshot!(text, @r"
+                           │
+        ▾ Scratch          │
+            $ 2 htop  tmp  ┃
+        ");
+        assert!(
+            !buf[(19, 2)].modifier.contains(Modifier::DIM),
+            "thumb at the end"
+        );
+        assert_eq!(
+            sidebar.targets(Rect::new(0, 0, 20, 3)),
+            [(PaneId(3), Rect::new(0, 2, 19, 1))],
+            "clicks follow the scroll"
+        );
+        let (all, _) = draw(&groups, 20, 6);
+        assert!(!all.contains('┃'), "no thumb when everything fits");
     }
 }

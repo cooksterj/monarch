@@ -1,7 +1,7 @@
 //! The focused pane, shared with the input thread.
 
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU16, AtomicU32, AtomicU64, Ordering};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -22,6 +22,8 @@ pub struct SharedFocus {
     overlay: AtomicBool,
     /// Every visible pane's place, read only on mouse presses.
     panes: Mutex<Vec<(PaneId, Rect)>>,
+    /// Host columns the sidebar takes at the left; 0 when hidden.
+    sidebar: AtomicU16,
 }
 
 impl SharedFocus {
@@ -97,6 +99,17 @@ impl SharedFocus {
     /// Publishes where every visible pane is, for clicks.
     pub fn set_panes(&self, panes: Vec<(PaneId, Rect)>) {
         *self.lock_panes() = panes;
+    }
+
+    /// Publishes how many columns the sidebar takes.
+    pub fn set_sidebar(&self, cols: u16) {
+        self.sidebar.store(cols, Ordering::Release);
+    }
+
+    /// Whether host column `col` is in the sidebar.
+    #[must_use]
+    pub fn in_sidebar(&self, col: u16) -> bool {
+        col < self.sidebar.load(Ordering::Acquire)
     }
 
     /// The pane under host cell (`col`, `row`).

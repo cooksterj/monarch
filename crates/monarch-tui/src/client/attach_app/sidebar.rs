@@ -1,5 +1,6 @@
-//! The sidebar in the client: whether it fits, toggling it, and telling
-//! the server and the input thread where panes and sidebar rows are.
+//! The sidebar in the client: whether it fits, toggling and scrolling it,
+//! and telling the server and the input thread where panes and sidebar
+//! rows are.
 
 use std::time::Instant;
 
@@ -9,7 +10,7 @@ use monarch_proto::{ClientMsg, ScreenSize};
 use super::AttachApp;
 use super::select::NOTICE;
 use crate::client::{AttachOptions, AttachView};
-use crate::{Chrome, Sidebar};
+use crate::{Chrome, Sidebar, SidebarGroup};
 
 impl AttachApp {
     /// `prefix t`: shows or hides the sidebar.
@@ -27,6 +28,7 @@ impl AttachApp {
     pub(super) fn relayout(&mut self) {
         let left = sidebar_cols(&self.opts, self.sidebar, self.size);
         self.state.set_left(left);
+        self.focus.set_sidebar(left);
         let _ = self
             .link
             .send(&ClientMsg::Resize(AttachView::pane_area(self.size, left)));
@@ -41,13 +43,7 @@ impl AttachApp {
         let left = self.state.left();
         if left > 0 {
             let groups = self.state.sidebar_groups();
-            let host = ratatui::layout::Rect::new(0, 0, self.size.cols, self.size.rows);
-            let area = AttachView::sidebar_area(host, left);
-            let rows = Sidebar {
-                groups: &groups,
-                chrome: Chrome::default(),
-            }
-            .targets(area);
+            let rows = self.sidebar_widget(&groups).targets(self.sidebar_area());
             rects.extend(
                 rows.into_iter()
                     .map(|(pane, r)| (pane, Rect::new(r.x, r.y, r.width, r.height))),
@@ -55,6 +51,48 @@ impl AttachApp {
         }
         self.focus.set(&self.state.focus_view());
         self.focus.set_panes(rects);
+    }
+}
+
+impl AttachApp {
+    /// The wheel over the sidebar.
+    pub(super) fn scroll_sidebar(&mut self, lines: i32) {
+        let groups = self.state.sidebar_groups();
+        let total = self.sidebar_widget(&groups).total_lines();
+        let rows = self.sidebar_area().height;
+        self.sidebar_scroll.scroll(lines, total, rows);
+        self.publish_panes();
+        self.dirty = true;
+    }
+
+    /// Brings a newly focused pane's row into view and keeps the offset
+    /// within `groups`, telling the input thread when rows moved.
+    pub(super) fn follow_focus(&mut self, groups: &[SidebarGroup]) {
+        let before = self.sidebar_scroll;
+        let sidebar = self.sidebar_widget(groups);
+        let (total, rows) = (sidebar.total_lines(), self.sidebar_area().height);
+        let focus = self.state.focus();
+        let line = focus.and_then(|pane| sidebar.line_of(pane));
+        self.sidebar_scroll.follow(focus, line, rows);
+        self.sidebar_scroll.clamp(total, rows);
+        if self.sidebar_scroll != before {
+            self.publish_panes();
+        }
+    }
+
+    /// The sidebar for `groups` at the current scroll, uncoloured.
+    pub(super) fn sidebar_widget<'a>(&self, groups: &'a [SidebarGroup]) -> Sidebar<'a> {
+        Sidebar {
+            groups,
+            chrome: Chrome::default(),
+            offset: self.sidebar_scroll.offset(),
+        }
+    }
+
+    /// Where the sidebar is on the host.
+    fn sidebar_area(&self) -> ratatui::layout::Rect {
+        let host = ratatui::layout::Rect::new(0, 0, self.size.cols, self.size.rows);
+        AttachView::sidebar_area(host, self.state.left())
     }
 }
 

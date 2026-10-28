@@ -29,6 +29,9 @@ pub enum ClientEvent {
         /// Host row.
         row: u16,
     },
+    /// The wheel turned over the sidebar: scroll it by this many lines
+    /// (negative is up).
+    SidebarScroll(i32),
     /// Keys were sent to the focused pane (a selection ends).
     Typed,
     /// The running sessions, listed for the session picker.

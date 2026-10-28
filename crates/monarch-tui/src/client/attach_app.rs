@@ -13,7 +13,7 @@ use ratatui::DefaultTerminal;
 
 use super::{
     Applied, AttachOptions, AttachOutcome, AttachState, ClientEvent, ConfigWatch, CopyMode,
-    DragScroll, InputKeys, Selection, ServerLink, SessionLister, SharedFocus,
+    DragScroll, InputKeys, Selection, ServerLink, SessionLister, SharedFocus, SidebarScroll,
 };
 use crate::{HostModeMirror, TuiError, WhichKeyEntry};
 
@@ -81,6 +81,7 @@ pub struct AttachApp {
     drag: Option<DragScroll>,
     /// The sidebar is wanted (it still hides on narrow hosts).
     sidebar: bool,
+    sidebar_scroll: SidebarScroll,
     passthrough: bool,
     /// Agent glyph animation state, its colours and the next frame.
     glyphs: animate::Glyphs,
@@ -143,6 +144,7 @@ impl AttachApp {
             selection: None,
             drag: None,
             sidebar: opts.sidebar,
+            sidebar_scroll: SidebarScroll::default(),
             passthrough: false,
             glyphs: animate::Glyphs::new(s.host.background, &opts.theme),
             notice: warnings_notice(opts),
@@ -198,6 +200,7 @@ impl AttachApp {
             ClientEvent::Select(gesture) => self.on_select(gesture),
             ClientEvent::Menu { col, row } => self.open_menu(col, row),
             ClientEvent::Typed => self.on_typed(),
+            ClientEvent::SidebarScroll(lines) => self.scroll_sidebar(lines),
             ClientEvent::Sessions(list) => self.loaded_sessions(list),
             ClientEvent::Host(_) => {}
         }
