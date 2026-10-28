@@ -10,6 +10,9 @@ use ratatui::widgets::Widget;
 
 use super::{Chrome, SidebarGroup, SidebarRow};
 
+/// Columns pane rows sit in from their heading.
+const INDENT: u16 = 2;
+
 /// What one sidebar line shows.
 enum Line<'a> {
     Heading(&'a SidebarGroup),
@@ -65,19 +68,24 @@ impl Widget for Sidebar<'_> {
             let row = Rect::new(area.x, y, width, 1);
             match line {
                 Line::Heading(group) => heading(group, self.chrome, row, buf),
-                Line::Pane(pane) => pane_line(pane, row, buf),
+                Line::Pane(pane) if width > INDENT => {
+                    let indented = Rect::new(row.x + INDENT, y, width - INDENT, 1);
+                    pane_line(pane, indented, buf);
+                }
+                Line::Pane(_) => {}
                 Line::Gap => {}
             }
         }
     }
 }
 
-/// `▾ project  branch`, the branch dim and shortened so the checkout's
-/// badge (`±3 ↑2`) fits at the right.
+/// `▾ project  branch ±3 ↑2`: the branch dim, then the checkout's badge
+/// right after it. The branch is shortened so the badge fits; the badge
+/// is left out only when even a short branch wouldn't leave room.
 fn heading(group: &SidebarGroup, chrome: Chrome<'_>, row: Rect, buf: &mut Buffer) {
     let bold = chrome.highlight();
     let title = format!("▾ {}", group.title);
-    let (x, _) = buf.set_stringn(row.x, row.y, &title, usize::from(row.width), bold);
+    let (mut x, _) = buf.set_stringn(row.x, row.y, &title, usize::from(row.width), bold);
     let badge = group.status.map(|s| s.to_string()).unwrap_or_default();
     let badge_width = u16::try_from(Span::raw(badge.as_str()).width()).unwrap_or(u16::MAX);
     let left = row.right().saturating_sub(x);
@@ -85,14 +93,16 @@ fn heading(group: &SidebarGroup, chrome: Chrome<'_>, row: Rect, buf: &mut Buffer
         .checked_sub(badge_width + 1)
         .filter(|_| !badge.is_empty());
     let detail_room = room.unwrap_or(left);
+    let mut gap = 2;
     if let Some(detail) = group.detail.as_deref().filter(|_| detail_room > 2) {
         let dim = Style::new().add_modifier(Modifier::DIM);
         let detail = shorten(detail, usize::from(detail_room - 2));
-        buf.set_string(x + 2, row.y, detail, dim);
+        (x, _) = buf.set_stringn(x + 2, row.y, &detail, usize::MAX, dim);
+        gap = 1;
     }
     if room.is_some() {
-        let x = row.right() - badge_width;
-        buf.set_string(x, row.y, &badge, Style::new());
+        let fits = usize::from(row.right().saturating_sub(x + gap));
+        buf.set_stringn(x + gap, row.y, &badge, fits, Style::new());
     }
 }
 
@@ -212,16 +222,16 @@ mod tests {
         let (text, buf) = draw(&groups(), 24, 7);
         insta::assert_snapshot!(text, @r"
         ▾ monarch  feat/sidebar│
-        ▸ $ 1 claude           │
-          $ 1 zsh  src         │
+          ▸ $ 1 claude         │
+            $ 1 zsh  src       │
                                │
         ▾ Scratch              │
-          $ 2 htop  tmp        │
+            $ 2 htop  tmp      │
                                │
         ");
-        assert!(buf[(2, 1)].modifier.contains(Modifier::BOLD), "focused");
-        assert!(buf[(4, 5)].modifier.contains(Modifier::DIM), "hidden tab");
-        assert!(!buf[(4, 2)].modifier.contains(Modifier::DIM), "shown tab");
+        assert!(buf[(4, 1)].modifier.contains(Modifier::BOLD), "focused");
+        assert!(buf[(6, 5)].modifier.contains(Modifier::DIM), "hidden tab");
+        assert!(!buf[(6, 2)].modifier.contains(Modifier::DIM), "shown tab");
         let theme = monarch_core::Theme::dark();
         let mut themed = Buffer::empty(Rect::new(0, 0, 24, 7));
         Sidebar {
@@ -233,7 +243,7 @@ mod tests {
     }
 
     #[test]
-    fn the_checkout_badge_sits_at_the_right_and_shortens_the_branch() {
+    fn the_checkout_badge_follows_the_branch_and_shortens_it() {
         let mut groups = groups();
         groups[0].status = Some(CheckoutStatus {
             changed: 3,
@@ -243,8 +253,17 @@ mod tests {
         let (text, buf) = draw(&groups, 28, 2);
         insta::assert_snapshot!(text, @r"
         ▾ monarch  feat/side… ±3 ↑2│
-        ▸ $ 1 claude               │
+          ▸ $ 1 claude             │
         ");
+        let (wide, _) = draw(&groups, 36, 1);
+        assert_eq!(
+            wide, "▾ monarch  feat/sidebar ±3 ↑2      │",
+            "right after it"
+        );
+        groups[0].detail = None;
+        let (no_branch, _) = draw(&groups, 20, 1);
+        assert_eq!(no_branch, "▾ monarch  ±3 ↑2   │");
+        groups[0].detail = Some("feat/sidebar".into());
         assert!(
             !buf[(24, 0)].modifier.contains(Modifier::DIM),
             "badge stands out"
@@ -267,13 +286,13 @@ mod tests {
         groups[0].rows[1].state = AgentState::Blocked;
         groups[0].rows[1].detail = Some("Allow Bash?".into());
         groups[1].rows[0].state = AgentState::Working;
-        let (text, buf) = draw(&groups, 24, 6);
-        assert!(text.contains("  ◆ 1 zsh  Allow Bash?"), "{text}");
-        assert!(text.contains("  ● 2 htop"), "{text}");
-        let blocked = buf[(2, 2)].modifier;
+        let (text, buf) = draw(&groups, 26, 6);
+        assert!(text.contains("    ◆ 1 zsh  Allow Bash?"), "{text}");
+        assert!(text.contains("    ● 2 htop"), "{text}");
+        let blocked = buf[(4, 2)].modifier;
         assert!(blocked.contains(Modifier::REVERSED | Modifier::BOLD));
         assert!(
-            !buf[(2, 5)].modifier.contains(Modifier::REVERSED),
+            !buf[(4, 5)].modifier.contains(Modifier::REVERSED),
             "working"
         );
     }
@@ -290,8 +309,8 @@ mod tests {
         groups[1].rows[0].state = AgentState::Working;
         groups[1].rows[0].look = Some(GlyphLook::plain('•'));
         let (text, buf) = draw(&groups, 24, 6);
-        assert!(text.contains("  • 2 htop"), "{text}");
-        let cell = &buf[(2, 2)];
+        assert!(text.contains("    • 2 htop"), "{text}");
+        let cell = &buf[(4, 2)];
         assert_eq!(cell.fg, ratatui::style::Color::Rgb(200, 160, 0));
         assert!(cell.modifier.contains(Modifier::BOLD));
         assert!(

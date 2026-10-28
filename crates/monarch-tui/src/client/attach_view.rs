@@ -280,7 +280,11 @@ mod tests {
         let buf = term.backend().buffer();
         let row = |y| (0..15).map(|x| buf[(x, y)].symbol()).collect::<String>();
         assert_eq!(row(0), "▾ Scrat│   │   ");
-        assert_eq!(row(1), "▸ $ 1 p│   │   ");
+        assert_eq!(
+            row(1),
+            "  ▸ $ 1│   │   ",
+            "pane rows sit in from their heading"
+        );
         assert_eq!(state.pane_rects()[1].1.x, 12, "clicks use host columns");
         assert_eq!(state.focus_view().x, 8);
     }
