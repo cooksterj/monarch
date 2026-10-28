@@ -28,13 +28,19 @@ impl Connection {
         let (attach, json) = hello
             .as_ref()
             .map_or((false, false), |h| (h.is_attach(), h.is_json()));
-        let ack = if attach || json {
+        let wire = hello.as_ref().map_or(0, |h| h.wire);
+        let ack = if attach && wire != Hello::WIRE {
+            let refusal = Hello::wire_mismatch(ctx.session(), Hello::WIRE, wire);
+            HelloAck::refuse(VERSION, refusal)
+        } else if attach || json {
             HelloAck::accept(VERSION)
         } else {
             HelloAck::refuse(VERSION, "unknown protocol; expected attach or json")
         };
         write_line(&mut stream, &ack).await.map_err(io)?;
-        if attach {
+        if !ack.ok {
+            Ok(())
+        } else if attach {
             AttachConnection::serve(ctx, stream).await
         } else if json {
             ApiConnection::serve(ctx, stream).await
@@ -94,6 +100,22 @@ mod tests {
             serde_json::to_string(&Hello::json("t")).expect("json")
         );
         assert!(hello(&line).await.ok);
+    }
+
+    #[tokio::test]
+    async fn attach_clients_of_another_build_are_refused() {
+        let old = hello("{\"monarch\":1,\"proto\":\"attach\",\"version\":\"t\"}\n").await;
+        assert!(!old.ok);
+        assert!(
+            old.error.is_some_and(|e| e.contains("newer build")),
+            "no wire: older"
+        );
+        let line = format!(
+            "{}\n",
+            serde_json::to_string(&Hello::attach("t")).expect("json")
+        );
+        let ack = hello(&line).await;
+        assert!(ack.ok && ack.wire == Hello::WIRE);
     }
 
     #[tokio::test]

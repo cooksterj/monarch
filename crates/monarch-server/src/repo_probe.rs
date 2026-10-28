@@ -95,7 +95,7 @@ mod tests {
         assert_eq!(place.worktree.as_deref(), Some("/w/monarch-feat"));
         assert_eq!(place.branch.as_deref(), Some("feat/sidebar"));
         let status = place.status.expect("status read");
-        assert_eq!((status.changed, status.ahead, status.behind), (1, 1, 0));
+        assert_eq!((status.untracked, status.ahead, status.behind), (1, 1, 0));
     }
 
     #[test]

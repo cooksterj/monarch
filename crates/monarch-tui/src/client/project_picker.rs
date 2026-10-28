@@ -102,7 +102,7 @@ impl ProjectPicker {
     }
 }
 
-/// A row: `project  branch`, with its badge (`±3 ↑2`) and what is there
+/// A row: `project  branch`, with its badge (`+3 −1 ↑2`) and what is there
 /// at the right.
 fn item(entry: &WorktreeEntry, focus: Option<PaneId>) -> PickerItem {
     let branch = entry.branch.as_deref().unwrap_or("(detached)");
@@ -151,7 +151,9 @@ mod tests {
                 entry("/src/app", "main", true, &[1, 2]),
                 WorktreeEntry {
                     status: Some(CheckoutStatus {
-                        changed: 2,
+                        added: 2,
+                        removed: 0,
+                        untracked: 0,
                         ahead: 1,
                         behind: 0,
                     }),
@@ -176,7 +178,7 @@ mod tests {
             rows,
             [
                 ("app  main", "main · 2 panes"),
-                ("app  feat/x", "±2 ↑1"),
+                ("app  feat/x", "+2 ↑1"),
                 ("app  busy", "here"),
             ]
         );

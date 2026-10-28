@@ -3,6 +3,7 @@
 //! reads in the host's own colours.
 
 use monarch_core::{Rgb, Theme};
+use monarch_proto::BadgePart;
 use ratatui::style::{Color, Modifier, Style};
 
 /// Chrome styles from an optional theme.
@@ -48,6 +49,28 @@ impl<'a> Chrome<'a> {
         }
     }
 
+    /// One part of a checkout's badge: lines added green, removed red,
+    /// untracked files dim, commits to push in the accent, commits to pull
+    /// amber. Without colours, commits to pull are bold.
+    #[must_use]
+    pub fn badge(&self, part: BadgePart) -> Style {
+        let dim = Style::new().add_modifier(Modifier::DIM);
+        let Some(t) = self.theme else {
+            return match part {
+                BadgePart::Untracked => dim,
+                BadgePart::Behind => Style::new().add_modifier(Modifier::BOLD),
+                BadgePart::Added | BadgePart::Removed | BadgePart::Ahead => Style::new(),
+            };
+        };
+        match part {
+            BadgePart::Added => Style::new().fg(Self::color(t.added)),
+            BadgePart::Removed => Style::new().fg(Self::color(t.removed)),
+            BadgePart::Untracked => dim,
+            BadgePart::Ahead => Style::new().fg(Self::color(t.accent)),
+            BadgePart::Behind => Style::new().fg(Self::color(t.blocked_from)),
+        }
+    }
+
     /// Lines next to the focused pane, and sidebar headings.
     #[must_use]
     pub fn highlight(&self) -> Style {
@@ -70,6 +93,40 @@ mod tests {
         assert_eq!(chrome.bar().bg, Some(Chrome::color(theme.bar)));
         assert_eq!(chrome.accent().bg, Some(Chrome::color(theme.accent)));
         assert_eq!(chrome.highlight().fg, Some(Chrome::color(theme.accent)));
+    }
+
+    #[test]
+    fn badge_parts_take_their_tokens() {
+        let theme = Theme::dark();
+        let chrome = Chrome::new(Some(&theme));
+        assert_eq!(
+            chrome.badge(BadgePart::Added).fg,
+            Some(Chrome::color(theme.added))
+        );
+        assert_eq!(
+            chrome.badge(BadgePart::Removed).fg,
+            Some(Chrome::color(theme.removed))
+        );
+        assert_eq!(
+            chrome.badge(BadgePart::Ahead).fg,
+            Some(Chrome::color(theme.accent))
+        );
+        let behind = Chrome::color(theme.blocked_from);
+        assert_eq!(chrome.badge(BadgePart::Behind).fg, Some(behind));
+        let plain = Chrome::default();
+        assert!(
+            plain
+                .badge(BadgePart::Untracked)
+                .add_modifier
+                .contains(Modifier::DIM)
+        );
+        assert!(
+            plain
+                .badge(BadgePart::Behind)
+                .add_modifier
+                .contains(Modifier::BOLD)
+        );
+        assert_eq!(plain.badge(BadgePart::Added).fg, None);
     }
 
     #[test]

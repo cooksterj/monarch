@@ -42,6 +42,11 @@ impl ServerLink {
         if !ack.ok {
             return Err(TuiError::Refused(ack.error.unwrap_or_default()));
         }
+        if ack.wire != Hello::WIRE {
+            let session = socket.file_stem().unwrap_or_default().to_string_lossy();
+            let reason = Hello::wire_mismatch(&session, ack.wire, Hello::WIRE);
+            return Err(TuiError::OtherBuild(reason));
+        }
         let reader = stream.try_clone().map_err(io("cloning"))?;
         let link = Self {
             writer: Arc::new(Mutex::new(stream)),
@@ -198,6 +203,27 @@ mod tests {
         );
         server.join().expect("server");
         assert_eq!(rx.recv().expect("event"), ClientEvent::ServerClosed);
+    }
+
+    #[test]
+    fn an_older_server_is_refused_with_how_to_restart_it() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let socket = dir.path().join("work.sock");
+        let listener = UnixListener::bind(&socket).expect("bind");
+        let server = thread::spawn(move || {
+            let (mut s, _) = listener.accept().expect("accept");
+            let mut b = [0u8; 1];
+            while s.read_exact(&mut b).is_ok() && b[0] != b'\n' {}
+            s.write_all(b"{\"ok\":true,\"server\":\"0.1.0\"}\n")
+                .expect("ack");
+        });
+        let refused = ServerLink::connect(&socket);
+        assert!(
+            matches!(&refused, Err(TuiError::OtherBuild(r)) if r.contains("--session work$")),
+            "{:?}",
+            refused.err()
+        );
+        server.join().expect("server");
     }
 
     #[test]
