@@ -65,6 +65,24 @@ Inside, everything starts with the prefix, `Ctrl-b`. Press it and wait to see ev
 | `prefix d` | detach |
 | `prefix ?` | help: every key, mouse gesture and command |
 
+### Getting information
+
+None of these change anything:
+
+| Command | What it tells you |
+|---|---|
+| `monarch ls` | running sessions, with their panes, tabs and whether one is attached |
+| `monarch agent explain` | every pane, its program and its agent's state, with where the state came from |
+| `monarch agent explain p3` | one pane in detail: every detection rule and the text it matched |
+| `monarch agent wait p3 --timeout 600` | waits until pane `p3`'s agent needs you, then prints its status |
+| `monarch doctor` | the whole setup (binary, config, hooks, skill, git, terminal, sessions), with fixes |
+| `monarch keys` | every key binding after the prefix |
+| `monarch config path` / `default` / `check` | where the config is, every default, whether yours is valid |
+| `monarch setup --dry-run` | what `monarch setup` would change |
+
+The `agent` commands use the session you're in, or `main` outside Monarch; `-s <session>` picks
+another. `monarch <command> --help` explains any command.
+
 **[The user guide](docs/guide.md)** covers all of it: agents and their states, the inbox,
 worktrees and review, copy mode and the mouse, sessions and restore, every key, rebinding,
 configuration and themes, and how agents can drive Monarch themselves.
