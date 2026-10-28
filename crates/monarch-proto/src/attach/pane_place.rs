@@ -43,7 +43,9 @@ mod tests {
             worktree: Some("/w/monarch".into()),
             branch: Some("main".into()),
             status: Some(CheckoutStatus {
-                changed: 2,
+                added: 2,
+                removed: 0,
+                untracked: 0,
                 ..CheckoutStatus::default()
             }),
         };

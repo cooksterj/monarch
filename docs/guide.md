@@ -40,8 +40,18 @@ for the action. Wait a moment after the prefix and a pop-up lists every key you 
 ## The screen
 
 - **Sidebar** (left): every pane, grouped by git repository and worktree, each with its agent's
-  state. A group's badge shows uncommitted files and commits ahead of or behind its upstream
-  (`±3 ↑2 ↓1`). `prefix t` toggles it; it hides itself when the terminal is narrower than
+  state. After each branch, a badge says how the checkout differs (nothing when it is clean
+  and in step with its upstream):
+
+  | Badge | Colour | Meaning |
+  |---|---|---|
+  | `+12` | green | lines added since the last commit, staged or not |
+  | `−4` | red | lines removed |
+  | `?2` | dim | new files git doesn't track yet (their lines aren't in `+`) |
+  | `↑2` | accent | commits to push |
+  | `↓1` | amber | commits to pull; with `↑` too, the branch has diverged |
+
+  `prefix t` toggles the sidebar; it hides itself when the terminal is narrower than
   `ui.sidebar_min_columns`. Repositories are listed alphabetically (then by branch), with panes
   outside any repository last under `Scratch`. Click a row to focus that pane. When there are
   more panes than fit, the wheel over the sidebar scrolls it, a thumb on its right edge shows

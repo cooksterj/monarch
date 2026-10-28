@@ -7,6 +7,7 @@
 
 mod api;
 mod attach;
+mod badge_part;
 mod checkout_status;
 mod error;
 mod hello;
@@ -25,6 +26,7 @@ pub use attach::{
     PaneState, PaneSummary, RowCodec, RowDelta, Run, SelectShape, ServerMsg, Snapshot, StyleCache,
     StyleDef, StyleId, StyleTable, TabSummary,
 };
+pub use badge_part::BadgePart;
 pub use checkout_status::CheckoutStatus;
 pub use error::ProtoError;
 pub use hello::Hello;

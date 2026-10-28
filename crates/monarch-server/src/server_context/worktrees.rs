@@ -167,8 +167,8 @@ mod tests {
                 ("app", "/w/app/feat", false, vec![]),
             ]
         );
-        let changed: Vec<_> = list.iter().map(|e| e.status.map(|s| s.changed)).collect();
-        assert_eq!(changed, [Some(0), Some(1)]);
+        let untracked: Vec<_> = list.iter().map(|e| e.status.map(|s| s.untracked)).collect();
+        assert_eq!(untracked, [Some(0), Some(1)]);
     }
 
     #[test]

@@ -3,6 +3,7 @@
 //! edge that carries a scroll thumb when the groups don't all fit.
 
 use monarch_core::PaneId;
+use monarch_proto::CheckoutStatus;
 use ratatui::buffer::{Buffer, Cell};
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
@@ -122,7 +123,7 @@ impl Widget for Sidebar<'_> {
     }
 }
 
-/// `▾ project  branch ±3 ↑2`: the branch dim, then the checkout's badge
+/// `▾ project  branch +3 ↑2`: the branch dim, then the checkout's badge
 /// right after it. The branch is shortened so the badge fits; the badge
 /// is left out only when even a short branch wouldn't leave room.
 fn heading(group: &SidebarGroup, chrome: Chrome<'_>, row: Rect, buf: &mut Buffer) {
@@ -143,9 +144,21 @@ fn heading(group: &SidebarGroup, chrome: Chrome<'_>, row: Rect, buf: &mut Buffer
         (x, _) = buf.set_stringn(x + 2, row.y, &detail, usize::MAX, dim);
         gap = 1;
     }
-    if room.is_some() {
-        let fits = usize::from(row.right().saturating_sub(x + gap));
-        buf.set_stringn(x + gap, row.y, &badge, fits, Style::new());
+    if let Some(status) = group.status.filter(|_| room.is_some()) {
+        let start = Rect::new(x + gap, row.y, row.right().saturating_sub(x + gap), 1);
+        draw_badge(&status, chrome, start, buf);
+    }
+}
+
+/// `+12 −4 ?2 ↑2 ↓1`, each part in its own style, within `area`.
+fn draw_badge(status: &CheckoutStatus, chrome: Chrome<'_>, area: Rect, buf: &mut Buffer) {
+    let mut x = area.x;
+    for (i, (part, text)) in status.parts().into_iter().enumerate() {
+        if i > 0 {
+            x += 1;
+        }
+        let left = usize::from(area.right().saturating_sub(x));
+        (x, _) = buf.set_stringn(x, area.y, &text, left, chrome.badge(part));
     }
 }
 
@@ -300,23 +313,25 @@ mod tests {
     fn the_checkout_badge_follows_the_branch_and_shortens_it() {
         let mut groups = groups();
         groups[0].status = Some(CheckoutStatus {
-            changed: 3,
+            added: 3,
+            removed: 0,
+            untracked: 0,
             ahead: 2,
             behind: 0,
         });
         let (text, buf) = draw(&groups, 28, 2);
         insta::assert_snapshot!(text, @r"
-        ▾ monarch  feat/side… ±3 ↑2┃
+        ▾ monarch  feat/side… +3 ↑2┃
           ▸ $ 1 claude             │
         ");
         let (wide, _) = draw(&groups, 36, 1);
         assert_eq!(
-            wide, "▾ monarch  feat/sidebar ±3 ↑2      ┃",
+            wide, "▾ monarch  feat/sidebar +3 ↑2      ┃",
             "right after it"
         );
         groups[0].detail = None;
         let (no_branch, _) = draw(&groups, 20, 1);
-        assert_eq!(no_branch, "▾ monarch  ±3 ↑2   ┃");
+        assert_eq!(no_branch, "▾ monarch  +3 ↑2   ┃");
         groups[0].detail = Some("feat/sidebar".into());
         assert!(
             !buf[(24, 0)].modifier.contains(Modifier::DIM),
@@ -327,11 +342,38 @@ mod tests {
             "branch is dim"
         );
         let (narrow, _) = draw(&groups, 22, 1);
-        assert_eq!(narrow, "▾ monarch  fea… ±3 ↑2┃");
+        assert_eq!(narrow, "▾ monarch  fea… +3 ↑2┃");
         let (tight, _) = draw(&groups, 15, 1);
         assert_eq!(tight, "▾ monarch  fe…┃", "no room for the badge");
         let (tiny, _) = draw(&groups, 11, 1);
         assert_eq!(tiny, "▾ monarch ┃");
+    }
+
+    #[test]
+    fn badge_parts_take_their_colours() {
+        let mut groups = groups();
+        groups[0].status = Some(CheckoutStatus {
+            added: 3,
+            removed: 0,
+            untracked: 0,
+            ahead: 2,
+            behind: 0,
+        });
+        let theme = monarch_core::Theme::dark();
+        let mut themed = Buffer::empty(Rect::new(0, 0, 36, 1));
+        Sidebar {
+            groups: &groups,
+            chrome: Chrome::new(Some(&theme)),
+            offset: 0,
+        }
+        .render(themed.area, &mut themed);
+        assert_eq!(themed[(24, 0)].symbol(), "+");
+        assert_eq!(
+            themed[(24, 0)].fg,
+            Chrome::color(theme.added),
+            "added is green"
+        );
+        assert_eq!(themed[(27, 0)].fg, Chrome::color(theme.accent), "ahead");
     }
 
     #[test]

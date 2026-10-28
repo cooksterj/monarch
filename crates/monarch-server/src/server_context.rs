@@ -61,6 +61,12 @@ impl ServerContext {
         }
     }
 
+    /// The session's name.
+    #[must_use]
+    pub fn session(&self) -> &str {
+        &self.env.session
+    }
+
     /// The same context managing worktrees with `worktrees` (tests use a
     /// fake git).
     #[must_use]

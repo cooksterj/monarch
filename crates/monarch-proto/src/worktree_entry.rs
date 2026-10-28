@@ -35,7 +35,9 @@ mod tests {
             main: false,
             panes: vec![PaneId(2)],
             status: Some(CheckoutStatus {
-                changed: 1,
+                added: 1,
+                removed: 0,
+                untracked: 0,
                 ahead: 2,
                 behind: 0,
             }),

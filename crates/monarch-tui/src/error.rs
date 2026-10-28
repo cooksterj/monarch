@@ -21,6 +21,10 @@ pub enum TuiError {
     /// The server refused the connection.
     #[error("server refused to attach: {0}")]
     Refused(String),
+    /// The server is from a build whose attach stream this client can't
+    /// read; the text says what to do.
+    #[error("{0}")]
+    OtherBuild(String),
     /// The config cannot drive the client (e.g. a prefix that is not a
     /// control chord).
     #[error("{0}")]

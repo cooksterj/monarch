@@ -12,6 +12,10 @@ pub struct HelloAck {
     /// Why the hello was refused.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+    /// The server's attach format ([`crate::Hello::WIRE`]); 0 from builds
+    /// older than the field.
+    #[serde(default)]
+    pub wire: u32,
 }
 
 impl HelloAck {
@@ -22,6 +26,7 @@ impl HelloAck {
             ok: true,
             server: version.into(),
             error: None,
+            wire: crate::Hello::WIRE,
         }
     }
 
@@ -32,6 +37,7 @@ impl HelloAck {
             ok: false,
             server: version.into(),
             error: Some(reason.into()),
+            wire: crate::Hello::WIRE,
         }
     }
 }
@@ -43,7 +49,13 @@ mod tests {
     #[test]
     fn accept_omits_the_error_field() {
         let line = serde_json::to_string(&HelloAck::accept("0.1.0")).expect("json");
-        assert_eq!(line, r#"{"ok":true,"server":"0.1.0"}"#);
+        assert_eq!(line, r#"{"ok":true,"server":"0.1.0","wire":1}"#);
+    }
+
+    #[test]
+    fn an_older_server_has_no_wire() {
+        let old: HelloAck = serde_json::from_str(r#"{"ok":true,"server":"0.1.0"}"#).expect("parse");
+        assert_eq!(old.wire, 0);
     }
 
     #[test]

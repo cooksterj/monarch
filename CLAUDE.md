@@ -46,7 +46,8 @@ enums with exhaustive `match`. Layered contracts → supertraits. Never use `Der
 `compute_view(&AppState) -> ViewModel`, then `render(&ViewModel, &mut Frame)`. Detection reads a
 screen snapshot, never the parser. Seams are traits (`Engine`, `NotificationChannel`, `GitRunner`,
 `ProcessProbe`, `Clock`) so logic is testable without a PTY. Newtype ids, enums over flags,
-`#[non_exhaustive]` on wire enums.
+`#[non_exhaustive]` on wire enums. Changing the shape of any attach message (or a type inside one)
+means bumping `Hello::WIRE`, so mismatched client and server builds refuse each other clearly.
 
 **Errors.** `thiserror` per library crate; `anyhow` only in `monarch-cli` and `src/main.rs`. No
 `unwrap()` outside tests; `expect("invariant: …")` only for true invariants.

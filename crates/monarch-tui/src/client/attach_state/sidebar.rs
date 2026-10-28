@@ -271,7 +271,9 @@ mod tests {
         let mut state = state();
         assert_eq!(state.sidebar_groups()[0].status, None, "not read yet");
         let dirty = CheckoutStatus {
-            changed: 2,
+            added: 2,
+            removed: 0,
+            untracked: 0,
             ahead: 0,
             behind: 1,
         };
