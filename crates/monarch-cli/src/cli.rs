@@ -28,11 +28,22 @@ pub use wait_args::WaitArgs;
 
 /// An attention-first terminal multiplexer for AI coding agents.
 #[derive(Debug, Parser)]
-#[command(name = "monarch", version, about, propagate_version = true)]
+#[command(
+    name = "monarch",
+    version,
+    about,
+    propagate_version = true,
+    args_conflicts_with_subcommands = true
+)]
 pub struct Cli {
-    /// The command to run; with none, Monarch attaches to the default session.
+    /// The command to run; with none, Monarch attaches to a session.
     #[command(subcommand)]
     pub command: Option<Command>,
+    /// The session to attach to, started if it isn't running (`monarch
+    /// work` is `monarch attach -s work`); defaults to
+    /// `[session].default_name` (`main`).
+    #[arg(value_name = "SESSION")]
+    pub session: Option<String>,
 }
 
 /// Top-level commands. New commands are added milestone by milestone.
@@ -122,6 +133,19 @@ mod tests {
     #[test]
     fn no_args_means_no_command() {
         let cli = Cli::try_parse_from(["monarch"]).expect("parses");
+        assert!(cli.command.is_none() && cli.session.is_none());
+    }
+
+    #[test]
+    fn a_bare_name_is_a_session_and_commands_still_win() {
+        let cli = Cli::try_parse_from(["monarch", "concept"]).expect("parses");
+        assert_eq!(cli.session.as_deref(), Some("concept"));
         assert!(cli.command.is_none());
+        let ls = Cli::try_parse_from(["monarch", "ls"]).expect("parses");
+        assert!(matches!(ls.command, Some(Command::Ls)) && ls.session.is_none());
+        assert!(
+            Cli::try_parse_from(["monarch", "concept", "extra"]).is_err(),
+            "one name only"
+        );
     }
 }

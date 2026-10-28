@@ -69,7 +69,11 @@ const POPUPS: [(&str, &str); 4] = [
     ("esc", "close"),
 ];
 
-const COMMANDS: [(&str, &str); 8] = [
+const COMMANDS: [(&str, &str); 9] = [
+    (
+        "monarch SESSION",
+        "attach to a session, starting it if needed",
+    ),
     ("monarch ls", "running sessions"),
     (
         "monarch new BRANCH",

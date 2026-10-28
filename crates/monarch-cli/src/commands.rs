@@ -62,8 +62,23 @@ pub(crate) fn dispatch(cli: Cli, out: &mut dyn Write) -> anyhow::Result<ExitCode
         Some(Command::Server(args)) => server::run(&args, &loader.load()?.config),
         Some(Command::New(args)) => new::run(&args, &loader.load()?, out),
         Some(Command::Attach(args)) => attach::run(&args, &loader.load()?, out),
-        None => attach::run(&AttachArgs::default(), &loader.load()?, out),
+        None => attach_named(cli.session, &loader, out),
     }
+}
+
+/// A bare `monarch [SESSION]`: attaches to `session`, unless it looks like
+/// a mistyped command.
+fn attach_named(
+    session: Option<String>,
+    loader: &ConfigLoader,
+    out: &mut dyn Write,
+) -> anyhow::Result<ExitCode> {
+    attach::refuse_near_command(session.as_deref())?;
+    let args = AttachArgs {
+        session,
+        ..AttachArgs::default()
+    };
+    attach::run(&args, &loader.load()?, out)
 }
 
 /// A client for `session`'s running server.
