@@ -18,10 +18,12 @@ mod mouse_log;
 
 use mouse_log::MouseLog;
 
-use super::{ClientEvent, InputKeys, MouseAction, MouseRouter, ServerLink, SharedFocus, TtyFeed};
+use super::{
+    ClientEvent, InputKeys, MouseAction, MouseRouter, ServerLink, SharedFocus, TtyFeed, WHEEL_LINES,
+};
 use crate::{
     HostInput, HostInputFilter, HostProbe, InputEvent, MouseButton, MouseEvent, MouseExtractor,
-    MouseKind, PrefixParser,
+    MouseKind, PrefixParser, WheelDirection,
 };
 
 /// How long to wait for the host to answer the startup probe.
@@ -160,6 +162,17 @@ fn route_mouse(p: &InputParams, pipe: &mut Pipeline, event: &MouseEvent) {
     if pipe.focusing {
         pipe.log.swallowed(event);
         pipe.focusing = !matches!(event.kind, MouseKind::Release(_));
+        return;
+    }
+    if let MouseKind::Wheel(dir) = event.kind
+        && p.focus.in_sidebar(event.col)
+    {
+        let lines = match dir {
+            WheelDirection::Up => -WHEEL_LINES,
+            WheelDirection::Down => WHEEL_LINES,
+            WheelDirection::Left | WheelDirection::Right => return,
+        };
+        let _ = p.events.send(ClientEvent::SidebarScroll(lines));
         return;
     }
     let view = p.focus.view();

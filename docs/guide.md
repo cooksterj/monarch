@@ -42,7 +42,10 @@ for the action. Wait a moment after the prefix and a pop-up lists every key you 
 - **Sidebar** (left): every pane, grouped by git repository and worktree, each with its agent's
   state. A group's badge shows uncommitted files and commits ahead of or behind its upstream
   (`±3 ↑2 ↓1`). `prefix t` toggles it; it hides itself when the terminal is narrower than
-  `ui.sidebar_min_columns`. Click a row to focus that pane.
+  `ui.sidebar_min_columns`. Repositories are listed alphabetically (then by branch), with panes
+  outside any repository last under `Scratch`. Click a row to focus that pane. When there are
+  more panes than fit, the wheel over the sidebar scrolls it, a thumb on its right edge shows
+  where you are, and focusing a pane whose row is out of sight brings it into view.
 - **Panes**: the rest of the screen, split as you like.
 - **Status line** (bottom): the session, its tabs, whether Monarch or the program has the mouse,
   and a key hint. After the prefix it shows that Monarch is waiting for the next key.

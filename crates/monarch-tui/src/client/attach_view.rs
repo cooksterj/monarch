@@ -269,6 +269,7 @@ mod tests {
             sidebar: Some(Sidebar {
                 groups: &groups,
                 chrome: crate::Chrome::default(),
+                offset: 0,
             }),
             selection: None,
             matches: &[],
@@ -279,7 +280,7 @@ mod tests {
         term.draw(|f| view.draw(f)).expect("draw");
         let buf = term.backend().buffer();
         let row = |y| (0..15).map(|x| buf[(x, y)].symbol()).collect::<String>();
-        assert_eq!(row(0), "▾ Scrat│   │   ");
+        assert_eq!(row(0), "▾ Scrat┃   │   ", "more groups than rows: a thumb");
         assert_eq!(
             row(1),
             "  ▸ $ 1│   │   ",

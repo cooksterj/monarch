@@ -57,6 +57,7 @@ impl Started {
         let (mirror, out) = enter_host(&host, opts);
         let mut state = AttachState::new();
         state.set_left(sidebar::sidebar_cols(opts, opts.sidebar, size));
+        focus.set_sidebar(state.left());
         Ok(Self {
             ui,
             link,

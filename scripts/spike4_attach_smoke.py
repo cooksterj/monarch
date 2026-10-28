@@ -193,6 +193,7 @@ def run_all(binary):
         assert not os.path.exists(os.path.join(run, "monarch", f"{SESSION}.sock")), "socket left behind"
         print("  reattach: screen restored; exiting every shell ends the session")
         two_clients_share_a_session(binary, env)
+        sidebar_scrolls(binary, env)  # before the reload checks leave a bad config
         sidebar_groups_and_focuses(binary, env, run)
     print("spike4 attach smoke: ok")
 
@@ -257,6 +258,32 @@ def sidebar_groups_and_focuses(binary, env, run):
         wide.idle(0.5)
     wide.wait_for(b"ended]", "session end message")
     wide.finish()
+
+
+def sidebar_scrolls(binary, env):
+    """More panes than sidebar rows: the sidebar follows focus to the
+    newest pane, and the wheel over it scrolls it back to the top."""
+    session = f"{SESSION}-sc"
+    many = Client(binary, env, session=session, cols=120, cwd="/")
+    many.wait_for(b"Scratch", "the sidebar")
+    for _ in range(25):
+        os.write(many.fd, b"\x02c")
+        many.idle(0.15)
+    many.idle(0.5)
+    assert "Scratch" not in many.row(1), f"followed focus down: {many.row(1)!r}"
+    for _ in range(10):
+        os.write(many.fd, b"\x1b[<64;5;5M")  # wheel up over the sidebar
+        many.idle(0.05)
+    deadline = time.time() + 5
+    while "Scratch" not in many.row(1):
+        assert time.time() < deadline, f"wheel scrolled to the top: {many.row(1)!r}"
+        many.pump(0.05)
+    print("  sidebar scroll: followed focus past the bottom; the wheel scrolled it back")
+    subprocess.run([binary, "kill", session], env=env, check=True, capture_output=True)
+    deadline = time.time() + 5
+    while not os.waitpid(many.pid, os.WNOHANG)[0]:
+        assert time.time() < deadline, "client did not exit"
+        many.pump(0.05)
 
 
 def config_reloads(wide, path):

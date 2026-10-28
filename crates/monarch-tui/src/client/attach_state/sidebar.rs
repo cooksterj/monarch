@@ -1,5 +1,6 @@
 //! The sidebar's model: every pane grouped by the git checkout it works
-//! in, in tab order, with panes outside a repository last.
+//! in, groups in alphabetical order and panes in tab order, with panes
+//! outside a repository last.
 
 use std::path::Path;
 
@@ -10,8 +11,9 @@ use super::AttachState;
 use crate::{SidebarGroup, SidebarRow};
 
 impl AttachState {
-    /// Every pane in every tab grouped by checkout (first seen first),
-    /// then the panes outside any repository under `Scratch`.
+    /// Every pane in every tab grouped by checkout, the groups sorted by
+    /// project then branch (ignoring case), then the panes outside any
+    /// repository under `Scratch`.
     #[must_use]
     pub fn sidebar_groups(&self) -> Vec<SidebarGroup> {
         let Some(layout) = self.layout.as_ref() else {
@@ -40,6 +42,7 @@ impl AttachState {
                 }
             }
         }
+        groups.sort_by_cached_key(|g| (g.title.to_lowercase(), g.detail.clone()));
         if !scratch.rows.is_empty() {
             groups.push(scratch);
         }
@@ -210,6 +213,29 @@ mod tests {
         assert!(groups[1].rows[0].focused && groups[1].rows[0].shown);
         assert!(!api[1].shown, "tab 2 is hidden");
         assert_eq!(groups[1].rows[0].detail.as_deref(), Some("x"));
+    }
+
+    #[test]
+    fn groups_are_alphabetical_with_scratch_last() {
+        let mut state = state();
+        let moves = [
+            (1, place("/w/zeta", Some("/w/zeta"), "main")),
+            (3, place("/w/Alpha-x", Some("/w/Alpha-x"), "x")),
+            (4, place("/w/alpha", Some("/w/alpha"), "main")),
+        ];
+        for (pane, at) in moves {
+            let msg = ServerMsg::Place {
+                pane: PaneId(pane),
+                place: Some(at),
+            };
+            state.apply(msg, &mut Applied::default());
+        }
+        let order: Vec<_> = state
+            .sidebar_groups()
+            .into_iter()
+            .map(|g| g.title)
+            .collect();
+        assert_eq!(order, ["alpha", "Alpha-x", "zeta", "Scratch"]);
     }
 
     #[test]

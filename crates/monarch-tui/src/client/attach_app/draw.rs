@@ -50,6 +50,7 @@ impl AttachApp {
     /// Draws panes, the status line and the key popup.
     fn paint(&mut self) -> Result<(), TuiError> {
         let groups = self.sidebar_rows();
+        self.follow_focus(&groups);
         let (tabs, active_tab) = self.state.tab_labels();
         let copy = self.copy_view();
         let notice = self.notice.as_ref().map(|(text, _)| text.as_str());
@@ -67,8 +68,8 @@ impl AttachApp {
                 ..session_status(&self.opts)
             },
             sidebar: Some(Sidebar {
-                groups: &groups,
                 chrome,
+                ..self.sidebar_widget(&groups)
             }),
             selection: copy
                 .as_ref()

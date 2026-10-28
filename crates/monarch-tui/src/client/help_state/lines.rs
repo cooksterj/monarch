@@ -57,7 +57,7 @@ const MOUSE: [(&str, &str); 7] = [
     ("drag", "select text; it is copied when you let go"),
     ("double-click", "select a word"),
     ("triple-click", "select a line"),
-    ("wheel", "scroll the pane's history"),
+    ("wheel", "scroll the pane's history, or the sidebar"),
     ("right-click", "pane and tab menu"),
     ("shift+drag", "select even where the program uses the mouse"),
 ];
