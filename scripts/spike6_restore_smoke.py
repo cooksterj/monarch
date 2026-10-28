@@ -209,8 +209,19 @@ def main():
     try:
         run_all(os.path.abspath(sys.argv[1]))
     finally:
-        # A failed check leaves servers running; stop this run's servers.
-        subprocess.run(["pkill", "-f", f"session {TAG}"], check=False)
+        stop_servers()
+
+
+def stop_servers():
+    """Stops this run's servers (the last check, or a failed one, leaves
+    them running) and waits until they are gone, so none is still writing
+    its state while the run's directory is deleted."""
+    pattern = f"session {TAG}"
+    subprocess.run(["pkill", "-f", pattern], check=False)
+    deadline = time.time() + 5
+    while subprocess.run(["pgrep", "-f", pattern], capture_output=True).returncode == 0:
+        assert time.time() < deadline, "servers outlived pkill"
+        time.sleep(0.05)
 
 
 def run_all(binary):
@@ -227,9 +238,12 @@ def run_all(binary):
         open(os.path.join(run, "monarch", "welcomed"), "w").close()
         for var in ("MONARCH_PANE", "MONARCH_SESSION", "TMUX"):
             env.pop(var, None)
-        shell_comes_back_in_its_directory(binary, env, run)
-        command_comes_back_as_a_shell(binary, env, run)
-        agents_resume_their_sessions(binary, env, run)
+        try:
+            shell_comes_back_in_its_directory(binary, env, run)
+            command_comes_back_as_a_shell(binary, env, run)
+            agents_resume_their_sessions(binary, env, run)
+        finally:
+            stop_servers()
     print("spike 6 restore smoke: ok")
 
 
