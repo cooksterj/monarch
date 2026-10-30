@@ -1,6 +1,7 @@
 //! Animates the sidebar's agent-state glyphs: a slowly pulsing dot while
 //! working, a diamond fading between dark yellow and brown while waiting,
-//! and a check that brightens once when an agent finishes.
+//! and a check that brightens once when an agent finishes, then rests
+//! soft and plain once the user has seen it.
 //!
 //! Pure: the caller passes the time, so frames are testable. Only glyph
 //! cells change between frames, so an animation frame costs the host a
@@ -107,6 +108,7 @@ impl GlyphAnimator {
                     t >= 1.0 || theme.is_none(),
                 )
             }
+            (AgentState::Finished, theme) => (theme.map(|t| t.done_from), false),
             (AgentState::Error, theme) => (theme.map(|t| t.error), true),
             _ => (None, false),
         };
@@ -222,6 +224,19 @@ mod tests {
             at(&animator, start, 5000).bold,
             "an unchanged state keeps its start"
         );
+    }
+
+    #[test]
+    fn a_seen_finish_is_a_soft_still_check() {
+        let (animator, start) = animator(AgentState::Finished);
+        let look = at(&animator, start, 0);
+        assert_eq!(
+            (look.symbol, look.color, look.bold),
+            ('✓', Some(Theme::dark().done_from), false)
+        );
+        assert!(!animator.moving(start), "nothing to animate");
+        let plain = animator.look(PaneId(1), start, None, true);
+        assert_eq!(plain, GlyphLook::plain('✓'), "no reverse video");
     }
 
     #[test]

@@ -20,6 +20,9 @@ pub enum AgentState {
     Idle,
     /// Finished a turn the user has not looked at yet.
     Done,
+    /// Finished a turn the user has since looked at: still a check, but
+    /// no longer asking for attention.
+    Finished,
     /// The last turn failed.
     Error,
     /// The agent process exited.
@@ -31,11 +34,12 @@ pub enum AgentState {
 
 impl AgentState {
     /// Every state, in sidebar sort order (most urgent first).
-    pub const ALL: [Self; 7] = [
+    pub const ALL: [Self; 8] = [
         Self::Blocked,
         Self::Error,
         Self::Done,
         Self::Working,
+        Self::Finished,
         Self::Idle,
         Self::Exited,
         Self::Unknown,
@@ -54,7 +58,7 @@ impl AgentState {
             Self::Working => '●',
             Self::Blocked => '◆',
             Self::Idle => '○',
-            Self::Done => '✓',
+            Self::Done | Self::Finished => '✓',
             Self::Error => '✗',
             Self::Exited => '■',
             Self::Unknown => '$',
@@ -69,6 +73,7 @@ impl AgentState {
             Self::Blocked => "Blocked",
             Self::Idle => "Idle",
             Self::Done => "Done",
+            Self::Finished => "Finished",
             Self::Error => "Error",
             Self::Exited => "Exited",
             Self::Unknown => "Shell",
@@ -124,11 +129,16 @@ mod tests {
     }
 
     #[test]
-    fn glyphs_are_unique() {
+    fn glyphs_are_unique_but_both_finishes_are_a_check() {
         let mut glyphs: Vec<char> = AgentState::ALL.iter().map(|s| s.glyph()).collect();
         glyphs.sort_unstable();
         glyphs.dedup();
-        assert_eq!(glyphs.len(), AgentState::ALL.len());
+        assert_eq!(glyphs.len(), AgentState::ALL.len() - 1);
+        assert_eq!(AgentState::Finished.glyph(), AgentState::Done.glyph());
+        assert_eq!(
+            "finished".parse::<AgentState>().ok(),
+            Some(AgentState::Finished)
+        );
     }
 
     #[test]
