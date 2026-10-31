@@ -5,7 +5,7 @@ use std::sync::Arc;
 use futures_util::{SinkExt, StreamExt};
 use monarch_proto::{
     AgentReport, AgentWait, ExplainPanes, KillSession, NewWorktree, PaneSend, Request, Response,
-    RpcError, SessionInfo,
+    RpcError, SessionInfo, TabRename,
 };
 use serde::de::DeserializeOwned;
 use serde_json::Value;
@@ -96,6 +96,7 @@ fn dispatch(ctx: &ServerContext, request: Request) -> Result<Value, RpcError> {
             }
             Ok(Value::Object(serde_json::Map::new()))
         }
+        TabRename::METHOD => rename_tab(ctx, &params(request.params)?),
         SessionInfo::METHOD => json(ctx.info()),
         KillSession::METHOD => {
             ctx.kill();
@@ -109,6 +110,22 @@ fn dispatch(ctx: &ServerContext, request: Request) -> Result<Value, RpcError> {
 }
 
 /// The error for a method naming a pane the session doesn't have.
+/// Names a tab; clients redraw with the new name.
+fn rename_tab(ctx: &ServerContext, rename: &TabRename) -> Result<Value, RpcError> {
+    let renamed = ctx.lock().rename_tab_for(rename);
+    ctx.wake();
+    json(renamed.ok_or_else(|| no_such_tab(rename))?)
+}
+
+fn no_such_tab(rename: &TabRename) -> RpcError {
+    let which = match (rename.tab, rename.pane) {
+        (Some(number), _) => format!("tab {number}"),
+        (None, Some(pane)) => format!("tab holding {pane}"),
+        (None, None) => "tab".to_owned(),
+    };
+    RpcError::new(RpcError::FAILED, format!("no {which} in this session"))
+}
+
 fn no_such_pane(pane: &str) -> RpcError {
     RpcError::new(
         RpcError::NO_SUCH_PANE,
@@ -211,6 +228,20 @@ mod tests {
         let all = r#"{"id":6,"method":"agent.explain","params":{}}"#;
         let listed = ApiConnection::answer(&ctx, all).result;
         assert_eq!(listed, Some(serde_json::json!([])), "no panes yet");
+    }
+
+    #[test]
+    fn tab_rename_names_the_tab_or_says_there_is_none() {
+        let ctx = context();
+        let none = r#"{"id":9,"method":"tab.rename","params":{"tab":3,"name":"api"}}"#;
+        let failed = ApiConnection::answer(&ctx, none);
+        assert_eq!(code(&failed), Some(RpcError::FAILED));
+        assert!(failed.error.is_some_and(|e| e.message.contains("no tab 3")));
+        let missing = r#"{"id":10,"method":"tab.rename","params":{"tab":1}}"#;
+        assert_eq!(
+            code(&ApiConnection::answer(&ctx, missing)),
+            Some(RpcError::INVALID_PARAMS)
+        );
     }
 
     #[test]

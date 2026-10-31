@@ -2,6 +2,7 @@
 //! names.
 
 use monarch_core::{Action, PaneId, RESIZE_STEP};
+use monarch_proto::{TabRename, TabRenamed};
 
 use super::SessionState;
 use crate::Placement;
@@ -81,6 +82,22 @@ impl SessionState {
         changed
     }
 
+    /// Renames the tab `request` picks (by number, else by a pane in it,
+    /// else the shown one). `None` when there is no such tab.
+    pub fn rename_tab_for(&mut self, request: &TabRename) -> Option<TabRenamed> {
+        let index = match (request.tab, request.pane) {
+            (Some(number), _) => number.checked_sub(1)?,
+            (None, Some(pane)) => self.tabs.iter().position(|t| t.contains(pane))?,
+            (None, None) => self.active,
+        };
+        let pane = self.tabs.get(index)?.focus;
+        self.rename_tab(pane, &request.name);
+        Some(TabRenamed {
+            tab: index + 1,
+            name: self.tabs.get(index)?.name.clone(),
+        })
+    }
+
     /// Names `pane` (blank: its automatic name again); clients get the new
     /// layout. Returns whether anything changed.
     pub fn rename_pane(&mut self, pane: PaneId, name: &str) -> bool {
@@ -128,6 +145,36 @@ mod tests {
         assert!(!s.rename_tab(PaneId(99), "x"), "no such pane");
         assert!(s.rename_tab(id, ""));
         assert_eq!(s.layout().tabs[0].name, None);
+    }
+
+    #[test]
+    fn the_api_picks_a_tab_by_number_pane_or_the_shown_one() {
+        let mut s = SessionState::default();
+        let id = s.allocate_pane_id();
+        s.insert_pane(id, FakePane::boxed(crate::DEFAULT_SIZE));
+        let ask = |tab, pane, name: &str| TabRename {
+            tab,
+            pane,
+            name: name.into(),
+        };
+        let shown = s.rename_tab_for(&ask(None, None, "web"));
+        assert_eq!(
+            shown,
+            Some(TabRenamed {
+                tab: 1,
+                name: Some("web".into())
+            })
+        );
+        let by_pane = s.rename_tab_for(&ask(None, Some(id), " "));
+        assert_eq!(by_pane, Some(TabRenamed { tab: 1, name: None }), "cleared");
+        assert!(s.rename_tab_for(&ask(Some(1), None, "api")).is_some());
+        assert_eq!(s.rename_tab_for(&ask(Some(2), None, "x")), None, "no tab 2");
+        assert_eq!(
+            s.rename_tab_for(&ask(Some(0), None, "x")),
+            None,
+            "tabs count from 1"
+        );
+        assert_eq!(s.rename_tab_for(&ask(None, Some(PaneId(9)), "x")), None);
     }
 
     #[test]

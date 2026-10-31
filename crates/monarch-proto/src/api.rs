@@ -18,6 +18,8 @@ mod rpc_error;
 mod rule_outcome;
 mod session_info;
 mod status_source;
+mod tab_rename;
+mod tab_renamed;
 mod worktree_created;
 
 pub use agent_report::AgentReport;
@@ -34,4 +36,6 @@ pub use rpc_error::RpcError;
 pub use rule_outcome::RuleOutcome;
 pub use session_info::SessionInfo;
 pub use status_source::StatusSource;
+pub use tab_rename::TabRename;
+pub use tab_renamed::TabRenamed;
 pub use worktree_created::WorktreeCreated;

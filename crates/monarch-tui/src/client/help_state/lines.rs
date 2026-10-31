@@ -69,7 +69,7 @@ const POPUPS: [(&str, &str); 4] = [
     ("esc", "close"),
 ];
 
-const COMMANDS: [(&str, &str); 9] = [
+const COMMANDS: [(&str, &str); 10] = [
     (
         "monarch SESSION",
         "attach to a session, starting it if needed",
@@ -84,6 +84,10 @@ const COMMANDS: [(&str, &str); 9] = [
     (
         "monarch pane send PANE TEXT",
         "type into a pane (--enter submits)",
+    ),
+    (
+        "monarch tab rename NAME",
+        "name your tab (--tab N for another)",
     ),
     ("monarch config check", "check your config file"),
     ("monarch setup", "install the agent hooks and skill"),

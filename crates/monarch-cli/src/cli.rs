@@ -7,9 +7,11 @@ mod hook_command;
 mod kill_args;
 mod new_args;
 mod pane_command;
+mod rename_args;
 mod send_args;
 mod server_args;
 mod setup_args;
+mod tab_command;
 mod wait_args;
 
 use clap::{Parser, Subcommand};
@@ -21,9 +23,11 @@ pub use hook_command::HookCommand;
 pub use kill_args::KillArgs;
 pub use new_args::NewArgs;
 pub use pane_command::PaneCommand;
+pub use rename_args::RenameArgs;
 pub use send_args::SendArgs;
 pub use server_args::ServerArgs;
 pub use setup_args::SetupArgs;
+pub use tab_command::TabCommand;
 pub use wait_args::WaitArgs;
 
 /// An attention-first terminal multiplexer for AI coding agents.
@@ -66,6 +70,9 @@ pub enum Command {
     /// Act on a session's panes: type into one.
     #[command(subcommand)]
     Pane(PaneCommand),
+    /// Act on a session's tabs: name one.
+    #[command(subcommand)]
+    Tab(TabCommand),
     /// Run a session server (normally started for you by `monarch`).
     Server(ServerArgs),
     /// List what each key after the prefix does.
