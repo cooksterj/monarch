@@ -10,6 +10,7 @@ mod agent_kind;
 mod agent_state;
 mod config;
 mod error;
+mod given_name;
 mod ids;
 mod keymap;
 mod layout;
@@ -26,6 +27,7 @@ pub use config::{
     ProjectsConfig, SessionConfig, TerminalConfig, ThemeConfig, UiConfig,
 };
 pub use error::CoreError;
+pub use given_name::given_name;
 pub use ids::{ClientId, PaneId, TabId};
 pub use keymap::{Key, Keymap, KeymapPreset};
 pub use layout::{Direction, Rect, SplitAxis, SplitTree, Tab};

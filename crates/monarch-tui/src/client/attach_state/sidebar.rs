@@ -137,6 +137,7 @@ mod tests {
 
     fn summary(id: u32, command: &str, at: Option<PanePlace>) -> PaneSummary {
         PaneSummary {
+            given_name: None,
             pane: PaneId(id),
             title: None,
             command: Some(command.into()),
@@ -199,6 +200,31 @@ mod tests {
         let named = state.layout.as_ref().map(|l| l.tabs[1].clone());
         assert_eq!(named.as_ref().map(|t| state.tab_name(t)), Some("api docs"));
         assert_eq!(state.shown_tab().map(|t| t.focus), Some(PaneId(2)));
+    }
+
+    #[test]
+    fn a_named_pane_wins_over_its_tab_name() {
+        let mut state = state();
+        let Some(layout) = state.layout.as_mut() else {
+            unreachable!("state() has a layout");
+        };
+        layout.tabs[1].name = Some("api".into());
+        layout.tabs[1].panes[0].given_name = Some("editor".into());
+        layout.tabs[0].panes[1].given_name = Some("scratch".into());
+        let labels: Vec<String> = state
+            .sidebar_groups()
+            .into_iter()
+            .flat_map(|g| g.rows)
+            .map(|r| r.label)
+            .collect();
+        for want in ["2 editor", "2 api", "1 scratch", "1 claude"] {
+            assert!(labels.iter().any(|l| l == want), "{want} in {labels:?}");
+        }
+        assert_eq!(
+            state.tab_labels().0,
+            ["1 scratch", "2 api"],
+            "a tab is named by its name, else its focused pane's"
+        );
     }
 
     #[test]

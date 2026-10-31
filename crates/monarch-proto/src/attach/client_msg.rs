@@ -104,6 +104,14 @@ pub enum ClientMsg {
         /// The new name.
         name: String,
     },
+    /// Name `pane`; a blank name gives the automatic one (its title or
+    /// program) back.
+    RenamePane {
+        /// The pane.
+        pane: PaneId,
+        /// The new name.
+        name: String,
+    },
 }
 
 #[cfg(test)]

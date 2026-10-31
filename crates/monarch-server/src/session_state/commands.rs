@@ -55,7 +55,9 @@ impl SessionState {
     /// sidebar.
     pub(super) fn summary(&self, pane: PaneId) -> PaneSummary {
         let entry = self.panes.get(&pane);
+        let tab = self.tabs.iter().find(|t| t.contains(pane));
         PaneSummary {
+            given_name: tab.and_then(|t| t.pane_names.get(&pane).cloned()),
             pane,
             title: entry.and_then(|e| e.title.clone()),
             command: entry.and_then(|e| e.command.clone()),

@@ -1,12 +1,12 @@
-//! One tab: its split tree, which pane has focus, zoom and its name.
+//! One tab: its split tree, which pane has focus, zoom, and the names
+//! the user gave it and its panes.
+
+use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
 use super::{Direction, Rect, SplitAxis, SplitTree};
-use crate::PaneId;
-
-/// Characters a tab name keeps; the rest is cut off.
-const TAB_NAME_MAX: usize = 40;
+use crate::{PaneId, given_name};
 
 /// A tab of panes. The focused pane is always in the tree.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -20,6 +20,10 @@ pub struct Tab {
     /// The name the user gave it; `None` names it after its focused pane.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    /// Names the user gave panes in it; the others are named for their
+    /// program.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub pane_names: BTreeMap<PaneId, String>,
 }
 
 impl Tab {
@@ -31,22 +35,29 @@ impl Tab {
             focus: pane,
             zoomed: false,
             name: None,
+            pane_names: BTreeMap::new(),
         }
     }
 
-    /// Names the tab `name`: one line, control characters dropped, at most
-    /// 40 characters; a blank name gives the automatic one
-    /// back. Returns whether the name changed.
+    /// Names the tab `name`, tidied by [`given_name`]; a blank name gives
+    /// the automatic one back. Returns whether the name changed.
     pub fn set_name(&mut self, name: &str) -> bool {
-        let clean: String = name
-            .chars()
-            .map(|c| if c.is_control() { ' ' } else { c })
-            .collect();
-        let clean: String = clean.trim().chars().take(TAB_NAME_MAX).collect();
-        let name = Some(clean.trim_end().to_owned()).filter(|n| !n.is_empty());
+        let name = given_name(name);
         let changed = self.name != name;
         self.name = name;
         changed
+    }
+
+    /// Names `pane` like [`set_name`](Self::set_name) does the tab.
+    /// Returns whether its name changed (never for a pane not in it).
+    pub fn set_pane_name(&mut self, pane: PaneId, name: &str) -> bool {
+        if !self.contains(pane) {
+            return false;
+        }
+        match given_name(name) {
+            Some(name) => self.pane_names.insert(pane, name.clone()) != Some(name),
+            None => self.pane_names.remove(&pane).is_some(),
+        }
     }
 
     /// Whether `pane` is in this tab.
@@ -143,6 +154,10 @@ impl Tab {
     pub fn rename(&mut self, rename: &dyn Fn(PaneId) -> PaneId) {
         self.tree.rename(rename);
         self.focus = rename(self.focus);
+        self.pane_names = std::mem::take(&mut self.pane_names)
+            .into_iter()
+            .map(|(pane, name)| (rename(pane), name))
+            .collect();
     }
 
     /// Removes `pane`. When it had focus, focus goes to the pane that took
@@ -152,6 +167,7 @@ impl Tab {
         if !self.tree.remove(pane) {
             return false;
         }
+        self.pane_names.remove(&pane);
         if self.tree.is_empty() {
             return true;
         }
@@ -244,16 +260,43 @@ mod tests {
     }
 
     #[test]
-    fn names_are_one_trimmed_line_and_blank_clears() {
+    fn names_are_tidied_and_blank_clears() {
         let mut tab = Tab::new(PaneId(1));
-        assert!(tab.set_name("  api\nwork\x1b "));
+        assert!(tab.set_name("  api\nwork "));
         assert_eq!(tab.name.as_deref(), Some("api work"));
         assert!(!tab.set_name("api work"), "unchanged");
-        assert!(tab.set_name(&"x".repeat(99)));
-        assert_eq!(tab.name.as_ref().map(String::len), Some(TAB_NAME_MAX));
         assert!(tab.set_name("   "));
         assert_eq!(tab.name, None, "blank: back to automatic");
         assert!(!tab.set_name(""));
+    }
+
+    #[test]
+    fn panes_are_named_while_they_are_in_the_tab() {
+        let mut tab = Tab::new(A);
+        tab.split(B, SplitAxis::Columns);
+        assert!(tab.set_pane_name(A, " server "));
+        assert!(!tab.set_pane_name(A, "server"), "unchanged");
+        assert!(tab.set_pane_name(B, "tests"));
+        assert!(!tab.set_pane_name(C, "x"), "not in this tab");
+        assert_eq!(tab.pane_names.get(&A).map(String::as_str), Some("server"));
+        tab.rename(&|p| PaneId(p.0 + 10));
+        assert_eq!(
+            tab.pane_names.get(&PaneId(11)).map(String::as_str),
+            Some("server")
+        );
+        tab.remove(AREA, PaneId(12));
+        assert_eq!(tab.pane_names.len(), 1, "a closed pane's name goes");
+        assert!(tab.set_pane_name(PaneId(11), ""));
+        assert!(tab.pane_names.is_empty());
+    }
+
+    #[test]
+    fn pane_names_survive_the_state_file() {
+        let mut tab = Tab::new(A);
+        tab.set_pane_name(A, "server");
+        let json = serde_json::to_string(&tab).expect("json");
+        let back: Tab = serde_json::from_str(&json).expect("parse");
+        assert_eq!(back, tab);
     }
 
     #[test]

@@ -81,6 +81,16 @@ impl SessionState {
         changed
     }
 
+    /// Names `pane` (blank: its automatic name again); clients get the new
+    /// layout. Returns whether anything changed.
+    pub fn rename_pane(&mut self, pane: PaneId, name: &str) -> bool {
+        let changed = self.tabs.iter_mut().any(|t| t.set_pane_name(pane, name));
+        if changed {
+            self.generation += 1;
+        }
+        changed
+    }
+
     /// Ends the focused pane's program; the pane goes when it exits, like
     /// any other.
     fn close_focused(&self) {
@@ -118,5 +128,22 @@ mod tests {
         assert!(!s.rename_tab(PaneId(99), "x"), "no such pane");
         assert!(s.rename_tab(id, ""));
         assert_eq!(s.layout().tabs[0].name, None);
+    }
+
+    #[test]
+    fn renaming_a_pane_sends_its_name_with_it() {
+        let mut s = SessionState::default();
+        let id = s.allocate_pane_id();
+        s.insert_pane(id, FakePane::boxed(crate::DEFAULT_SIZE));
+        let before = s.layout().generation;
+        assert!(s.rename_pane(id, "server"));
+        let layout = s.layout();
+        assert_eq!(
+            layout.tabs[0].panes[0].given_name.as_deref(),
+            Some("server")
+        );
+        assert!(layout.generation > before);
+        assert!(!s.rename_pane(id, "server"), "unchanged");
+        assert!(!s.rename_pane(PaneId(99), "x"), "no such pane");
     }
 }

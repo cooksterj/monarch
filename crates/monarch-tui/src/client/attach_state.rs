@@ -184,16 +184,28 @@ impl AttachState {
     }
 
     /// What `tab` is called: the name the user gave it, else its focused
-    /// pane's.
+    /// pane's (given or automatic).
     #[must_use]
     pub fn tab_name<'a>(&'a self, tab: &'a TabSummary) -> &'a str {
-        tab.focused().map_or("", |p| self.name(tab, p))
+        let focused = || tab.focused().map_or("", |p| self.own_name(p));
+        tab.name.as_deref().unwrap_or_else(focused)
     }
 
-    /// What a pane in `tab` is called: the name the user gave the tab,
-    /// else the pane's own.
-    fn name<'a>(&'a self, tab: &'a TabSummary, sent: &'a PaneSummary) -> &'a str {
-        tab.name.as_deref().unwrap_or_else(|| self.pane_name(sent))
+    /// What a pane in `tab` is called in rows and lists: the name the user
+    /// gave the pane, else the tab's, else its title or program.
+    #[must_use]
+    pub fn name<'a>(&'a self, tab: &'a TabSummary, sent: &'a PaneSummary) -> &'a str {
+        match (sent.given_name.as_deref(), tab.name.as_deref()) {
+            (Some(given), _) | (None, Some(given)) => given,
+            (None, None) => self.pane_name(sent),
+        }
+    }
+
+    /// A pane's own name: the one given it, else its title or program.
+    fn own_name<'a>(&'a self, sent: &'a PaneSummary) -> &'a str {
+        sent.given_name
+            .as_deref()
+            .unwrap_or_else(|| self.pane_name(sent))
     }
 
     /// A pane's name from what the layout said and later messages.
