@@ -41,6 +41,7 @@ impl Action {
             Self::Help => "this help",
             Self::Welcome => "the welcome screen",
             Self::RenameTab => "name the tab (blank: its program's name)",
+            Self::RenamePane => "name the pane (blank: its automatic name)",
             Self::FocusPane(_) => "focus a pane",
         }
     }
@@ -51,6 +52,7 @@ impl Action {
         match self {
             Self::Split(_)
             | Self::ClosePane
+            | Self::RenamePane
             | Self::Focus(_)
             | Self::FocusNext
             | Self::FocusPrev

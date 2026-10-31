@@ -4,8 +4,8 @@
 use std::time::Instant;
 
 use crate::{
-    Chrome, ContextMenu, ContextMenuView, HelpState, HelpView, Picker, PickerView, PopupViews,
-    ProjectPicker, ReviewState, ReviewView, SessionPicker, TabNamer, WelcomeState, WelcomeView,
+    Chrome, ContextMenu, ContextMenuView, HelpState, HelpView, NamePrompt, Picker, PickerView,
+    PopupViews, ProjectPicker, ReviewState, ReviewView, SessionPicker, WelcomeState, WelcomeView,
     WorktreeForm, WorktreeFormView,
 };
 
@@ -18,8 +18,8 @@ pub(super) struct Popups {
     pub projects: Option<ProjectPicker>,
     /// The session picker.
     pub sessions: Option<SessionPicker>,
-    /// The rename-tab prompt.
-    pub namer: Option<TabNamer>,
+    /// The rename-tab or rename-pane prompt.
+    pub namer: Option<NamePrompt>,
     /// The right-click menu, which also takes clicks.
     pub menu: Option<ContextMenu>,
     /// The review pane.
@@ -58,7 +58,7 @@ impl Popups {
         let picker = (self.picker.as_ref())
             .or(self.projects.as_ref().map(ProjectPicker::picker))
             .or(self.sessions.as_ref().map(SessionPicker::picker))
-            .or(self.namer.as_ref().map(TabNamer::picker));
+            .or(self.namer.as_ref().map(NamePrompt::picker));
         let now = Instant::now();
         PopupViews {
             picker: picker.map(|picker| PickerView { picker }),

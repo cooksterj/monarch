@@ -54,7 +54,7 @@ Inside, everything starts with the prefix, `Ctrl-b`. Press it and wait to see ev
 | `prefix %` / `prefix "` | split right / down |
 | `prefix h j k l` | move focus |
 | `prefix c`, `prefix 1`–`9` | new tab, go to a tab |
-| `prefix ,` | rename the tab (e.g. two `claude` tabs → `api`, `web`) |
+| `prefix ,` / `prefix .` | rename the tab / the focused pane (e.g. two `claude` tabs → `api`, `web`) |
 | `prefix a` | attention inbox: every agent waiting on you |
 | `prefix Tab` | jump to the next agent waiting on a decision |
 | `prefix N` | new worktree: branch name, then shell, Claude Code or Codex |

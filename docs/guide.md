@@ -78,6 +78,7 @@ for the action. Wait a moment after the prefix and a pop-up lists every key you 
 | `n` `p` | next / previous tab |
 | `1`–`9` | go to that tab |
 | `,` | rename the tab; its rows in the sidebar take the name too. A blank name gives back the automatic one (the program's) |
+| `.` | rename the focused pane, so the panes of a split tab can be told apart; a pane's own name wins over its tab's in the sidebar, and a blank name gives the automatic one back |
 
 Focus and resize keys repeat: within half a second (`keys.repeat_ms`) you can press them again
 without the prefix, so `prefix L L L` grows a pane three steps.

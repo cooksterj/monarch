@@ -21,12 +21,18 @@ pub struct PaneSummary {
     pub place: Option<PanePlace>,
     /// What its agent is doing (`Unknown` for a plain shell).
     pub agent: AgentStatus,
+    /// The name the user gave it, if any (it wins over title and
+    /// command wherever the pane is named).
+    pub given_name: Option<String>,
 }
 
 impl PaneSummary {
     /// What to call the pane: a non-blank title, else the command.
     #[must_use]
     pub fn name(&self) -> Option<&str> {
+        if let Some(given) = self.given_name.as_deref() {
+            return Some(given);
+        }
         PaneSummary::pick(self.title.as_deref(), self.command.as_deref())
     }
 
@@ -79,6 +85,7 @@ mod tests {
     #[test]
     fn a_title_wins_over_the_command_unless_blank() {
         let mut pane = PaneSummary {
+            given_name: None,
             pane: PaneId(1),
             title: Some(" vim main.rs ".into()),
             command: Some("vim".into()),
@@ -92,6 +99,8 @@ mod tests {
         assert_eq!(pane.name(), None);
         pane.title = Some("✳".into());
         assert_eq!(pane.name(), None, "decoration alone is blank");
+        pane.given_name = Some("editor".into());
+        assert_eq!(pane.name(), Some("editor"), "a given name wins");
         let bytes = postcard::to_allocvec(&pane).expect("encode");
         assert_eq!(postcard::from_bytes::<PaneSummary>(&bytes).ok(), Some(pane));
     }

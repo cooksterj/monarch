@@ -34,6 +34,7 @@ mod tests {
 
     fn summary(id: u32, title: Option<&str>) -> PaneSummary {
         PaneSummary {
+            given_name: None,
             pane: PaneId(id),
             title: title.map(Into::into),
             command: None,

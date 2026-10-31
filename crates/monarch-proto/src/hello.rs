@@ -24,7 +24,7 @@ impl Hello {
     /// The attach stream's format. Bump it whenever an attach message
     /// changes shape: a client and server that differ refuse each other
     /// with a clear message instead of misreading frames.
-    pub const WIRE: u32 = 3;
+    pub const WIRE: u32 = 4;
     /// Protocol name for the binary attach stream.
     pub const ATTACH: &'static str = "attach";
     /// Protocol name for the JSON-lines API.
@@ -91,7 +91,7 @@ mod tests {
         let line = serde_json::to_string(&Hello::attach("0.1.0")).expect("json");
         assert_eq!(
             line,
-            r#"{"monarch":1,"proto":"attach","version":"0.1.0","wire":3}"#
+            r#"{"monarch":1,"proto":"attach","version":"0.1.0","wire":4}"#
         );
         let old: Hello =
             serde_json::from_str(r#"{"monarch":1,"proto":"attach","version":"0.1.0"}"#)

@@ -68,6 +68,7 @@ mod tests {
 
     fn state(states: &[(u32, AgentState)]) -> AttachState {
         let pane = |id| PaneSummary {
+            given_name: None,
             pane: PaneId(id),
             title: None,
             command: Some("zsh".into()),

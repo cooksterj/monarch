@@ -21,6 +21,8 @@ pub enum Action {
     Split(SplitAxis),
     /// Close the focused pane (its program is hung up).
     ClosePane,
+    /// Name the focused pane, or give it its automatic name back.
+    RenamePane,
     /// Focus the neighbouring pane.
     Focus(Direction),
     /// Focus the next pane in reading order.
@@ -113,6 +115,7 @@ impl Action {
                 | Self::Help
                 | Self::Welcome
                 | Self::RenameTab
+                | Self::RenamePane
         )
     }
 
@@ -145,6 +148,7 @@ mod tests {
         assert!(Action::Projects.is_local());
         assert!(Action::Sessions.is_local() && Action::Help.is_local());
         assert!(Action::RenameTab.is_local(), "the client asks for the name");
+        assert!(Action::RenamePane.is_local());
         assert!(!Action::FocusPane(PaneId(1)).is_local());
         assert!(!Action::Split(SplitAxis::Rows).is_local());
         assert!(!Action::SelectTab(1).is_local());

@@ -234,6 +234,7 @@ mod tests {
             title: None,
         };
         let summary = |id| PaneSummary {
+            given_name: None,
             pane: PaneId(id),
             title: Some(format!("p{id}")),
             command: None,
