@@ -4,7 +4,8 @@
 //! A pane whose agent reports through hooks ignores its screen: hooks say
 //! more and say it first. Elsewhere the screen's state replaces the
 //! current one, except that a turn ending where nobody is looking is
-//! Done (it needs attention) until the user sees or answers it.
+//! Done (it needs attention) until the user sees or answers it, and one
+//! ending in front of the user is Finished.
 
 use monarch_core::{AgentKind, AgentState, PaneId};
 use monarch_proto::AgentStatus;
@@ -28,7 +29,8 @@ impl StateEngine {
         let current = self.status(pane);
         let state = match (current.state, state) {
             (AgentState::Working, AgentState::Idle) if !focused => AgentState::Done,
-            (AgentState::Done, AgentState::Idle) => AgentState::Done,
+            (AgentState::Working, AgentState::Idle) => AgentState::Finished,
+            (finished @ (AgentState::Done | AgentState::Finished), AgentState::Idle) => finished,
             (_, state) => state,
         };
         let next = AgentStatus {
@@ -80,10 +82,13 @@ mod tests {
             "stays done"
         );
         let seen = engine.seen(P).expect("changed");
-        assert_eq!(seen.state, AgentState::Idle, "an agent, not a shell");
+        assert_eq!(seen.state, AgentState::Finished, "an agent, not a shell");
+        assert_eq!(engine.screen(P, AgentState::Idle, None, true), None);
         engine.screen(P, AgentState::Working, None, true);
         engine.screen(P, AgentState::Idle, None, true);
-        assert_eq!(state(&engine), AgentState::Idle, "watched: just idle");
+        assert_eq!(state(&engine), AgentState::Finished, "watched: finished");
+        engine.screen(P, AgentState::Idle, None, false);
+        assert_eq!(state(&engine), AgentState::Finished, "seen stays seen");
     }
 
     #[test]

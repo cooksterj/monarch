@@ -43,14 +43,17 @@ impl StateEngine {
     }
 
     /// The user answered `pane` (pressed Enter or typed a reply): a
-    /// guessed Blocked or Done is over. Returns the new status if it
+    /// guessed Blocked, Done or Finished is over. Returns the new status if it
     /// changed.
     pub fn answered(&mut self, pane: PaneId) -> Option<AgentStatus> {
         if !self.guessed.contains(&pane) {
             return None;
         }
         let current = self.status(pane);
-        if !matches!(current.state, AgentState::Blocked | AgentState::Done) {
+        if !matches!(
+            current.state,
+            AgentState::Blocked | AgentState::Done | AgentState::Finished
+        ) {
             return None;
         }
         let next = if current.agent.is_some() || self.screened.contains(&pane) {

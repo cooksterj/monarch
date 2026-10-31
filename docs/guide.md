@@ -90,7 +90,8 @@ Each pane running an agent shows its state in the sidebar and the inbox:
 | `●` | Working | busy on your last request |
 | `◆` | Blocked | waiting for you: a permission prompt or a question |
 | `○` | Idle | ready for a new request |
-| `✓` | Done | finished a turn you haven't looked at yet; it becomes Idle when you focus the pane |
+| `✓` | Done | finished a turn you haven't looked at yet: bright green, and listed in the inbox |
+| `✓` | Finished | a Done you've since focused: soft green, no longer asking for you |
 | `✗` | Error | the turn failed |
 | `■` | Exited | the agent's process ended |
 | `$` | (none) | a plain shell |
