@@ -77,8 +77,8 @@ for the action. Wait a moment after the prefix and a pop-up lists every key you 
 | `c` | new tab |
 | `n` `p` | next / previous tab |
 | `1`–`9` | go to that tab |
-| `,` | rename the tab; its rows in the sidebar take the name too. A blank name gives back the automatic one (the program's) |
-| `.` | rename the focused pane, so the panes of a split tab can be told apart; a pane's own name wins over its tab's in the sidebar, and a blank name gives the automatic one back |
+| `,` | rename the tab. A tab with one pane shows the name in the sidebar too; in a split tab each pane keeps its own name until you name it with `.`. A blank name gives back the automatic one (the program's) |
+| `.` | rename the focused pane, so the panes of a split tab can be told apart; a pane's own name wins over its tab's, and a blank name gives the automatic one back |
 
 From a shell, `monarch tab rename api` names the tab it runs in (outside Monarch: the tab shown),
 `--tab 2` names another, and `monarch tab rename ""` gives the automatic name back.
