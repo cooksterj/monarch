@@ -16,6 +16,11 @@ const WING: Rgb = c(0xe8761b);
 const WING_EDGE: Rgb = c(0x1e1612);
 const WING_SPOT: Rgb = c(0xf5f0e6);
 
+/// Claude's terracotta, which reads on dark and light backgrounds alike.
+/// Codex's icon takes each theme's text colour, as OpenAI's mark is
+/// drawn in black or white.
+const CLAUDE: Rgb = c(0xd97757);
+
 /// Monarch's own theme for dark hosts: monarch-butterfly orange accents.
 pub(super) const MONARCH_DARK: Theme = Theme {
     bar: c(0x2b2d3a),
@@ -31,6 +36,8 @@ pub(super) const MONARCH_DARK: Theme = Theme {
     added: c(0x7ed37e),
     removed: c(0xf07178),
     hunk: c(0x6fb3d2),
+    claude: CLAUDE,
+    codex: c(0xd0d3e0),
     wing: WING,
     wing_edge: WING_EDGE,
     wing_spot: WING_SPOT,
@@ -51,6 +58,8 @@ pub(super) const MONARCH_LIGHT: Theme = Theme {
     added: c(0x1a7f37),
     removed: c(0xb31d28),
     hunk: c(0x0550ae),
+    claude: CLAUDE,
+    codex: c(0x2b2b2b),
     wing: WING,
     wing_edge: WING_EDGE,
     wing_spot: WING_SPOT,
@@ -88,6 +97,8 @@ const fn from(p: &Palette) -> Theme {
         added: c(p.green),
         removed: c(p.red),
         hunk: c(p.cyan),
+        claude: CLAUDE,
+        codex: c(p.text),
         wing: WING,
         wing_edge: WING_EDGE,
         wing_spot: WING_SPOT,

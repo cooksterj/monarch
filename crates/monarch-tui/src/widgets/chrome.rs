@@ -2,7 +2,7 @@
 //! is a theme, reverse video and bold otherwise (`NO_COLOR`), so it still
 //! reads in the host's own colours.
 
-use monarch_core::{Rgb, Theme};
+use monarch_core::{AgentKind, Rgb, Theme};
 use monarch_proto::BadgePart;
 use ratatui::style::{Color, Modifier, Style};
 
@@ -71,6 +71,13 @@ impl<'a> Chrome<'a> {
         }
     }
 
+    /// The colour of `agent`'s icon; `None` without colours, where it is
+    /// drawn in the text's own.
+    #[must_use]
+    pub fn agent(&self, agent: AgentKind) -> Option<Color> {
+        self.theme.map(|t| Self::color(t.agent(agent)))
+    }
+
     /// Lines next to the focused pane, and sidebar headings.
     #[must_use]
     pub fn highlight(&self) -> Style {
@@ -85,6 +92,14 @@ impl<'a> Chrome<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn agent_icons_are_coloured_only_with_a_theme() {
+        let theme = Theme::dark();
+        let coloured = Chrome::new(Some(&theme)).agent(AgentKind::Claude);
+        assert_eq!(coloured, Some(Chrome::color(theme.claude)));
+        assert_eq!(Chrome::default().agent(AgentKind::Codex), None);
+    }
 
     #[test]
     fn a_theme_gives_colours() {
