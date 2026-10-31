@@ -266,6 +266,7 @@ impl SessionState {
             .map(|tab| TabSummary {
                 focus: tab.focus,
                 zoomed: tab.zoomed,
+                name: tab.name.clone(),
                 panes: tab
                     .tree
                     .panes()

@@ -96,6 +96,14 @@ pub enum ClientMsg {
     /// Remove this worktree (its branch stays); answered with
     /// `ServerMsg::WorktreeRemoved`.
     RemoveWorktree(String),
+    /// Name the tab holding `pane`; a blank name gives the automatic one
+    /// (its focused pane's) back.
+    RenameTab {
+        /// Any pane in the tab.
+        pane: PaneId,
+        /// The new name.
+        name: String,
+    },
 }
 
 #[cfg(test)]
@@ -109,5 +117,15 @@ mod tests {
             bytes: b"\x1b[A".to_vec(),
         };
         assert!(matches!(msg, ClientMsg::Input { ref bytes, .. } if bytes == b"\x1b[A"));
+    }
+
+    #[test]
+    fn renames_survive_the_attach_encoding() {
+        let msg = ClientMsg::RenameTab {
+            pane: PaneId(2),
+            name: "api".into(),
+        };
+        let bytes = postcard::to_allocvec(&msg).expect("encode");
+        assert_eq!(postcard::from_bytes::<ClientMsg>(&bytes).ok(), Some(msg));
     }
 }

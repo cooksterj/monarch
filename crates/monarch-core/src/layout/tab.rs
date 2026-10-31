@@ -1,9 +1,12 @@
-//! One tab: its split tree, which pane has focus, and zoom.
+//! One tab: its split tree, which pane has focus, zoom and its name.
 
 use serde::{Deserialize, Serialize};
 
 use super::{Direction, Rect, SplitAxis, SplitTree};
 use crate::PaneId;
+
+/// Characters a tab name keeps; the rest is cut off.
+const TAB_NAME_MAX: usize = 40;
 
 /// A tab of panes. The focused pane is always in the tree.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -14,6 +17,9 @@ pub struct Tab {
     pub focus: PaneId,
     /// Whether the focused pane fills the tab (tmux `z`).
     pub zoomed: bool,
+    /// The name the user gave it; `None` names it after its focused pane.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
 }
 
 impl Tab {
@@ -24,7 +30,23 @@ impl Tab {
             tree: SplitTree::new(pane),
             focus: pane,
             zoomed: false,
+            name: None,
         }
+    }
+
+    /// Names the tab `name`: one line, control characters dropped, at most
+    /// 40 characters; a blank name gives the automatic one
+    /// back. Returns whether the name changed.
+    pub fn set_name(&mut self, name: &str) -> bool {
+        let clean: String = name
+            .chars()
+            .map(|c| if c.is_control() { ' ' } else { c })
+            .collect();
+        let clean: String = clean.trim().chars().take(TAB_NAME_MAX).collect();
+        let name = Some(clean.trim_end().to_owned()).filter(|n| !n.is_empty());
+        let changed = self.name != name;
+        self.name = name;
+        changed
     }
 
     /// Whether `pane` is in this tab.
@@ -219,6 +241,27 @@ mod tests {
         assert!(!tab.remove(AREA, A));
         assert!(tab.remove(AREA, B), "now empty");
         assert!(!Tab::new(A).remove(AREA, B), "unknown pane");
+    }
+
+    #[test]
+    fn names_are_one_trimmed_line_and_blank_clears() {
+        let mut tab = Tab::new(PaneId(1));
+        assert!(tab.set_name("  api\nwork\x1b "));
+        assert_eq!(tab.name.as_deref(), Some("api work"));
+        assert!(!tab.set_name("api work"), "unchanged");
+        assert!(tab.set_name(&"x".repeat(99)));
+        assert_eq!(tab.name.as_ref().map(String::len), Some(TAB_NAME_MAX));
+        assert!(tab.set_name("   "));
+        assert_eq!(tab.name, None, "blank: back to automatic");
+        assert!(!tab.set_name(""));
+    }
+
+    #[test]
+    fn unnamed_tabs_keep_their_old_saved_shape() {
+        let json = serde_json::to_string(&Tab::new(PaneId(1))).expect("json");
+        assert!(!json.contains("name"));
+        let back: Tab = serde_json::from_str(&json).expect("parse");
+        assert_eq!(back, Tab::new(PaneId(1)));
     }
 
     #[test]

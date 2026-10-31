@@ -27,6 +27,7 @@ mod picker;
 mod popups;
 mod projects;
 mod reload;
+mod rename;
 mod review;
 mod select;
 mod sessions;

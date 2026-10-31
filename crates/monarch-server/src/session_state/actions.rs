@@ -1,6 +1,7 @@
-//! Session commands from clients: splits, focus, zoom, tabs.
+//! Session commands from clients: splits, focus, zoom, tabs and their
+//! names.
 
-use monarch_core::{Action, RESIZE_STEP};
+use monarch_core::{Action, PaneId, RESIZE_STEP};
 
 use super::SessionState;
 use crate::Placement;
@@ -67,6 +68,19 @@ impl SessionState {
         ActionEffect::Done
     }
 
+    /// Names the tab holding `pane` (blank: its automatic name again);
+    /// clients get the new layout. Returns whether anything changed.
+    pub fn rename_tab(&mut self, pane: PaneId, name: &str) -> bool {
+        let Some(tab) = self.tabs.iter_mut().find(|t| t.contains(pane)) else {
+            return false;
+        };
+        let changed = tab.set_name(name);
+        if changed {
+            self.generation += 1;
+        }
+        changed
+    }
+
     /// Ends the focused pane's program; the pane goes when it exits, like
     /// any other.
     fn close_focused(&self) {
@@ -82,5 +96,27 @@ impl SessionState {
             self.active = index;
         }
         changed
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::test_support::FakePane;
+
+    #[test]
+    fn renaming_names_the_tab_holding_the_pane() {
+        let mut s = SessionState::default();
+        let id = s.allocate_pane_id();
+        s.insert_pane(id, FakePane::boxed(crate::DEFAULT_SIZE));
+        let before = s.layout().generation;
+        assert!(s.rename_tab(id, " api "));
+        let layout = s.layout();
+        assert_eq!(layout.tabs[0].name.as_deref(), Some("api"));
+        assert!(layout.generation > before, "clients get the new layout");
+        assert!(!s.rename_tab(id, "api"), "unchanged");
+        assert!(!s.rename_tab(PaneId(99), "x"), "no such pane");
+        assert!(s.rename_tab(id, ""));
+        assert_eq!(s.layout().tabs[0].name, None);
     }
 }

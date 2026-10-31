@@ -40,6 +40,7 @@ impl Action {
             Self::Sessions => "switch to another session, or start one",
             Self::Help => "this help",
             Self::Welcome => "the welcome screen",
+            Self::RenameTab => "name the tab (blank: its program's name)",
             Self::FocusPane(_) => "focus a pane",
         }
     }
@@ -62,7 +63,9 @@ impl Action {
             | Self::GoToPane
             | Self::CopyMode
             | Self::FocusPane(_) => ActionGroup::Panes,
-            Self::NewTab | Self::NextTab | Self::PrevTab | Self::SelectTab(_) => ActionGroup::Tabs,
+            Self::NewTab | Self::NextTab | Self::PrevTab | Self::SelectTab(_) | Self::RenameTab => {
+                ActionGroup::Tabs
+            }
             Self::Inbox | Self::NextBlocked => ActionGroup::Agents,
             Self::Review | Self::NewWorktree | Self::Projects => ActionGroup::Projects,
             Self::Detach

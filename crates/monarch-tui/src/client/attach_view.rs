@@ -246,6 +246,7 @@ mod tests {
             focus: Some(PaneId(1)),
             panes: vec![pane(1, 0), pane(2, 4)],
             tabs: vec![TabSummary {
+                name: None,
                 focus: PaneId(1),
                 zoomed: false,
                 panes: vec![summary(1), summary(2)],
