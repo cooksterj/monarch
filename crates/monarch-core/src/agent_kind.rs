@@ -48,6 +48,17 @@ impl AgentKind {
         Self::ALL.into_iter().find(|k| k.program() == command)
     }
 
+    /// Its single-cell icon in the sidebar and tab bar: Claude Code's own
+    /// starburst, and a hexagon ring for Codex (OpenAI's knot). Plain
+    /// Unicode, so every font draws it.
+    #[must_use]
+    pub fn icon(self) -> char {
+        match self {
+            Self::Claude => '✻',
+            Self::Codex => '⌬',
+        }
+    }
+
     /// How the agent calls itself, for notices.
     #[must_use]
     pub fn display_name(self) -> &'static str {
@@ -78,6 +89,17 @@ impl FromStr for AgentKind {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn each_agent_has_its_own_icon() {
+        assert_eq!(AgentKind::Claude.icon(), '✻');
+        assert_eq!(AgentKind::Codex.icon(), '⌬');
+        assert_ne!(AgentKind::Claude.icon(), AgentKind::Codex.icon());
+        assert!(
+            AgentKind::ALL.iter().all(|k| !k.icon().is_ascii()),
+            "never confused with text"
+        );
+    }
 
     #[test]
     fn programs_name_their_kind() {

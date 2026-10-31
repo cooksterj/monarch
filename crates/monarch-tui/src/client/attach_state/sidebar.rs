@@ -31,6 +31,7 @@ impl AttachState {
                         .trim_end()
                         .to_owned(),
                     state: agent.state,
+                    agent: agent.agent,
                     look: None,
                     detail: activity(agent).or_else(|| place.and_then(where_in)),
                     focused: Some(pane.pane) == layout.focus,
@@ -224,6 +225,29 @@ mod tests {
             state.tab_labels().0,
             ["1 scratch", "2 api"],
             "a tab is named by its name, else its focused pane's"
+        );
+    }
+
+    #[test]
+    fn an_agent_tab_shows_its_icon_and_rows_carry_the_kind() {
+        let mut state = state();
+        let Some(layout) = state.layout.as_mut() else {
+            unreachable!("state() has a layout");
+        };
+        layout.tabs[0].focus = PaneId(1);
+        layout.tabs[0].panes[0].agent.agent = Some(monarch_core::AgentKind::Claude);
+        layout.tabs[1].name = Some("api".into());
+        assert_eq!(state.tab_labels().0, ["1 ✻ claude", "2 api"]);
+        let agents: Vec<_> = state
+            .sidebar_groups()
+            .into_iter()
+            .flat_map(|g| g.rows)
+            .filter_map(|r| r.agent)
+            .collect();
+        assert_eq!(
+            agents,
+            [monarch_core::AgentKind::Claude],
+            "only the claude pane"
         );
     }
 

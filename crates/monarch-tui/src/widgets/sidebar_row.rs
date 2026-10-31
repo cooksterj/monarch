@@ -1,6 +1,6 @@
 //! One pane as the sidebar lists it.
 
-use monarch_core::{AgentState, PaneId};
+use monarch_core::{AgentKind, AgentState, PaneId};
 
 use super::GlyphLook;
 
@@ -14,6 +14,8 @@ pub struct SidebarRow {
     /// Its agent's state, drawn as a glyph before the label (`$` for a
     /// plain shell).
     pub state: AgentState,
+    /// The agent it runs, whose icon follows the state glyph.
+    pub agent: Option<AgentKind>,
     /// How its glyph looks this frame (animated, coloured); `None` draws
     /// the state's plain glyph.
     pub look: Option<GlyphLook>,
@@ -36,6 +38,7 @@ mod tests {
             pane: PaneId(1),
             label: "1 zsh".into(),
             state: AgentState::Unknown,
+            agent: None,
             look: None,
             detail: None,
             focused: true,

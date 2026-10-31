@@ -98,6 +98,11 @@ impl Widget for Sidebar<'_> {
             return;
         }
         let width = area.width - 1;
+        let icons = self
+            .groups
+            .iter()
+            .flat_map(|g| &g.rows)
+            .any(|r| r.agent.is_some());
         let dim = Style::new().add_modifier(Modifier::DIM);
         let thumb = self.thumb(area.height).unwrap_or_default();
         for y in area.y..area.bottom() {
@@ -114,7 +119,7 @@ impl Widget for Sidebar<'_> {
                 Line::Heading(group) => heading(group, self.chrome, row, buf),
                 Line::Pane(pane) if width > INDENT => {
                     let indented = Rect::new(row.x + INDENT, y, width - INDENT, 1);
-                    pane_line(pane, indented, buf);
+                    pane_line(pane, indented, (icons, self.chrome), buf);
                 }
                 Line::Pane(_) => {}
                 Line::Gap => {}
@@ -171,16 +176,29 @@ fn shorten(text: &str, max: usize) -> String {
     format!("{kept}…")
 }
 
-/// `▸ ● label  detail`: the focus marker, the state's glyph and the
-/// pane's activity or directory, dim.
-fn pane_line(pane: &SidebarRow, row: Rect, buf: &mut Buffer) {
+/// `▸ ● ✻ label  detail`: the focus marker, the state's glyph, the
+/// agent's icon (a blank keeps rows aligned when some have one and this
+/// doesn't) and the pane's activity or directory, dim.
+fn pane_line(pane: &SidebarRow, row: Rect, (icons, chrome): (bool, Chrome<'_>), buf: &mut Buffer) {
     let marker = if pane.focused { "▸" } else { " " };
     let glyph = pane.look.map_or(pane.state.glyph(), |l| l.symbol);
-    let text = format!("{marker} {glyph} {}", pane.label);
+    let icon = match pane.agent {
+        Some(agent) => format!("{} ", agent.icon()),
+        None if icons => "  ".to_owned(),
+        None => String::new(),
+    };
+    let text = format!("{marker} {glyph} {icon}{}", pane.label);
     let width = usize::from(row.width);
     let (x, _) = buf.set_stringn(row.x, row.y, &text, width, row_style(pane));
     if row.width > 2 {
         paint_glyph(pane, &mut buf[(row.x + 2, row.y)]);
+    }
+    if let Some(color) = pane
+        .agent
+        .and_then(|a| chrome.agent(a))
+        .filter(|_| row.width > 4)
+    {
+        buf[(row.x + 4, row.y)].set_fg(color);
     }
     let left = usize::from(row.right() - x);
     if let Some(detail) = pane.detail.as_deref().filter(|_| left > 2) {
@@ -230,6 +248,7 @@ mod tests {
             pane: PaneId(pane),
             label: label.into(),
             state: AgentState::Unknown,
+            agent: None,
             look: None,
             detail: detail.map(Into::into),
             focused: pane == 1,
@@ -281,6 +300,46 @@ mod tests {
             .collect::<Vec<_>>()
             .join("\n");
         (text, buf)
+    }
+
+    #[test]
+    fn agents_get_their_icon_and_other_rows_stay_aligned() {
+        let mut groups = groups();
+        groups[0].rows[0].agent = Some(monarch_core::AgentKind::Claude);
+        groups[1].rows[0].agent = Some(monarch_core::AgentKind::Codex);
+        let (text, _) = draw(&groups, 24, 7);
+        insta::assert_snapshot!(text, @r"
+        ▾ monarch  feat/sidebar│
+          ▸ $ ✻ 1 claude       │
+            $   1 zsh  src     │
+                               │
+        ▾ Scratch              │
+            $ ⌬ 2 htop  tmp    │
+                               │
+        ");
+        let theme = monarch_core::Theme::dark();
+        let mut themed = Buffer::empty(Rect::new(0, 0, 24, 7));
+        Sidebar {
+            groups: &groups,
+            chrome: Chrome::new(Some(&theme)),
+            offset: 0,
+        }
+        .render(themed.area, &mut themed);
+        assert_eq!(
+            themed[(6, 1)].fg,
+            Chrome::color(theme.claude),
+            "claude's icon"
+        );
+        assert_eq!(
+            themed[(6, 5)].fg,
+            Chrome::color(theme.codex),
+            "codex's icon"
+        );
+        assert_ne!(
+            themed[(8, 1)].fg,
+            Chrome::color(theme.claude),
+            "only the icon"
+        );
     }
 
     #[test]

@@ -4,7 +4,7 @@
 
 mod builtin;
 
-use crate::Rgb;
+use crate::{AgentKind, Rgb};
 
 /// The colours Monarch draws its chrome, agent states and diffs in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -36,6 +36,10 @@ pub struct Theme {
     pub removed: Rgb,
     /// A diff's hunk header (`@@ -1,3 +1,4 @@`).
     pub hunk: Rgb,
+    /// Claude Code's icon.
+    pub claude: Rgb,
+    /// Codex's icon.
+    pub codex: Rgb,
     /// The welcome's butterflies: their wings…
     pub wing: Rgb,
     /// …the veins, borders and body…
@@ -45,7 +49,7 @@ pub struct Theme {
 }
 
 /// Every token's name, as `[theme.colors]` spells it.
-pub const THEME_TOKENS: [&str; 16] = [
+pub const THEME_TOKENS: [&str; 18] = [
     "bar",
     "bar_text",
     "accent",
@@ -59,6 +63,8 @@ pub const THEME_TOKENS: [&str; 16] = [
     "added",
     "removed",
     "hunk",
+    "claude",
+    "codex",
     "wing",
     "wing_edge",
     "wing_spot",
@@ -101,6 +107,15 @@ impl Theme {
         }
     }
 
+    /// The colour of `agent`'s icon.
+    #[must_use]
+    pub fn agent(&self, agent: AgentKind) -> Rgb {
+        match agent {
+            AgentKind::Claude => self.claude,
+            AgentKind::Codex => self.codex,
+        }
+    }
+
     /// The token called `name` (see [`THEME_TOKENS`]), to override.
     pub fn token_mut(&mut self, name: &str) -> Option<&mut Rgb> {
         Some(match name {
@@ -117,6 +132,8 @@ impl Theme {
             "added" => &mut self.added,
             "removed" => &mut self.removed,
             "hunk" => &mut self.hunk,
+            "claude" => &mut self.claude,
+            "codex" => &mut self.codex,
             "wing" => &mut self.wing,
             "wing_edge" => &mut self.wing_edge,
             "wing_spot" => &mut self.wing_spot,
@@ -157,6 +174,23 @@ mod tests {
         assert_eq!(theme.hunk, Rgb::new(1, 2, 3));
         assert_eq!(theme.bar, Rgb::new(1, 2, 3));
         assert!(theme.token_mut("background").is_none());
+    }
+
+    #[test]
+    fn agents_take_their_own_icon_colours() {
+        let theme = Theme::dark();
+        assert_eq!(theme.agent(AgentKind::Claude), theme.claude);
+        assert_eq!(theme.agent(AgentKind::Codex), theme.codex);
+        assert_ne!(theme.claude, theme.codex);
+        for name in Theme::names() {
+            let t = Theme::named(name).expect(name);
+            let dark = name.ends_with("dark") || name.ends_with("mocha") || name.ends_with("night");
+            assert_eq!(
+                t.codex.is_light(),
+                dark,
+                "{name}: codex reads on its background"
+            );
+        }
     }
 
     #[test]

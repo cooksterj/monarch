@@ -135,7 +135,8 @@ impl AttachState {
         Some(PaneSummary::clean_title(title))
     }
 
-    /// One label per tab (`1 vim`, `2 zsh [Z]`) and the shown tab's index,
+    /// One label per tab (`1 vim`, `2 ✻ api`, `3 zsh [Z]`: an agent's icon
+    /// before its name) and the shown tab's index,
     /// named after each tab's focused pane (see [`Self::all_panes`]).
     #[must_use]
     pub fn tab_labels(&self) -> (Vec<String>, usize) {
@@ -147,8 +148,12 @@ impl AttachState {
             .iter()
             .enumerate()
             .map(|(i, tab)| {
-                let name = self.tab_name(tab);
-                let mut label = format!("{} {}", i + 1, shorten(name.trim()));
+                let name = shorten(self.tab_name(tab).trim());
+                let icon = tab.focused().and_then(|p| self.agent(p).agent);
+                let mut label = match icon {
+                    Some(agent) => format!("{} {} {name}", i + 1, agent.icon()),
+                    None => format!("{} {name}", i + 1),
+                };
                 if tab.zoomed {
                     label.push_str(" [Z]");
                 }

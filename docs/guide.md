@@ -101,6 +101,10 @@ Each pane running an agent shows its state in the sidebar and the inbox:
 | `■` | Exited | the agent's process ended |
 | `$` | (none) | a plain shell |
 
+After the state, an agent's icon says which agent it is: `✻` Claude Code (terracotta, the
+`claude` token) and `⌬` Codex (the `codex` token, your theme's text colour). The tab bar shows the
+icon of each tab's focused pane, so `1 ✻ api` is a Claude tab even after you rename it.
+
 States come from, in order of trust: the agent's own **hooks** (installed by `monarch setup`),
 terminal **notifications** the agent sends, and its **screen**, read with detection rules for
 about twenty agents. `monarch agent explain` shows each pane's state and where it came from.
@@ -281,7 +285,8 @@ accent = "#ff8800"
 ```
 
 Tokens: `bar`, `bar_text`, `accent`, `accent_text`, `working`, `blocked_from`, `blocked_to`,
-`done_from`, `done_to`, `error`, `added`, `removed`, `hunk`, `wing`, `wing_edge`, `wing_spot`.
+`done_from`, `done_to`, `error`, `added`, `removed`, `hunk`, `claude`, `codex`, `wing`,
+`wing_edge`, `wing_spot`.
 With `NO_COLOR` set, Monarch draws with reverse video and bold instead.
 
 ## Agents driving Monarch
