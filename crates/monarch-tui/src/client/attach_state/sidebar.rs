@@ -189,6 +189,7 @@ mod tests {
             unreachable!("state() has a layout");
         };
         layout.tabs[1].name = Some("api docs".into());
+        layout.tabs[1].panes.truncate(1);
         let labels: Vec<String> = state
             .sidebar_groups()
             .into_iter()
@@ -218,13 +219,17 @@ mod tests {
             .flat_map(|g| g.rows)
             .map(|r| r.label)
             .collect();
-        for want in ["2 editor", "2 api", "1 scratch", "1 claude"] {
+        for want in ["2 editor", "2 sh", "1 scratch", "1 claude"] {
             assert!(labels.iter().any(|l| l == want), "{want} in {labels:?}");
         }
         assert_eq!(
             state.tab_labels().0,
             ["1 scratch", "2 api"],
             "a tab is named by its name, else its focused pane's"
+        );
+        assert!(
+            !labels.iter().any(|l| l == "2 api"),
+            "a split tab's unnamed panes keep their own names: {labels:?}"
         );
     }
 

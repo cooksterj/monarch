@@ -197,12 +197,16 @@ impl AttachState {
     }
 
     /// What a pane in `tab` is called in rows and lists: the name the user
-    /// gave the pane, else the tab's, else its title or program.
+    /// gave the pane; else the tab's, when the pane is alone in it; else
+    /// its title or program. So the panes of a split named tab keep apart
+    /// until each is named.
     #[must_use]
     pub fn name<'a>(&'a self, tab: &'a TabSummary, sent: &'a PaneSummary) -> &'a str {
+        let alone = tab.panes.len() == 1;
         match (sent.given_name.as_deref(), tab.name.as_deref()) {
-            (Some(given), _) | (None, Some(given)) => given,
-            (None, None) => self.pane_name(sent),
+            (Some(given), _) => given,
+            (None, Some(tab_name)) if alone => tab_name,
+            (None, _) => self.pane_name(sent),
         }
     }
 
