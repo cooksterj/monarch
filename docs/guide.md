@@ -80,6 +80,9 @@ for the action. Wait a moment after the prefix and a pop-up lists every key you 
 | `,` | rename the tab; its rows in the sidebar take the name too. A blank name gives back the automatic one (the program's) |
 | `.` | rename the focused pane, so the panes of a split tab can be told apart; a pane's own name wins over its tab's in the sidebar, and a blank name gives the automatic one back |
 
+From a shell, `monarch tab rename api` names the tab it runs in (outside Monarch: the tab shown),
+`--tab 2` names another, and `monarch tab rename ""` gives the automatic name back.
+
 Focus and resize keys repeat: within half a second (`keys.repeat_ms`) you can press them again
 without the prefix, so `prefix L L L` grows a pane three steps.
 
@@ -293,6 +296,7 @@ monarch agent wait p3 --timeout 600            # until p3 needs a person (blocke
 monarch new feat-parser --agent claude --detached
 monarch pane send p4 "Add a parser. Run cargo test before you stop." --enter
 monarch pane send p4 --enter < task.md         # a long prompt, as one paste
+monarch tab rename parser --tab 2              # name the tab it opened
 ```
 
 `monarch agent wait` exits 0 when the state is reached and 2 on timeout. `monarch pane send`

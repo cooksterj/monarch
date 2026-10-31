@@ -16,6 +16,7 @@ mod new;
 mod pane;
 mod server;
 mod setup;
+mod tab;
 
 use std::io::Write;
 use std::process::ExitCode;
@@ -58,6 +59,7 @@ pub(crate) fn dispatch(cli: Cli, out: &mut dyn Write) -> anyhow::Result<ExitCode
             &mut std::io::stdin().lock(),
             out,
         ),
+        Some(Command::Tab(cmd)) => tab::run(&cmd, &loader.load()?.config, out),
         Some(Command::Keys) => keys::run(&loader.load()?.config, out),
         Some(Command::Server(args)) => server::run(&args, &loader.load()?.config),
         Some(Command::New(args)) => new::run(&args, &loader.load()?, out),

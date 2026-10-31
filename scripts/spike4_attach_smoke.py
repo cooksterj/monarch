@@ -157,6 +157,17 @@ def run_all(binary):
         os.write(first.fd, b"\x15\r")
         first.wait_for_bar(b"1 sh", "the pane's automatic name back")
         print("  rename: prefix , named the tab api, prefix . the pane server; blank names gave sh back")
+        said = subprocess.run([binary, "tab", "rename", "from cli", "-s", SESSION], env=env,
+                              capture_output=True, text=True, check=True).stdout
+        assert said.strip() == 'tab 1 is now "from cli"', said
+        first.wait_for_bar(b"1 from cli", "the name the CLI gave")
+        missing = subprocess.run([binary, "tab", "rename", "x", "--tab", "9", "-s", SESSION], env=env,
+                                 capture_output=True, text=True)
+        assert missing.returncode != 0 and "no tab 9" in missing.stderr, missing
+        subprocess.run([binary, "tab", "rename", "", "-s", SESSION], env=env, check=True,
+                       capture_output=True)
+        first.wait_for_bar(b"1 sh", "the automatic name back from the CLI")
+        print("  tab rename: the CLI named the shown tab, refused tab 9, and cleared the name")
         os.write(first.fd, b"\x02%")
         first.idle(0.5)
         os.write(first.fd, b"echo split-$((1+1))\r")
