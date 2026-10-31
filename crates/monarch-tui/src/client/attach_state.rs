@@ -4,7 +4,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use monarch_core::{PaneId, Rect};
 use monarch_proto::{
-    AgentStatus, Delta, LayoutMsg, ModeFlags, PanePlace, PaneSummary, Screen, ServerMsg, StyleCache,
+    AgentStatus, Delta, LayoutMsg, ModeFlags, PanePlace, PaneSummary, Screen, ServerMsg,
+    StyleCache, TabSummary,
 };
 
 use super::{Applied, FocusView, PaneReplica};
@@ -146,7 +147,7 @@ impl AttachState {
             .iter()
             .enumerate()
             .map(|(i, tab)| {
-                let name = tab.focused().map_or("", |p| self.name(p));
+                let name = self.tab_name(tab);
                 let mut label = format!("{} {}", i + 1, shorten(name.trim()));
                 if tab.zoomed {
                     label.push_str(" [Z]");
@@ -169,14 +170,34 @@ impl AttachState {
         let mut out = Vec::new();
         for (i, tab) in layout.tabs.iter().enumerate() {
             for pane in &tab.panes {
-                out.push((i, pane.pane, self.name(pane)));
+                out.push((i, pane.pane, self.name(tab, pane)));
             }
         }
         out
     }
 
+    /// The shown tab, if a layout has arrived.
+    #[must_use]
+    pub fn shown_tab(&self) -> Option<&TabSummary> {
+        let layout = self.layout.as_ref()?;
+        layout.tabs.get(layout.active_tab)
+    }
+
+    /// What `tab` is called: the name the user gave it, else its focused
+    /// pane's.
+    #[must_use]
+    pub fn tab_name<'a>(&'a self, tab: &'a TabSummary) -> &'a str {
+        tab.focused().map_or("", |p| self.name(tab, p))
+    }
+
+    /// What a pane in `tab` is called: the name the user gave the tab,
+    /// else the pane's own.
+    fn name<'a>(&'a self, tab: &'a TabSummary, sent: &'a PaneSummary) -> &'a str {
+        tab.name.as_deref().unwrap_or_else(|| self.pane_name(sent))
+    }
+
     /// A pane's name from what the layout said and later messages.
-    fn name<'a>(&'a self, sent: &'a PaneSummary) -> &'a str {
+    fn pane_name<'a>(&'a self, sent: &'a PaneSummary) -> &'a str {
         if let Some(kind) = self.agent(sent).agent {
             return kind.name();
         }

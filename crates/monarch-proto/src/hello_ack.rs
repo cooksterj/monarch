@@ -49,7 +49,7 @@ mod tests {
     #[test]
     fn accept_omits_the_error_field() {
         let line = serde_json::to_string(&HelloAck::accept("0.1.0")).expect("json");
-        assert_eq!(line, r#"{"ok":true,"server":"0.1.0","wire":2}"#);
+        assert_eq!(line, r#"{"ok":true,"server":"0.1.0","wire":3}"#);
     }
 
     #[test]

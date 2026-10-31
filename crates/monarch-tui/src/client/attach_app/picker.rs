@@ -25,6 +25,7 @@ impl AttachApp {
             Action::NewWorktree => self.open_worktree_form(),
             Action::Projects => self.open_projects(),
             Action::Sessions => self.open_sessions(),
+            Action::RenameTab => self.open_rename(),
             Action::CopyMode => self.open_copy(),
             Action::ToggleSidebar => self.toggle_sidebar(),
             Action::ReloadConfig => self.reload_config(),
@@ -53,6 +54,8 @@ impl AttachApp {
             self.worktree_input(bytes);
         } else if self.popups.projects.is_some() {
             self.projects_input(bytes);
+        } else if self.popups.namer.is_some() {
+            self.rename_input(bytes);
         } else if self.popups.sessions.is_some() {
             return self.sessions_input(bytes);
         } else if self.popups.picker.is_some() {

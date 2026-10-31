@@ -29,11 +29,11 @@ impl AttachState {
             .tabs
             .iter()
             .enumerate()
-            .flat_map(|(tab, summary)| summary.panes.iter().map(move |p| (tab, p)))
-            .filter_map(|(tab, pane)| {
+            .flat_map(|(tab, summary)| summary.panes.iter().map(move |p| (tab, summary, p)))
+            .filter_map(|(tab, summary, pane)| {
                 let status = self.agent(pane);
                 urgency(status.state)?;
-                Some((tab, pane.pane, self.name(pane), status))
+                Some((tab, pane.pane, self.name(summary, pane), status))
             })
             .collect();
         out.sort_by_key(|(_, _, _, status)| urgency(status.state));
@@ -75,6 +75,7 @@ mod tests {
             agent: AgentStatus::default(),
         };
         let tab = |ids: &[u32]| TabSummary {
+            name: None,
             focus: PaneId(ids[0]),
             zoomed: false,
             panes: ids.iter().map(|i| pane(*i)).collect(),

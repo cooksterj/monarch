@@ -6,7 +6,8 @@ use serde::{Deserialize, Serialize};
 use super::PaneSummary;
 
 /// A tab: every pane in it with its names, the focused one (whose name
-/// names the tab), and whether that pane is zoomed.
+/// names the tab unless the user named it), and whether that pane is
+/// zoomed.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TabSummary {
     /// The tab's focused pane.
@@ -15,6 +16,8 @@ pub struct TabSummary {
     pub zoomed: bool,
     /// Every pane in reading order.
     pub panes: Vec<PaneSummary>,
+    /// The name the user gave the tab, if any.
+    pub name: Option<String>,
 }
 
 impl TabSummary {
@@ -44,6 +47,7 @@ mod tests {
             focus: PaneId(3),
             zoomed: true,
             panes: vec![summary(2, None), summary(3, Some("vim"))],
+            name: Some("editor".into()),
         }
     }
 

@@ -32,6 +32,7 @@ fn layout(generation: u32) -> ServerMsg {
             title: Some("sh".into()),
         }],
         tabs: vec![TabSummary {
+            name: None,
             focus: PaneId(1),
             zoomed: false,
             panes: vec![pane(1, Some("sh"))],
@@ -191,11 +192,13 @@ fn tab_labels_follow_titles_zoom_and_length() {
         unreachable!("layout() builds a layout");
     };
     msg.tabs.push(TabSummary {
+        name: None,
         focus: PaneId(2),
         zoomed: true,
         panes: vec![pane(2, Some("a very long title that will not fit"))],
     });
     msg.tabs.push(TabSummary {
+        name: None,
         focus: PaneId(3),
         zoomed: false,
         panes: vec![pane(3, None)],
@@ -226,11 +229,13 @@ fn panes_without_a_title_are_named_after_their_program() {
         unreachable!("layout() builds a layout");
     };
     msg.tabs.push(TabSummary {
+        name: None,
         focus: PaneId(2),
         zoomed: false,
         panes: vec![pane(2, Some("htop"))],
     });
     msg.tabs.push(TabSummary {
+        name: None,
         focus: PaneId(3),
         zoomed: false,
         panes: vec![pane(3, Some(" "))],
@@ -262,6 +267,7 @@ fn all_panes_lists_every_tab_with_live_titles() {
         unreachable!("layout() builds a layout");
     };
     msg.tabs.push(TabSummary {
+        name: None,
         focus: PaneId(3),
         zoomed: false,
         panes: vec![pane(2, Some("vim")), pane(3, None)],

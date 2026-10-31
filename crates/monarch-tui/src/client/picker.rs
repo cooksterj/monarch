@@ -66,6 +66,13 @@ impl Picker {
         }
     }
 
+    /// The same picker with `query` already typed.
+    #[must_use]
+    pub fn with_query(mut self, query: impl Into<String>) -> Self {
+        self.edit(|q| *q = query.into());
+        self
+    }
+
     /// Its own footer and no-rows text, if it has them.
     #[must_use]
     pub fn text(&self) -> Option<(&str, &str)> {

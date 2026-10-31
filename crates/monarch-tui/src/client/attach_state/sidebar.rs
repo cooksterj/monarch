@@ -27,7 +27,7 @@ impl AttachState {
                 let agent = self.agent(pane);
                 let row = SidebarRow {
                     pane: pane.pane,
-                    label: format!("{} {}", tab + 1, self.name(pane))
+                    label: format!("{} {}", tab + 1, self.name(summary, pane))
                         .trim_end()
                         .to_owned(),
                     state: agent.state,
@@ -147,6 +147,7 @@ mod tests {
 
     fn state() -> AttachState {
         let tab = |focus, panes| TabSummary {
+            name: None,
             focus: PaneId(focus),
             zoomed: false,
             panes,
@@ -177,6 +178,27 @@ mod tests {
         let mut state = AttachState::new();
         state.apply(ServerMsg::Layout(layout), &mut Applied::default());
         state
+    }
+
+    #[test]
+    fn a_named_tab_names_its_rows_and_its_label() {
+        let mut state = state();
+        let Some(layout) = state.layout.as_mut() else {
+            unreachable!("state() has a layout");
+        };
+        layout.tabs[1].name = Some("api docs".into());
+        let labels: Vec<String> = state
+            .sidebar_groups()
+            .into_iter()
+            .flat_map(|g| g.rows)
+            .map(|r| r.label)
+            .collect();
+        assert!(labels.contains(&"2 api docs".to_owned()), "{labels:?}");
+        assert!(labels.contains(&"1 claude".to_owned()), "others unchanged");
+        assert_eq!(state.tab_labels().0, ["1 zsh", "2 api docs"]);
+        let named = state.layout.as_ref().map(|l| l.tabs[1].clone());
+        assert_eq!(named.as_ref().map(|t| state.tab_name(t)), Some("api docs"));
+        assert_eq!(state.shown_tab().map(|t| t.focus), Some(PaneId(2)));
     }
 
     #[test]

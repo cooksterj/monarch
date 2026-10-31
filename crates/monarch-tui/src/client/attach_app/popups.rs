@@ -5,8 +5,8 @@ use std::time::Instant;
 
 use crate::{
     Chrome, ContextMenu, ContextMenuView, HelpState, HelpView, Picker, PickerView, PopupViews,
-    ProjectPicker, ReviewState, ReviewView, SessionPicker, WelcomeState, WelcomeView, WorktreeForm,
-    WorktreeFormView,
+    ProjectPicker, ReviewState, ReviewView, SessionPicker, TabNamer, WelcomeState, WelcomeView,
+    WorktreeForm, WorktreeFormView,
 };
 
 /// Every pop-up; each takes the keys while open.
@@ -18,6 +18,8 @@ pub(super) struct Popups {
     pub projects: Option<ProjectPicker>,
     /// The session picker.
     pub sessions: Option<SessionPicker>,
+    /// The rename-tab prompt.
+    pub namer: Option<TabNamer>,
     /// The right-click menu, which also takes clicks.
     pub menu: Option<ContextMenu>,
     /// The review pane.
@@ -36,6 +38,7 @@ impl Popups {
         self.picker.is_some()
             || self.projects.is_some()
             || self.sessions.is_some()
+            || self.namer.is_some()
             || self.menu.is_some()
             || self.review.is_some()
             || self.form.is_some()
@@ -54,7 +57,8 @@ impl Popups {
         let theme = chrome.theme;
         let picker = (self.picker.as_ref())
             .or(self.projects.as_ref().map(ProjectPicker::picker))
-            .or(self.sessions.as_ref().map(SessionPicker::picker));
+            .or(self.sessions.as_ref().map(SessionPicker::picker))
+            .or(self.namer.as_ref().map(TabNamer::picker));
         let now = Instant::now();
         PopupViews {
             picker: picker.map(|picker| PickerView { picker }),

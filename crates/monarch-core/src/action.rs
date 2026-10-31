@@ -47,6 +47,8 @@ pub enum Action {
     PrevTab,
     /// Show tab number `n`, counting from 1.
     SelectTab(u8),
+    /// Name the shown tab, or give it its automatic name back.
+    RenameTab,
     /// Leave the session running and exit the client.
     Detach,
     /// Hand the mouse to the host terminal, or take it back.
@@ -110,6 +112,7 @@ impl Action {
                 | Self::Sessions
                 | Self::Help
                 | Self::Welcome
+                | Self::RenameTab
         )
     }
 
@@ -141,6 +144,7 @@ mod tests {
         assert!(Action::NewWorktree.is_local());
         assert!(Action::Projects.is_local());
         assert!(Action::Sessions.is_local() && Action::Help.is_local());
+        assert!(Action::RenameTab.is_local(), "the client asks for the name");
         assert!(!Action::FocusPane(PaneId(1)).is_local());
         assert!(!Action::Split(SplitAxis::Rows).is_local());
         assert!(!Action::SelectTab(1).is_local());

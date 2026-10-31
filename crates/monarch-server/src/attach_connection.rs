@@ -109,6 +109,9 @@ fn apply(ctx: &ServerContext, id: ClientId, msg: &ClientMsg) {
                 client.mark_stale(*pane);
             }
         }
+        ClientMsg::RenameTab { pane, name } => {
+            state.rename_tab(*pane, name);
+        }
         ClientMsg::Ping(token) => {
             if let Some(client) = state.client_mut(id) {
                 client.push(vec![ServerMsg::Pong(*token)]);
