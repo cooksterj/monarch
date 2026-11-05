@@ -19,7 +19,7 @@ const FIRST_KEYS: [(Action, &str); 10] = [
     (Action::NewTab, "new tab"),
     (Action::CommandPalette, "search every command"),
     (Action::Inbox, "agents that need you"),
-    (Action::NextBlocked, "jump to a waiting agent"),
+    (Action::NextBlocked, "next waiting agent"),
     (Action::NewWorktree, "new worktree and agent"),
     (Action::Help, "every key, and more"),
     (Action::Detach, "detach (keeps running)"),

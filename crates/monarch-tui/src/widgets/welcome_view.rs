@@ -57,7 +57,7 @@ impl WelcomeView<'_> {
     /// there is no room for it.
     fn card(&self, area: Rect) -> Option<(Rect, usize)> {
         let width = WIDTH.min(area.width.saturating_sub(4));
-        let cols = if width >= 72 { 2 } else { 1 };
+        let cols = if width >= WIDTH { 2 } else { 1 };
         let height = self.card_rows(cols).min(area.height);
         if width < 30 || height < 5 {
             return None;

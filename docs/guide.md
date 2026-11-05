@@ -192,8 +192,10 @@ attached at once.
 
 Monarch saves each session's layout as it changes. If the server dies (a crash, a reboot,
 `kill -9`), the next `monarch` brings back the tabs, splits and each pane's working directory,
-and resumes agent conversations: Claude Code with `claude --resume`, Codex with
-`codex resume` (its own picker if Codex's hooks never reported a session id). Running programs and their screens can't survive the server, as with tmux.
+and resumes the conversations of agents it started (`--agent`, `monarch new --agent`, `prefix N`):
+Claude Code with `claude --resume`, Codex with `codex resume` (its own picker if Codex's hooks
+never reported a session id). An agent you started by hand comes back as a shell in the same
+directory. Running programs and their screens can't survive the server, as with tmux.
 `monarch kill` is the way to end a session without it coming back.
 
 ## Keys

@@ -47,3 +47,8 @@ bench-spike4 *ARGS:
     cargo build --release --bin monarch
     cargo build --release -p monarch-mux-tui --example spike4_bench
     target/release/examples/spike4_bench target/release/monarch {{ARGS}}
+
+# Regenerate the README's images from the real binary (needs pyte, Chrome, img2webp).
+readme-shots:
+    cargo build --release
+    python3 scripts/readme_shots.py target/release/monarch docs/assets

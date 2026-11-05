@@ -1,0 +1,677 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-05T19:32:36+00:00",
+  "title": "Design System: Monarch",
+  "extensions": {
+    "colorMeta": {
+      "wing": {
+        "role": "primary",
+        "displayName": "Wing",
+        "canonical": "#e8761b",
+        "tonalRamp": [
+          "#270000",
+          "#550000",
+          "#800d00",
+          "#a63900",
+          "#cd5d00",
+          "#ee8640",
+          "#ffb586",
+          "#ffe6d1"
+        ]
+      },
+      "wing-edge": {
+        "role": "primary",
+        "displayName": "Wing Edge",
+        "canonical": "#1e1612",
+        "tonalRamp": [
+          "#0f0a08",
+          "#2b231f",
+          "#49403b",
+          "#695f5a",
+          "#8a807b",
+          "#ada39e",
+          "#cfc7c4",
+          "#f1eeec"
+        ]
+      },
+      "wing-spot": {
+        "role": "primary",
+        "displayName": "Wing Spot",
+        "canonical": "#f5f0e6",
+        "tonalRamp": [
+          "#0d0b07",
+          "#28251e",
+          "#464239",
+          "#656158",
+          "#868279",
+          "#a9a59c",
+          "#ccc9c2",
+          "#f0eeeb"
+        ]
+      },
+      "claude": {
+        "role": "tertiary",
+        "displayName": "Claude",
+        "canonical": "#d97757",
+        "tonalRamp": [
+          "#230000",
+          "#4e0000",
+          "#771d00",
+          "#9d4121",
+          "#c36344",
+          "#e48a6d",
+          "#fab7a1",
+          "#ffe7dc"
+        ]
+      },
+      "dark-accent": {
+        "role": "secondary",
+        "displayName": "Dark Accent",
+        "canonical": "#e8a33d",
+        "tonalRamp": [
+          "#1e0100",
+          "#461200",
+          "#6c2f00",
+          "#8f5000",
+          "#b47200",
+          "#d5973f",
+          "#eec086",
+          "#ffebd1"
+        ]
+      },
+      "dark-accent-text": {
+        "role": "secondary",
+        "displayName": "Dark Accent Text",
+        "canonical": "#1a1a1a",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "dark-bar": {
+        "role": "neutral",
+        "displayName": "Dark Bar",
+        "canonical": "#2b2d3a",
+        "tonalRamp": [
+          "#0a0b11",
+          "#22242f",
+          "#3f414f",
+          "#5e606f",
+          "#7f8191",
+          "#a1a4b3",
+          "#c6c8d3",
+          "#edeef3"
+        ]
+      },
+      "dark-bar-text": {
+        "role": "neutral",
+        "displayName": "Dark Bar Text",
+        "canonical": "#d0d3e0",
+        "tonalRamp": [
+          "#0a0b10",
+          "#23252d",
+          "#3f414c",
+          "#5e616c",
+          "#7f828e",
+          "#a2a4b0",
+          "#c7c9d1",
+          "#edeef2"
+        ]
+      },
+      "dark-working": {
+        "role": "tertiary",
+        "displayName": "Dark Working",
+        "canonical": "#5fafff",
+        "tonalRamp": [
+          "#00082d",
+          "#00225d",
+          "#004188",
+          "#0063ad",
+          "#3486d3",
+          "#63aaf2",
+          "#9cceff",
+          "#dbf1ff"
+        ]
+      },
+      "dark-blocked-from": {
+        "role": "tertiary",
+        "displayName": "Dark Blocked From",
+        "canonical": "#c8a000",
+        "tonalRamp": [
+          "#190600",
+          "#3c1d00",
+          "#5f3a00",
+          "#815a00",
+          "#a47d00",
+          "#c5a12d",
+          "#e1c77f",
+          "#f9eecf"
+        ]
+      },
+      "dark-blocked-to": {
+        "role": "tertiary",
+        "displayName": "Dark Blocked To",
+        "canonical": "#7b4f1d",
+        "tonalRamp": [
+          "#190500",
+          "#3d1b00",
+          "#613700",
+          "#835625",
+          "#a67747",
+          "#c79b70",
+          "#e3c2a3",
+          "#fbecdd"
+        ]
+      },
+      "dark-done-from": {
+        "role": "tertiary",
+        "displayName": "Dark Done From",
+        "canonical": "#a8e6a3",
+        "tonalRamp": [
+          "#001100",
+          "#003000",
+          "#145012",
+          "#377134",
+          "#589355",
+          "#80b57b",
+          "#afd6ab",
+          "#e3f4e1"
+        ]
+      },
+      "dark-done-to": {
+        "role": "tertiary",
+        "displayName": "Dark Done To",
+        "canonical": "#2ee65b",
+        "tonalRamp": [
+          "#001600",
+          "#003800",
+          "#005c00",
+          "#007f00",
+          "#00a300",
+          "#20c64b",
+          "#83e38d",
+          "#d2fbd5"
+        ]
+      },
+      "dark-error": {
+        "role": "tertiary",
+        "displayName": "Dark Error",
+        "canonical": "#ff5f5f",
+        "tonalRamp": [
+          "#2d0000",
+          "#5f0000",
+          "#8e0000",
+          "#b60923",
+          "#df4045",
+          "#ff706e",
+          "#ffa7a1",
+          "#ffe1dc"
+        ]
+      },
+      "dark-added": {
+        "role": "tertiary",
+        "displayName": "Dark Added",
+        "canonical": "#7ed37e",
+        "tonalRamp": [
+          "#001300",
+          "#003200",
+          "#005300",
+          "#1b7522",
+          "#439846",
+          "#6fba6f",
+          "#a4daa3",
+          "#def6dd"
+        ]
+      },
+      "dark-removed": {
+        "role": "tertiary",
+        "displayName": "Dark Removed",
+        "canonical": "#f07178",
+        "tonalRamp": [
+          "#270000",
+          "#550007",
+          "#81001e",
+          "#a82e3d",
+          "#cf535d",
+          "#f07d82",
+          "#ffaeaf",
+          "#ffe3e3"
+        ]
+      },
+      "dark-hunk": {
+        "role": "tertiary",
+        "displayName": "Dark Hunk",
+        "canonical": "#6fb3d2",
+        "tonalRamp": [
+          "#000e1c",
+          "#002a40",
+          "#004964",
+          "#236a86",
+          "#488caa",
+          "#72aeca",
+          "#a6d1e5",
+          "#dff2fb"
+        ]
+      },
+      "light-accent": {
+        "role": "secondary",
+        "displayName": "Light Accent",
+        "canonical": "#c25e00",
+        "tonalRamp": [
+          "#250000",
+          "#510000",
+          "#7b1a00",
+          "#a03f00",
+          "#c7620c",
+          "#e88a4c",
+          "#fdb78d",
+          "#ffe7d4"
+        ]
+      },
+      "light-accent-text": {
+        "role": "secondary",
+        "displayName": "Light Accent Text",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "light-bar": {
+        "role": "neutral",
+        "displayName": "Light Bar",
+        "canonical": "#e4e2dc",
+        "tonalRamp": [
+          "#0c0b09",
+          "#262521",
+          "#44423d",
+          "#63615c",
+          "#84827d",
+          "#a7a5a0",
+          "#cac9c5",
+          "#efeeed"
+        ]
+      },
+      "light-bar-text": {
+        "role": "neutral",
+        "displayName": "Light Bar Text",
+        "canonical": "#2b2b2b",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#a5a5a5",
+          "#c9c9c9",
+          "#eeeeee"
+        ]
+      },
+      "light-working": {
+        "role": "tertiary",
+        "displayName": "Light Working",
+        "canonical": "#1f6fd1",
+        "tonalRamp": [
+          "#000235",
+          "#001a6a",
+          "#003a98",
+          "#035dbe",
+          "#3381e5",
+          "#61a6ff",
+          "#9accff",
+          "#daf1ff"
+        ]
+      },
+      "light-blocked-from": {
+        "role": "tertiary",
+        "displayName": "Light Blocked From",
+        "canonical": "#a67c00",
+        "tonalRamp": [
+          "#190500",
+          "#3d1c00",
+          "#603900",
+          "#825900",
+          "#a57b00",
+          "#c69f49",
+          "#e2c68c",
+          "#faedd4"
+        ]
+      },
+      "light-blocked-to": {
+        "role": "tertiary",
+        "displayName": "Light Blocked To",
+        "canonical": "#5c3a12",
+        "tonalRamp": [
+          "#170700",
+          "#391d00",
+          "#5b3911",
+          "#7d5932",
+          "#a07a53",
+          "#c19d7a",
+          "#dfc4aa",
+          "#f9ece0"
+        ]
+      },
+      "light-done-from": {
+        "role": "tertiary",
+        "displayName": "Light Done From",
+        "canonical": "#6cbf6a",
+        "tonalRamp": [
+          "#001300",
+          "#003200",
+          "#005300",
+          "#1d7521",
+          "#459844",
+          "#70ba6e",
+          "#a5d9a2",
+          "#dff6dd"
+        ]
+      },
+      "light-done-to": {
+        "role": "tertiary",
+        "displayName": "Light Done To",
+        "canonical": "#0a8a2a",
+        "tonalRamp": [
+          "#001400",
+          "#003400",
+          "#005600",
+          "#007814",
+          "#2a9b3c",
+          "#5fbe68",
+          "#9bdc9e",
+          "#dbf8db"
+        ]
+      },
+      "light-error": {
+        "role": "tertiary",
+        "displayName": "Light Error",
+        "canonical": "#c62828",
+        "tonalRamp": [
+          "#2d0000",
+          "#5f0000",
+          "#8d0000",
+          "#b60f19",
+          "#df433d",
+          "#ff7267",
+          "#ffa89d",
+          "#ffe1db"
+        ]
+      },
+      "light-added": {
+        "role": "tertiary",
+        "displayName": "Light Added",
+        "canonical": "#1a7f37",
+        "tonalRamp": [
+          "#001300",
+          "#003300",
+          "#005408",
+          "#06752e",
+          "#3a984f",
+          "#69bb77",
+          "#a1daa8",
+          "#ddf7e0"
+        ]
+      },
+      "light-removed": {
+        "role": "tertiary",
+        "displayName": "Light Removed",
+        "canonical": "#b31d28",
+        "tonalRamp": [
+          "#2b0000",
+          "#5c0000",
+          "#8a0001",
+          "#b21b27",
+          "#da4848",
+          "#fc7570",
+          "#ffaaa3",
+          "#ffe1dd"
+        ]
+      },
+      "light-hunk": {
+        "role": "tertiary",
+        "displayName": "Light Hunk",
+        "canonical": "#0550ae",
+        "tonalRamp": [
+          "#000334",
+          "#001a68",
+          "#003a96",
+          "#185dbc",
+          "#3d80e2",
+          "#68a5ff",
+          "#9ecbff",
+          "#dbf0ff"
+        ]
+      },
+      "capture-ground": {
+        "role": "neutral",
+        "displayName": "Capture Ground",
+        "canonical": "#14151c",
+        "tonalRamp": [
+          "#0a0b0f",
+          "#24252b",
+          "#40414a",
+          "#5f6169",
+          "#80828b",
+          "#a3a4ad",
+          "#c7c9cf",
+          "#eeeef1"
+        ]
+      },
+      "capture-text": {
+        "role": "neutral",
+        "displayName": "Capture Text",
+        "canonical": "#d5d8e4",
+        "tonalRamp": [
+          "#0a0b10",
+          "#23252c",
+          "#3f414b",
+          "#5e616b",
+          "#7f828d",
+          "#a2a4af",
+          "#c7c9d0",
+          "#edeef2"
+        ]
+      },
+      "capture-strip": {
+        "role": "neutral",
+        "displayName": "Capture Strip",
+        "canonical": "#0c0d12",
+        "tonalRamp": [
+          "#0a0b0e",
+          "#24252a",
+          "#404248",
+          "#5f6167",
+          "#808289",
+          "#a3a5ab",
+          "#c8c9ce",
+          "#eeeef0"
+        ]
+      },
+      "capture-border": {
+        "role": "neutral",
+        "displayName": "Capture Border",
+        "canonical": "#3a3d4e",
+        "tonalRamp": [
+          "#090a13",
+          "#222432",
+          "#3e4152",
+          "#5d6072",
+          "#7d8194",
+          "#a0a4b6",
+          "#c6c8d6",
+          "#edeef4"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "capture-cell": {
+        "displayName": "Capture Cell",
+        "purpose": "One glyph per cell in terminal captures."
+      },
+      "capture-key": {
+        "displayName": "Capture Key",
+        "purpose": "The pressed key in a capture's caption."
+      },
+      "capture-caption": {
+        "displayName": "Capture Caption",
+        "purpose": "Words in a capture's annotation strip."
+      },
+      "diagram-heading": {
+        "displayName": "Diagram Heading",
+        "purpose": "State sources in the signals diagram."
+      },
+      "diagram-state": {
+        "displayName": "Diagram State",
+        "purpose": "State names in the signals diagram."
+      },
+      "diagram-label": {
+        "displayName": "Diagram Label",
+        "purpose": "Group labels in the signals diagram."
+      },
+      "diagram-body": {
+        "displayName": "Diagram Body",
+        "purpose": "Source descriptions in the signals diagram."
+      }
+    },
+    "shadows": [],
+    "motion": [
+      {
+        "name": "animation-step",
+        "value": "100ms",
+        "purpose": "Time between glyph animation frames."
+      },
+      {
+        "name": "working-pulse",
+        "value": "1600ms",
+        "purpose": "One pulse of the working dot, small to large and back."
+      },
+      {
+        "name": "blocked-fade",
+        "value": "2000ms",
+        "purpose": "One fade of the blocked diamond, there and back."
+      },
+      {
+        "name": "done-settle",
+        "value": "1200ms",
+        "purpose": "A finished check reaching full brightness, once."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "readme-phone",
+        "value": "600px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Status Bar",
+      "kind": "nav",
+      "refersTo": "status-bar",
+      "description": "The app's only painted ground, with the shown tab in the accent.",
+      "html": "<div class=\"ds-bar\"><span class=\"ds-tab\">1 a11y</span><span>2 retry</span><span>3 pay</span></div>",
+      "css": ".ds-bar { display: flex; gap: 9px; background: #2b2d3a; color: #d0d3e0; font: 15px/20px 'JetBrains Mono',Menlo,'DejaVu Sans Mono',monospace; } .ds-tab { background: #e8a33d; color: #1a1a1a; font-weight: 700; padding: 0 9px; }"
+    },
+    {
+      "name": "State Glyphs",
+      "kind": "custom",
+      "refersTo": "dark-working",
+      "description": "One shape per state, in monarch-dark. Blocked shows its 2000 ms fade.",
+      "html": "<div class=\"ds-states\"><span class=\"ds-working\">●</span><span class=\"ds-blocked\">◆</span><span>○</span><span class=\"ds-done\">✓</span><span class=\"ds-error\">✗</span><span>■</span></div>",
+      "css": ".ds-states { display: flex; gap: 18px; background: #14151c; color: #d5d8e4; padding: 10px; font: 15px/20px 'JetBrains Mono',Menlo,'DejaVu Sans Mono',monospace; } .ds-working { color: #5fafff; } .ds-done { color: #2ee65b; font-weight: 700; } .ds-error { color: #ff5f5f; font-weight: 700; } .ds-blocked { color: #c8a000; font-weight: 700; animation: ds-fade 2s ease-in-out infinite; } @keyframes ds-fade { 50% { color: #7b4f1d; } } @media (prefers-reduced-motion: reduce) { .ds-blocked { animation: none; } }"
+    },
+    {
+      "name": "Popup",
+      "kind": "card",
+      "refersTo": "capture-frame",
+      "description": "Square dim border, title in the top edge, hints in the bottom edge, reverse-video selection.",
+      "html": "<div class=\"ds-popup\"><span class=\"ds-popup-title\">inbox</span><div class=\"ds-popup-row\">◆ 2 retry · Allow Bash cargo test</div><div>✓ 4 header · Fixed the overlap</div><span class=\"ds-popup-hint\">↑↓ move · enter jump · esc close</span></div>",
+      "css": ".ds-popup { position: relative; border: 1px solid rgba(213,216,228,.5); background: #14151c; color: #d5d8e4; padding: 10px 9px; font: 15px/20px 'JetBrains Mono',Menlo,'DejaVu Sans Mono',monospace; } .ds-popup-title, .ds-popup-hint { position: absolute; left: 9px; background: #14151c; padding: 0 9px; } .ds-popup-title { top: -10px; } .ds-popup-hint { bottom: -10px; color: rgba(213,216,228,.5); } .ds-popup-row { background: #d5d8e4; color: #14151c; }"
+    },
+    {
+      "name": "Capture Frame",
+      "kind": "card",
+      "refersTo": "capture-frame",
+      "description": "The rounded outline around a terminal capture, with its annotation strip and key chip.",
+      "html": "<figure class=\"ds-capture\"><div class=\"ds-capture-grid\">storefront feat/a11y</div><figcaption class=\"ds-capture-strip\"><kbd class=\"ds-key\">ctrl+b a</kbd><span>The inbox: everything waiting on you.</span></figcaption></figure>",
+      "css": ".ds-capture { margin: 0; background: #14151c; color: #d5d8e4; border: 1px solid #3a3d4e; border-radius: 10px; overflow: hidden; } .ds-capture-grid { padding: 10px; font: 15px/20px 'JetBrains Mono',Menlo,'DejaVu Sans Mono',monospace; } .ds-capture-strip { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px; background: #0c0d12; border-top: 1px solid #3a3d4e; font: 17px/1.3 -apple-system,'Segoe UI',Helvetica,Arial,sans-serif; } .ds-key { background: #e8a33d; color: #1a1a1a; border-radius: 5px; padding: 3px 9px; font: 600 15px 'JetBrains Mono',Menlo,'DejaVu Sans Mono',monospace; white-space: nowrap; }"
+    },
+    {
+      "name": "Attention Ring",
+      "kind": "custom",
+      "refersTo": "dark-accent",
+      "description": "A capture annotation around one sidebar row, disclosed in the README's caption.",
+      "html": "<div class=\"ds-ring-ground\"><span class=\"ds-ring\"><span class=\"ds-ring-glyph\">◆</span> 2 retry</span></div>",
+      "css": ".ds-ring-ground { background: #14151c; color: #d5d8e4; padding: 10px; font: 15px/20px 'JetBrains Mono',Menlo,'DejaVu Sans Mono',monospace; } .ds-ring { border: 2px solid #e8a33d; border-radius: 6px; padding: 0 6px; } .ds-ring-glyph { color: #c8a000; font-weight: 700; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Field Mark",
+    "overview": "A field mark is the feature that identifies a species at a glance. Monarch has two: the butterfly identifies the project, and a coloured glyph identifies each agent's state. Everything else belongs to someone else. The terminal's font and ground belong to the host, pane contents belong to the program, and the README's type and page belong to GitHub.\n\nThe source of truth is code. Tokens live in `crates/monarch-core/src/theme/builtin.rs`, and the `dark-` and `light-` colours above are its `monarch-dark` and `monarch-light` themes. Catppuccin, Tokyo Night and Gruvbox are defined there too, and only their chrome colours differ. They are not repeated here.",
+    "keyCharacteristics": [
+      "Dense, flat, cell-based chrome with no shadows and square box-drawing borders.",
+      "State shown by glyph and colour together, and still legible with no colour at all.",
+      "One fixed identity palette across every theme.",
+      "Real captures of the real binary as the only product imagery."
+    ],
+    "rules": [
+      {
+        "name": "The Shared Wing Rule",
+        "body": "`wing`, `wing-edge` and `wing-spot` are the same in every theme. A theme recolours the chrome, never the butterfly.",
+        "section": "colors"
+      },
+      {
+        "name": "The Wing Stays Off Chrome Rule",
+        "body": "In the app, wing tokens draw only butterflies, and the accent is a separate token. Outside the app, the signals diagram uses `wing` for its trust ladder and connector.",
+        "section": "colors"
+      },
+      {
+        "name": "The Own Chrome Rule",
+        "body": "Monarch colours only its own chrome. Programs in panes keep their colours, untouched.",
+        "section": "colors"
+      },
+      {
+        "name": "The Token Rule",
+        "body": "Widgets take colours from theme tokens, never literals. A new chrome colour is a new `Theme` field set in all eight themes.",
+        "section": "colors"
+      },
+      {
+        "name": "The Borrowed Type Rule",
+        "body": "Monarch has no type scale of its own. The terminal and GitHub set the type, and captures and the diagram carry the only specified sizes.",
+        "section": "typography"
+      },
+      {
+        "name": "The No-Shadow Rule",
+        "body": "Separation comes from borders, cleared cells and reverse video, because a cell grid can't draw anything else.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** take every chrome colour from a theme token, and define new tokens in all eight themes.",
+      "**Do** pair each state's colour with its own glyph, and check that it reads under `NO_COLOR`.",
+      "**Do** make product imagery with `scripts/readme_shots.py` from the real binary, with scripted agents and added annotations stated in the caption.",
+      "**Do** use `docs/assets/logo.svg` as it is on any ground; its keyline handles both.",
+      "**Do** keep the README to GitHub-flavoured Markdown, with `<picture>` and image attributes for layout."
+    ],
+    "donts": [
+      "**Don't** use wing tokens in app chrome, or vary them by theme.",
+      "**Don't** recolour or restyle what a program draws in its pane.",
+      "**Don't** round the corners of app boxes; the rounded frame belongs to captures.",
+      "**Don't** add shadows.",
+      "**Don't** add a type scale or font to the app or the README.",
+      "**Don't** treat `dark-blocked-to` or `light-done-from` as legible text colours; on the captures' grounds they measure 2.58:1 and 2.16:1."
+    ]
+  }
+}
