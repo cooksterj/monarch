@@ -141,14 +141,21 @@ Run inside Monarch, the tab just appears; outside, it attaches.
 one (focusing its pane, or opening a tab there); `Ctrl-x` twice removes a worktree.
 
 **Review**, `prefix v`: the focused pane's uncommitted changes, file by file with a coloured
-diff.
+diff. When the pane runs an agent, `c` writes a note on the hunk at the top of the diff and
+sends it to that agent: the file, the hunk header, your words, and the hunk itself quoted as a
+diff, typed into the pane as one paste and submitted. The review stays open, so you can keep
+reading and send the next one. Move the hunk you mean to the top with `[` and `]`, or a line at
+a time with `Ctrl-e` and `Ctrl-y`.
 
 | Keys | Action |
 |---|---|
 | `j` `k` `Tab` | next / previous file |
 | `Space` `PgDn` `Ctrl-d` | scroll down |
 | `b` `PgUp` `Ctrl-u` | scroll up |
+| `Ctrl-e` `Ctrl-y` | scroll one line |
+| `[` `]` | previous / next hunk |
 | `g` `G` | top / bottom |
+| `c` | note on the hunk shown, sent to the pane's agent |
 | `r` | refresh |
 | `e` or `Enter` | open the file in `$EDITOR`, zoomed over the pane |
 | `q` or `Esc` | close |

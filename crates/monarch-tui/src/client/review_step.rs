@@ -11,6 +11,8 @@ pub enum ReviewStep {
     Refresh,
     /// Open the selected file in an editor.
     Edit,
+    /// Write a note on the hunk shown, for the pane's agent.
+    Note,
 }
 
 #[cfg(test)]

@@ -1,6 +1,8 @@
 //! The review pane's state: the changes being shown, which file is
 //! selected and how far its diff is scrolled. Pure data.
 
+mod hunks;
+
 use monarch_core::PaneId;
 use monarch_proto::{FileChange, Review, ReviewFile};
 
@@ -88,8 +90,9 @@ impl ReviewState {
     }
 
     /// Applies one key: `j`/`k` (arrows, Tab) pick a file; Space/PgDn and
-    /// `b`/PgUp page the diff, `g`/`G` jump to its ends; `r` refreshes;
-    /// Esc/`q` close.
+    /// `b`/PgUp page the diff, Ctrl-e/Ctrl-y move it a line, `[`/`]` a
+    /// hunk, `g`/`G` jump to its ends; `c` writes a note on the hunk
+    /// shown; `r` refreshes; Esc/`q` close.
     pub fn key(&mut self, key: OverlayKey) -> ReviewStep {
         match key {
             OverlayKey::Char('j') | OverlayKey::Down | OverlayKey::Tab => self.pick(1),
@@ -100,6 +103,11 @@ impl ReviewState {
             OverlayKey::Char('b') | OverlayKey::PageUp | OverlayKey::Ctrl('u') => {
                 self.scroll_by(-self.page.cast_signed());
             }
+            OverlayKey::Ctrl('e') => self.scroll_line(true),
+            OverlayKey::Ctrl('y') => self.scroll_line(false),
+            OverlayKey::Char(']') => self.jump_hunk(true),
+            OverlayKey::Char('[') => self.jump_hunk(false),
+            OverlayKey::Char('c') => return ReviewStep::Note,
             OverlayKey::Char('g') | OverlayKey::Home => self.scroll = 0,
             OverlayKey::Char('G') | OverlayKey::End => self.scroll = self.max_scroll(),
             OverlayKey::Char('r') => return ReviewStep::Refresh,
