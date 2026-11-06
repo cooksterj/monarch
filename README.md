@@ -19,7 +19,7 @@
 </p>
 
 ```sh
-brew install cooksterj/monarch/monarch
+brew tap cooksterj/monarch && brew trust cooksterj/monarch && brew install monarch
 ```
 
 <picture>
@@ -195,8 +195,10 @@ Monarch runs on macOS and Linux. Each release ships prebuilt binaries for Apple 
 
 **Homebrew**
 
+The tap is [`cooksterj/homebrew-monarch`](https://github.com/cooksterj/homebrew-monarch). Homebrew 7 asks you to tap and trust third-party taps before it will load their formulas; older Homebrews have no `brew trust` and skip that step.
+
 ```sh
-brew install cooksterj/monarch/monarch
+brew tap cooksterj/monarch && brew trust cooksterj/monarch && brew install monarch
 ```
 
 **Shell installer**
