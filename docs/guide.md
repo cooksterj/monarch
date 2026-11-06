@@ -21,7 +21,7 @@ gesture or paste away from a program without the prefix first.
 
 ## Getting started
 
-Build and install it from source (see the [README](../README.md#install)), then:
+Install it with Homebrew, the shell installer or from source (see the [README](../README.md#install)), then:
 
 ```sh
 monarch setup    # once: let Claude Code and Codex report their state, install the skill
