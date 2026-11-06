@@ -4,9 +4,9 @@
 use std::time::Instant;
 
 use crate::{
-    Chrome, ContextMenu, ContextMenuView, HelpState, HelpView, NamePrompt, Picker, PickerView,
-    PopupViews, ProjectPicker, ReviewState, ReviewView, SessionPicker, WelcomeState, WelcomeView,
-    WorktreeForm, WorktreeFormView,
+    Chrome, ContextMenu, ContextMenuView, HelpState, HelpView, NamePrompt, NotePrompt, Picker,
+    PickerView, PopupViews, ProjectPicker, ReviewState, ReviewView, SessionPicker, WelcomeState,
+    WelcomeView, WorktreeForm, WorktreeFormView,
 };
 
 /// Every pop-up; each takes the keys while open.
@@ -24,6 +24,8 @@ pub(super) struct Popups {
     pub menu: Option<ContextMenu>,
     /// The review pane.
     pub review: Option<ReviewState>,
+    /// A note being written in the review, for its pane's agent.
+    pub note: Option<NotePrompt>,
     /// The new-worktree form.
     pub form: Option<WorktreeForm>,
     /// The help page.
@@ -41,6 +43,7 @@ impl Popups {
             || self.namer.is_some()
             || self.menu.is_some()
             || self.review.is_some()
+            || self.note.is_some()
             || self.form.is_some()
             || self.help.is_some()
             || self.welcome.is_some()
@@ -58,7 +61,8 @@ impl Popups {
         let picker = (self.picker.as_ref())
             .or(self.projects.as_ref().map(ProjectPicker::picker))
             .or(self.sessions.as_ref().map(SessionPicker::picker))
-            .or(self.namer.as_ref().map(NamePrompt::picker));
+            .or(self.namer.as_ref().map(NamePrompt::picker))
+            .or(self.note.as_ref().map(NotePrompt::picker));
         let now = Instant::now();
         PopupViews {
             picker: picker.map(|picker| PickerView { picker }),

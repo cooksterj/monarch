@@ -49,6 +49,8 @@ impl AttachApp {
             self.welcome_input();
         } else if self.popups.help.is_some() {
             self.help_input(bytes);
+        } else if self.popups.note.is_some() {
+            self.note_input(bytes);
         } else if self.popups.review.is_some() {
             self.review_input(bytes);
         } else if self.popups.form.is_some() {

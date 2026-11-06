@@ -1,12 +1,13 @@
-//! Answers a client's request to review a pane's checkout, or to open one
-//! of its files. Git can take a while on a big repository, so it runs on a
-//! blocking thread and never holds up this client's keystrokes or anyone's
-//! frames.
+//! Answers a client's request to review a pane's checkout, to open one of
+//! its files, or to send a review note to its agent. Git can take a while
+//! on a big repository, and typing a note pauses before its Enter, so
+//! both run on a blocking thread and never hold up this client's
+//! keystrokes or anyone's frames.
 
 use std::sync::Arc;
 
 use monarch_core::{ClientId, PaneId};
-use monarch_proto::ServerMsg;
+use monarch_proto::{PaneSend, ServerMsg};
 
 use crate::ServerContext;
 
@@ -24,6 +25,17 @@ pub(super) fn edit(ctx: &ServerContext, pane: PaneId, path: &str, editor: &str) 
         eprintln!("monarch: {e}");
     }
     ctx.wake();
+}
+
+/// Types `text` into `pane` as `pane.send` does, Enter after it if
+/// `enter`, in the background (the Enter waits [`crate::ENTER_DELAY`]).
+pub(super) fn send(ctx: &Arc<ServerContext>, pane: PaneId, text: String, enter: bool) {
+    let ctx = Arc::clone(ctx);
+    tokio::task::spawn_blocking(move || {
+        if !ctx.type_text(&PaneSend { pane, text, enter }) {
+            eprintln!("monarch: no pane {pane} to send a note to");
+        }
+    });
 }
 
 fn reply(ctx: &ServerContext, id: ClientId, pane: PaneId) {

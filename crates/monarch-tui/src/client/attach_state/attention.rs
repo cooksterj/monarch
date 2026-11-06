@@ -40,10 +40,30 @@ impl AttachState {
         out
     }
 
+    /// What `pane`'s agent is doing: the latest `Agent` message, else what
+    /// the layout said; `None` for a pane not in the layout.
+    #[must_use]
+    pub fn agent_status(&self, pane: PaneId) -> Option<&AgentStatus> {
+        if let Some(status) = self.agents.get(&pane) {
+            return Some(status);
+        }
+        let layout = self.layout.as_ref()?;
+        let mut sent = layout.tabs.iter().flat_map(|t| t.panes.iter());
+        sent.find(|p| p.pane == pane).map(|p| &p.agent)
+    }
+
     /// Which agent `pane` runs, if one has reported or Monarch launched it.
     #[must_use]
     pub fn agent_kind(&self, pane: PaneId) -> Option<AgentKind> {
-        self.agents.get(&pane).and_then(|s| s.agent)
+        self.agent_status(pane).and_then(|s| s.agent)
+    }
+
+    /// Whether an agent runs in `pane`: one Monarch knows by kind, or one
+    /// with a state (read from its screen or a notification).
+    #[must_use]
+    pub fn is_agent(&self, pane: PaneId) -> bool {
+        self.agent_status(pane)
+            .is_some_and(|s| s.agent.is_some() || s.state != AgentState::Unknown)
     }
 
     /// The first blocked pane after `from` in tab order, wrapping; `from`

@@ -91,7 +91,7 @@ A few things don't pass through yet. Kitty graphics and sixel images aren't supp
 
 ### 11:30 One of them says it's done
 
-A green tick appears on `header`'s row. `prefix v` shows its uncommitted changes file by file, so you can read them before you believe it. `e` opens the file in `$EDITOR`.
+A green tick appears on `header`'s row. `prefix v` shows its uncommitted changes file by file, so you can read them before you believe it. Spot something off, press `c`, type a line, and the note lands in `header`'s prompt with the file, the hunk and your words, while you keep reading. `e` opens the file in `$EDITOR`.
 
 <img src="docs/assets/review.png" width="100%" alt="The review view for branch fix/header: two files listed on the left, and on the right a coloured diff of src/header.tsx with added lines in green and removed lines in red.">
 

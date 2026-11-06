@@ -112,6 +112,16 @@ pub enum ClientMsg {
         /// The new name.
         name: String,
     },
+    /// Type `text` into `pane` as the API's `pane.send` does (one paste
+    /// when the program takes pastes), then Enter if `enter`.
+    Send {
+        /// The pane.
+        pane: PaneId,
+        /// What to type.
+        text: String,
+        /// Press Enter after it.
+        enter: bool,
+    },
 }
 
 #[cfg(test)]
@@ -125,6 +135,17 @@ mod tests {
             bytes: b"\x1b[A".to_vec(),
         };
         assert!(matches!(msg, ClientMsg::Input { ref bytes, .. } if bytes == b"\x1b[A"));
+    }
+
+    #[test]
+    fn sends_survive_the_attach_encoding() {
+        let msg = ClientMsg::Send {
+            pane: PaneId(3),
+            text: "Review note on a.rs:\n\nfix it".into(),
+            enter: true,
+        };
+        let bytes = postcard::to_allocvec(&msg).expect("encode");
+        assert_eq!(postcard::from_bytes::<ClientMsg>(&bytes).ok(), Some(msg));
     }
 
     #[test]
