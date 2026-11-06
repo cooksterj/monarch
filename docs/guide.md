@@ -114,8 +114,10 @@ about twenty agents. `monarch agent explain` shows each pane's state and where i
 
 **The inbox**, `prefix a`, lists every agent waiting on you with the question it asked or the
 last thing it said. Move with `j`/`k` or the arrows; `Enter` jumps to that pane. Any other letter
-or digit is typed into that agent's pane without leaving the inbox, so you can answer `1` or `y`
-to a permission prompt from there.
+or digit answers that agent without leaving the inbox. `y` and `n` are translated for the agent
+on that row: Claude Code's permission prompt gets `1` and Esc, Codex gets `y` and `n`, as
+`[agents.<id>].quick_answers` says. Every other key is typed as it is, so `2` still picks a
+prompt's second option. The status line says what was sent.
 
 **`prefix Tab`** jumps straight to the next blocked agent.
 
@@ -260,9 +262,10 @@ used, never a crash. `monarch config check` validates the file and flags unknown
 | `terminal.scrollback` | `10000` | history lines per pane |
 | `session.default_name` | `"main"` | the session `monarch` attaches to |
 | `projects.worktree_root` | beside the repo | where new worktrees go |
+| `agents.<id>.quick_answers` | `y`/`n` per agent | what an inbox key sends to that agent's pane, e.g. `y = "1"` |
 
-**Not yet in effect.** The default file also has `[notifications]`, `[agents.claude]` and
-`[agents.codex]` (command, arguments, quick answers), `terminal.agent_scrollback`,
+**Not yet in effect.** The default file also has `[notifications]`, the `command`, `args` and
+`resume_args` of `[agents.claude]` and `[agents.codex]`, `terminal.agent_scrollback`,
 `terminal.env` and `session.resume_agents`. Monarch reads and checks them but doesn't act on
 them yet: notifications were dropped in favour of the sidebar and inbox, and the agent commands
 are built in.

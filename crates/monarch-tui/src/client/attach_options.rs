@@ -1,10 +1,11 @@
 //! What `monarch attach` needs to know, and how a config file sets it (at
 //! startup and on every reload).
 
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::time::Duration;
 
-use monarch_core::{Keymap, LoadedConfig, MouseMode, ThemeConfig};
+use monarch_core::{AgentConfig, Keymap, LoadedConfig, MouseMode, ThemeConfig};
 
 use crate::TuiError;
 
@@ -47,6 +48,8 @@ pub struct AttachOptions {
     pub welcome: bool,
     /// `[projects].worktree_root`, sent with new-worktree requests.
     pub worktree_root: Option<String>,
+    /// `[agents.<id>]`, for the inbox's quick answers.
+    pub agents: BTreeMap<String, AgentConfig>,
 }
 
 impl AttachOptions {
@@ -75,6 +78,7 @@ impl AttachOptions {
             warnings: Vec::new(),
             welcome: false,
             worktree_root: None,
+            agents: BTreeMap::new(),
         };
         opts.configure(loaded)?;
         Ok(opts)
@@ -111,6 +115,7 @@ impl AttachOptions {
         self.theme.clone_from(&config.theme);
         self.worktree_root =
             (config.projects.worktree_root.as_ref()).map(|r| r.to_string_lossy().into_owned());
+        self.agents.clone_from(&config.agents);
         self.keymap = keymap;
         self.which_key_delay = Duration::from_millis(config.keys.which_key_delay_ms);
         self.repeat = Duration::from_millis(config.keys.repeat_ms);
@@ -151,6 +156,7 @@ mod tests {
         assert!(opts.warnings[1].contains("\"acent\""));
         assert!(opts.theme.colors.contains_key("acent"));
         assert!(opts.config_path.is_some_and(|p| p.ends_with("config.toml")));
+        assert_eq!(opts.agents["claude"].quick_answer('y'), Some("1"));
     }
 
     #[test]
