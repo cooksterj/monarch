@@ -8,7 +8,11 @@ use sysinfo::{Pid, ProcessRefreshKind, ProcessesToUpdate, System, UpdateKind};
 
 use crate::ProcessProbe;
 
-/// Asks the OS. Each query refreshes only the one process it reads.
+/// Asks the OS. Each query refreshes only the one process it reads. A
+/// name is read into a system that has never seen the process: sysinfo
+/// keeps the name a process had when first seen, so a probe that reused
+/// it would miss an `exec` (`/bin/sh` on macOS execs bash; `exec claude`
+/// from a shell) and keep naming the old program.
 #[derive(Default)]
 pub struct SystemProbe {
     system: Mutex<System>,
@@ -44,7 +48,7 @@ impl ProcessProbe for SystemProbe {
 
     fn name(&self, pid: u32) -> Option<String> {
         let pid = Pid::from_u32(pid);
-        let mut system = self.lock();
+        let mut system = System::new();
         system.refresh_processes_specifics(
             ProcessesToUpdate::Some(&[pid]),
             true,
@@ -72,6 +76,26 @@ mod tests {
     fn a_missing_process_has_no_cwd_or_name() {
         assert_eq!(SystemProbe::new().cwd(u32::MAX - 1), None);
         assert_eq!(SystemProbe::new().name(u32::MAX - 1), None);
+    }
+
+    #[test]
+    fn the_same_probe_sees_a_name_change_after_exec() {
+        let mut child = std::process::Command::new("sh")
+            .args(["-c", "exec sleep 5"])
+            .spawn()
+            .expect("sh");
+        let probe = SystemProbe::new();
+        let _first = probe.name(child.id());
+        let name = (0..400)
+            .map(|_| {
+                std::thread::sleep(std::time::Duration::from_millis(5));
+                probe.name(child.id())
+            })
+            .find(|n| n.as_deref() == Some("sleep"))
+            .flatten();
+        let _ = child.kill();
+        let _ = child.wait();
+        assert_eq!(name.as_deref(), Some("sleep"), "one probe, name after exec");
     }
 
     #[test]
