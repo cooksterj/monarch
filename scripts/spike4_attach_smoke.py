@@ -117,7 +117,12 @@ def main():
 
 def run_all(binary):
     with tempfile.TemporaryDirectory(prefix="monarch-spike4-") as run:
-        env = dict(os.environ, XDG_RUNTIME_DIR=run, XDG_STATE_HOME=run, SHELL="/bin/sh", PS1="$ ",
+        # bash, not /bin/sh: on macOS /bin/sh is a wrapper that execs bash, so
+        # the pane's program (and the tab's automatic name) would be `bash`
+        # there and `sh` on Linux. HOME is the run's directory so no rc file
+        # runs: a ~/.bashrc that sets the terminal title would name the tab.
+        env = dict(os.environ, HOME=run, XDG_RUNTIME_DIR=run, XDG_STATE_HOME=run, SHELL="/bin/bash",
+                   PS1="$ ", BASH_SILENCE_DEPRECATION_WARNING="1",
                    MONARCH_CONFIG=os.path.join(run, "none.toml"))
         env.pop("TMUX", None)
 
@@ -134,12 +139,12 @@ def run_all(binary):
         first.wait_for(b"monarch \xe2\x94\x82 " + SESSION.encode(), "status line")
         first.wait_for(b"\x1b]2;monarch:" + SESSION.encode(), "window title")
         # The bar is rebuilt from all output so far: never reset `seen` first.
-        first.wait_for_bar(b"sh ", "the tab named after the shell")
+        first.wait_for_bar(b"bash ", "the tab named after the shell")
         os.write(first.fd, b"cat\r")
         first.wait_for_bar(b"cat", "the tab named after the program in front")
         os.write(first.fd, b"\x04")
-        first.wait_for_bar(b"sh ", "the shell's name back")
-        print("  names: the tab follows the foreground program (sh, cat, sh)")
+        first.wait_for_bar(b"bash ", "the shell's name back")
+        print("  names: the tab follows the foreground program (bash, cat, bash)")
         os.write(first.fd, b"\x02,")
         first.wait_for(b"rename tab 1", "the rename prompt")
         os.write(first.fd, b"api\r")
@@ -147,7 +152,7 @@ def run_all(binary):
         os.write(first.fd, b"\x02,")
         first.idle(0.3)
         os.write(first.fd, b"\x15\r")  # Ctrl-u clears the name; Enter
-        first.wait_for_bar(b"1 sh", "the automatic name back")
+        first.wait_for_bar(b"1 bash", "the automatic name back")
         os.write(first.fd, b"\x02.")
         first.wait_for(b"rename pane", "the rename-pane prompt")
         os.write(first.fd, b"server\r")
@@ -155,8 +160,8 @@ def run_all(binary):
         os.write(first.fd, b"\x02.")
         first.idle(0.3)
         os.write(first.fd, b"\x15\r")
-        first.wait_for_bar(b"1 sh", "the pane's automatic name back")
-        print("  rename: prefix , named the tab api, prefix . the pane server; blank names gave sh back")
+        first.wait_for_bar(b"1 bash", "the pane's automatic name back")
+        print("  rename: prefix , named the tab api, prefix . the pane server; blank names gave bash back")
         said = subprocess.run([binary, "tab", "rename", "from cli", "-s", SESSION], env=env,
                               capture_output=True, text=True, check=True).stdout
         assert said.strip() == 'tab 1 is now "from cli"', said
@@ -166,7 +171,7 @@ def run_all(binary):
         assert missing.returncode != 0 and "no tab 9" in missing.stderr, missing
         subprocess.run([binary, "tab", "rename", "", "-s", SESSION], env=env, check=True,
                        capture_output=True)
-        first.wait_for_bar(b"1 sh", "the automatic name back from the CLI")
+        first.wait_for_bar(b"1 bash", "the automatic name back from the CLI")
         print("  tab rename: the CLI named the shown tab, refused tab 9, and cleared the name")
         os.write(first.fd, b"\x02%")
         first.idle(0.5)
