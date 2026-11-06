@@ -119,9 +119,10 @@ def run_all(binary):
     with tempfile.TemporaryDirectory(prefix="monarch-spike4-") as run:
         # bash, not /bin/sh: on macOS /bin/sh is a wrapper that execs bash, so
         # the pane's program (and the tab's automatic name) would be `bash`
-        # there and `sh` on Linux.
-        env = dict(os.environ, XDG_RUNTIME_DIR=run, XDG_STATE_HOME=run, SHELL="/bin/bash", PS1="$ ",
-                   BASH_SILENCE_DEPRECATION_WARNING="1",
+        # there and `sh` on Linux. HOME is the run's directory so no rc file
+        # runs: a ~/.bashrc that sets the terminal title would name the tab.
+        env = dict(os.environ, HOME=run, XDG_RUNTIME_DIR=run, XDG_STATE_HOME=run, SHELL="/bin/bash",
+                   PS1="$ ", BASH_SILENCE_DEPRECATION_WARNING="1",
                    MONARCH_CONFIG=os.path.join(run, "none.toml"))
         env.pop("TMUX", None)
 
