@@ -19,7 +19,7 @@
 </p>
 
 ```sh
-cargo install --git https://github.com/cooksterj/monarch
+brew install cooksterj/monarch/monarch
 ```
 
 <picture>
@@ -30,7 +30,7 @@ cargo install --git https://github.com/cooksterj/monarch
 <sub>The real binary, recorded in a PTY. The agents are scripted, the repositories are throwaway, and the captions and amber ring are added for the recording. [`scripts/readme_shots.py`](scripts/readme_shots.py) regenerates every capture on this page.</sub>
 
 > [!NOTE]
-> **Pre-release.** Monarch is usable day to day on macOS and Linux, and everything shown here works today. There is no tagged release yet, so you install from source. [Progress is in the plan](docs/plan.md).
+> **Early.** Monarch is usable day to day on macOS and Linux, and everything shown here works today. Versions before 1.0 may still change keys, config and the wire format between releases. [Progress is in the plan](docs/plan.md).
 
 ## A day with six agents
 
@@ -170,12 +170,12 @@ Monarch is about two weeks old and the smallest project here. Several of these t
 
 - you want the tool that's already on every server: **tmux**.
 - you want layouts, floating panes, a web client and a plugin system, with or without agents: **Zellij**.
-- you want the established agent multiplexer, with a release you can `brew install` today, Windows, plugins and several machines in one window: **Herdr**.
+- you want the established agent multiplexer, with Windows, plugins and several machines in one window: **Herdr**.
 - you want a tiling window manager with modes, BSP layouts and kitty graphics: **TUIOS**.
 - you're on a Mac and prefer a native app with a built-in browser: **cmux**.
 - you want a simple list of sessions on top of tmux: **Claude Squad**.
 
-**Choose Monarch if** you want prefix-only keys that leave everything else to your programs, key handling that CI compares byte for byte, agent state that starts from the agent's own hooks, and an inbox you can answer from, and you're happy to build from source for now.
+**Choose Monarch if** you want prefix-only keys that leave everything else to your programs, key handling that CI compares byte for byte, agent state that starts from the agent's own hooks, and an inbox you can answer from.
 
 <details>
 <summary>Sources for the table</summary>
@@ -191,12 +191,35 @@ Monarch is about two weeks old and the smallest project here. Several of these t
 
 ## Install
 
-You need a stable Rust toolchain, 1.88 or newer.
+Monarch runs on macOS and Linux. Each release ships prebuilt binaries for Apple silicon and Intel Macs and for x86_64 and aarch64 Linux (static, so any distribution works).
+
+**Homebrew**
 
 ```sh
-cargo install --git https://github.com/cooksterj/monarch   # latest main
-cargo install --path .                                     # or from a clone
+brew install cooksterj/monarch/monarch
 ```
+
+**Shell installer**
+
+Downloads the binary for your machine into `~/.cargo/bin` (no Rust needed) and tells you if that isn't on your `PATH`:
+
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/cooksterj/monarch/releases/latest/download/monarch-mux-installer.sh | sh
+```
+
+Every release also attaches the tarballs and their checksums on the [releases page](https://github.com/cooksterj/monarch/releases), if you would rather unpack one yourself.
+
+**From source**
+
+With a stable Rust toolchain, 1.88 or newer:
+
+```sh
+cargo install --git https://github.com/cooksterj/monarch --tag v0.1.0   # a release
+cargo install --git https://github.com/cooksterj/monarch                # latest main
+cargo install --path . --locked                                         # from a clone
+```
+
+The package is `monarch-mux` (plain `monarch` was taken), the binary is `monarch` either way.
 
 Then, once:
 
@@ -208,7 +231,7 @@ monarch          # attach to the session `main`, starting it if needed
 
 `monarch setup` adds hooks to `~/.claude/settings.json` and `~/.codex/config.toml` (honouring `CLAUDE_CONFIG_DIR` and `CODEX_HOME`), touching nothing else and backing each file up first. `--dry-run` shows what would change; `--uninstall` removes it all. Outside Monarch the hooks do nothing. Codex asks you to trust new hooks in `/hooks`.
 
-Prebuilt binaries and a Homebrew formula will come with the first release.
+To upgrade, run `brew upgrade monarch` or the installer again. The hooks run the `monarch` on your `PATH`, so they follow it. A running session keeps the build it started with; when the new one refuses to attach to it, the message says how to restart the session with its tabs and conversations restored.
 
 The first time you attach, the welcome screen shows the few keys you need.
 
