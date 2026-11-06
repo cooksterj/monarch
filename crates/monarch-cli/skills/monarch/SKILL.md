@@ -1,6 +1,6 @@
 ---
 name: monarch
-description: Use when running inside the Monarch terminal multiplexer (the MONARCH_PANE environment variable is set) to see what the agents in other panes are doing, wait for one to finish or to need input, or start another agent in its own git worktree and give it a task.
+description: Use when running inside the Monarch terminal multiplexer (the MONARCH_PANE environment variable is set) to see what the agents in other panes are doing, wait for one to finish or to need input, read what it said, or start another agent in its own git worktree and give it a task.
 ---
 
 # Working inside Monarch
@@ -102,6 +102,7 @@ Wait until the new agent is ready for input, then type its prompt and press Ente
 monarch agent wait p4 --until idle --timeout 120
 monarch pane send p4 "Add a parser for the config format. Run cargo test before you stop." --enter
 monarch agent wait p4 --timeout 1800
+monarch agent read p4
 ```
 
 - For a long or multi-line prompt, write it to a file and send it on standard input:
@@ -114,6 +115,27 @@ monarch agent wait p4 --timeout 1800
   started, or that the user asked you to use. You can't send to your own pane.
 - Don't use it to answer another agent's permission prompt. Tell the user which pane
   needs them.
+
+## Read what an agent said
+
+```sh
+monarch agent read p4
+```
+
+prints the agent's final message of its last turn: what it changed, what it couldn't
+do, what it wants checked. Use it after `monarch agent wait` says the pane is `Done`
+or `Error`, and act on the text instead of reading the pane or the diff.
+
+- Exit status 0 with the text; 2 when it has said nothing yet (it prints the pane's
+  state instead); 1 for an error such as no such pane.
+- The text comes from the agent's hooks, so it is the whole message, not what fits
+  on the screen. For an agent without hooks (one `monarch agent explain` reads
+  "from its screen"), it prints what the pane shows instead, which may be cut off.
+- While the agent is `Working`, it is the previous turn's message.
+- Pass a child's answer into the next task by writing it to a file:
+  ```sh
+  monarch agent read p4 > parser-result.md
+  ```
 
 ## Other commands
 

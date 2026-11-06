@@ -33,6 +33,12 @@ impl SessionState {
         self.agents.source(pane)
     }
 
+    /// The full text of `pane`'s last answer, if its hooks sent one.
+    #[must_use]
+    pub fn agent_said(&self, pane: PaneId) -> Option<&str> {
+        self.agents.said(pane)
+    }
+
     /// Monarch started `kind` in `pane`; tells every client.
     pub fn launched_agent(&mut self, pane: PaneId, kind: AgentKind) {
         if let Some(status) = self.agents.launched(pane, kind) {

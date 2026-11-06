@@ -4,8 +4,8 @@ use std::sync::Arc;
 
 use futures_util::{SinkExt, StreamExt};
 use monarch_proto::{
-    AgentReport, AgentWait, ExplainPanes, KillSession, NewWorktree, PaneSend, Request, Response,
-    RpcError, SessionInfo, TabRename,
+    AgentRead, AgentReport, AgentWait, ExplainPanes, KillSession, NewWorktree, PaneSend, Request,
+    Response, RpcError, SessionInfo, TabRename,
 };
 use serde::de::DeserializeOwned;
 use serde_json::Value;
@@ -89,6 +89,7 @@ fn dispatch(ctx: &ServerContext, request: Request) -> Result<Value, RpcError> {
             let reply = ctx.lock().agent_wait(&wait);
             json(reply.ok_or_else(|| no_such_pane(&wait.pane.to_string()))?)
         }
+        AgentRead::METHOD => read_agent(ctx, &params(request.params)?),
         PaneSend::METHOD => {
             let send: PaneSend = params(request.params)?;
             if !ctx.type_text(&send) {
@@ -131,6 +132,12 @@ fn no_such_pane(pane: &str) -> RpcError {
         RpcError::NO_SUCH_PANE,
         format!("no pane {pane} in this session"),
     )
+}
+
+/// `agent.read`: the last thing the pane's agent said.
+fn read_agent(ctx: &ServerContext, read: &AgentRead) -> Result<Value, RpcError> {
+    let reply = ctx.read_agent(read.pane);
+    json(reply.ok_or_else(|| no_such_pane(&read.pane.to_string()))?)
 }
 
 /// `agent.report`: applies a hook report to the pane it is about.
@@ -182,6 +189,29 @@ mod tests {
         let response = ApiConnection::answer(&ctx, &line);
         assert_eq!(response, Response::ok(7, serde_json::json!({})));
         assert_eq!(ctx.lock().agent_status(pane).state, AgentState::Blocked);
+    }
+
+    #[test]
+    fn agent_read_answers_with_the_last_message_or_refuses_the_pane() {
+        let ctx = context();
+        let pane = ctx.insert_for_test(PaneSpec::agent(AgentKind::Claude), FakePane::shell());
+        let done = AgentReport {
+            state: Some(AgentState::Done),
+            activity: Some("All green.".into()),
+            ..AgentReport::new(pane, AgentKind::Claude)
+        };
+        let report = Request::new(1, AgentReport::METHOD, &done).expect("request");
+        ApiConnection::answer(&ctx, &serde_json::to_string(&report).expect("json"));
+        let read = Request::new(2, AgentRead::METHOD, &AgentRead { pane }).expect("request");
+        let response = ApiConnection::answer(&ctx, &serde_json::to_string(&read).expect("json"));
+        let reply: monarch_proto::AgentReadReply =
+            serde_json::from_value(response.result.expect("result")).expect("reply");
+        assert_eq!(reply.text, "All green.");
+        assert_eq!(reply.source, monarch_proto::ReadSource::Message);
+        let missing = AgentRead { pane: PaneId(42) };
+        let read = Request::new(3, AgentRead::METHOD, &missing).expect("request");
+        let refused = ApiConnection::answer(&ctx, &serde_json::to_string(&read).expect("json"));
+        assert_eq!(code(&refused), Some(RpcError::NO_SUCH_PANE));
     }
 
     #[test]
