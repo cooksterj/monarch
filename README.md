@@ -19,7 +19,7 @@
 </p>
 
 ```sh
-brew tap cooksterj/monarch && brew trust cooksterj/monarch && brew install monarch
+brew tap cooksterj/monarch && brew trust cooksterj/monarch && brew install cooksterj/monarch/monarch
 ```
 
 <picture>
@@ -195,10 +195,10 @@ Monarch runs on macOS and Linux. Each release ships prebuilt binaries for Apple 
 
 **Homebrew**
 
-The tap is [`cooksterj/homebrew-monarch`](https://github.com/cooksterj/homebrew-monarch). Homebrew 7 asks you to tap and trust third-party taps before it will load their formulas; older Homebrews have no `brew trust` and skip that step.
+The tap is [`cooksterj/homebrew-monarch`](https://github.com/cooksterj/homebrew-monarch). Homebrew 7 asks you to tap and trust third-party taps before it will load their formulas; older Homebrews have no `brew trust` and skip that step. Use the full name: a bare `brew install monarch` is a different program, the Monarch launcher cask.
 
 ```sh
-brew tap cooksterj/monarch && brew trust cooksterj/monarch && brew install monarch
+brew tap cooksterj/monarch && brew trust cooksterj/monarch && brew install cooksterj/monarch/monarch
 ```
 
 **Shell installer**
@@ -233,7 +233,7 @@ monarch          # attach to the session `main`, starting it if needed
 
 `monarch setup` adds hooks to `~/.claude/settings.json` and `~/.codex/config.toml` (honouring `CLAUDE_CONFIG_DIR` and `CODEX_HOME`), touching nothing else and backing each file up first. `--dry-run` shows what would change; `--uninstall` removes it all. Outside Monarch the hooks do nothing. Codex asks you to trust new hooks in `/hooks`.
 
-To upgrade, run `brew upgrade monarch` or the installer again. The hooks run the `monarch` on your `PATH`, so they follow it. A running session keeps the build it started with; when the new one refuses to attach to it, the message says how to restart the session with its tabs and conversations restored.
+To upgrade, run `brew upgrade cooksterj/monarch/monarch` or the installer again. The hooks run the `monarch` on your `PATH`, so they follow it. A running session keeps the build it started with; when the new one refuses to attach to it, the message says how to restart the session with its tabs and conversations restored.
 
 The first time you attach, the welcome screen shows the few keys you need.
 
