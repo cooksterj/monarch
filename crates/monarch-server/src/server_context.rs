@@ -17,6 +17,7 @@ use crate::{
 
 mod explain;
 mod input;
+mod read;
 mod session;
 mod worktrees;
 

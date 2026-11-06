@@ -12,7 +12,8 @@ use clap::Parser;
 
 pub use cli::{
     AgentCommand, AttachArgs, Cli, Command, ConfigCommand, ExplainArgs, HookCommand, KillArgs,
-    NewArgs, PaneCommand, RenameArgs, SendArgs, ServerArgs, SetupArgs, TabCommand, WaitArgs,
+    NewArgs, PaneCommand, ReadArgs, RenameArgs, SendArgs, ServerArgs, SetupArgs, TabCommand,
+    WaitArgs,
 };
 
 /// Parses `std::env::args` and runs the selected command.

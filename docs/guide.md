@@ -300,15 +300,18 @@ to that session.
 ```sh
 monarch agent explain                          # every pane's state, and why
 monarch agent wait p3 --timeout 600            # until p3 needs a person (blocked, done, error)
+monarch agent read p3                          # what it said when it stopped, in full
 monarch new feat-parser --agent claude --detached
 monarch pane send p4 "Add a parser. Run cargo test before you stop." --enter
 monarch pane send p4 --enter < task.md         # a long prompt, as one paste
 monarch tab rename parser --tab 2              # name the tab it opened
 ```
 
-`monarch agent wait` exits 0 when the state is reached and 2 on timeout. `monarch pane send`
-types as if you had; multi-line text arrives as one bracketed paste, so line breaks don't submit
-it early. It refuses the pane it runs in.
+`monarch agent wait` exits 0 when the state is reached and 2 on timeout. `monarch agent read`
+prints the agent's last message of its turn as its hooks delivered it (for an agent without hooks,
+what its screen shows), and exits 2 when it has said nothing yet. `monarch pane send` types as if
+you had; multi-line text arrives as one bracketed paste, so line breaks don't submit it early. It
+refuses the pane it runs in.
 
 `monarch setup` installs a skill that teaches Claude Code and Codex these commands
 (`~/.claude/skills/monarch/`, `~/.agents/skills/monarch/`).

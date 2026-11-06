@@ -1,7 +1,9 @@
 //! `monarch agent …`: ask a session about its agents: why a pane shows
-//! its state (`explain`), or wait for one to reach a state (`wait`).
+//! its state (`explain`), wait for one to reach a state (`wait`), or read
+//! the last thing one said (`read`).
 
 mod explain_text;
+mod read;
 mod wait;
 
 use std::io::Write;
@@ -23,6 +25,10 @@ pub(crate) fn run(
         AgentCommand::Wait(args) => {
             let session = super::session_name(args.session.clone(), config);
             wait::run(args, &mut super::connect(&session)?, out)
+        }
+        AgentCommand::Read(args) => {
+            let session = super::session_name(args.session.clone(), config);
+            read::run(args, &mut super::connect(&session)?, out)
         }
     }
 }

@@ -7,6 +7,7 @@
 
 mod guesses;
 mod history;
+mod said;
 mod screen;
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -31,6 +32,8 @@ pub struct StateEngine {
     changes: u64,
     /// When each pane last entered each state, by change count.
     entered: BTreeMap<PaneId, Vec<(AgentState, u64)>>,
+    /// The full text of each pane's last answer (see `said`).
+    said: BTreeMap<PaneId, String>,
 }
 
 impl StateEngine {
@@ -60,6 +63,7 @@ impl StateEngine {
             self.sessions.insert(id.clone(), pane);
         }
         self.guessed.remove(&pane);
+        self.note_said(pane, report);
         let current = self.panes.entry(pane).or_default();
         let mut next = current.clone();
         if let Some(state) = report.state {
@@ -135,6 +139,7 @@ impl StateEngine {
         self.guessed.remove(&pane);
         self.screened.remove(&pane);
         self.entered.remove(&pane);
+        self.said.remove(&pane);
     }
 }
 

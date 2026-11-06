@@ -69,7 +69,7 @@ const POPUPS: [(&str, &str); 4] = [
     ("esc", "close"),
 ];
 
-const COMMANDS: [(&str, &str); 10] = [
+const COMMANDS: [(&str, &str); 11] = [
     (
         "monarch SESSION",
         "attach to a session, starting it if needed",
@@ -81,6 +81,7 @@ const COMMANDS: [(&str, &str); 10] = [
     ),
     ("monarch agent explain", "each pane's agent state and why"),
     ("monarch agent wait PANE", "wait until an agent needs you"),
+    ("monarch agent read PANE", "the last thing an agent said"),
     (
         "monarch pane send PANE TEXT",
         "type into a pane (--enter submits)",

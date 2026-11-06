@@ -2,7 +2,7 @@
 
 use clap::Subcommand;
 
-use crate::{ExplainArgs, WaitArgs};
+use crate::{ExplainArgs, ReadArgs, WaitArgs};
 
 /// What to ask.
 #[derive(Debug, Clone, PartialEq, Subcommand)]
@@ -15,6 +15,10 @@ pub enum AgentCommand {
     /// needs you), then print its status. Exit status 0 when reached, 2
     /// on timeout.
     Wait(WaitArgs),
+    /// The last thing a pane's agent said: the final message of its last
+    /// turn, from its hooks; for an agent without hooks, what its screen
+    /// shows. Exit status 2 when it has said nothing yet.
+    Read(ReadArgs),
 }
 
 #[cfg(test)]

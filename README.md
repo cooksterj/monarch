@@ -127,6 +127,7 @@ Agents in panes can use the same commands you do. `monarch setup` installs a ski
 monarch new feat-parser --agent claude --detached
 monarch pane send p7 "Add a parser. Run cargo test before you stop." --enter
 monarch agent wait p7 --timeout 600     # until p7 is blocked, done or failed
+monarch agent read p7                   # what it said when it stopped
 ```
 
 ### 17:30 Someone asks what theme that is
@@ -257,6 +258,7 @@ None of these change anything:
 | `monarch agent explain` | every pane, its program and its agent's state, with where the state came from |
 | `monarch agent explain p3` | one pane in detail: every detection rule and the text it matched |
 | `monarch agent wait p3 --timeout 600` | waits until pane `p3`'s agent needs you, then prints its status |
+| `monarch agent read p3` | the last thing pane `p3`'s agent said, in full (its screen, for an agent without hooks) |
 | `monarch doctor` | the whole setup (binary, config, hooks, skill, git, terminal, sessions), with fixes |
 | `monarch keys` | every key binding after the prefix |
 | `monarch config path` / `default` / `check` | where the config is, every default, whether yours is valid |
