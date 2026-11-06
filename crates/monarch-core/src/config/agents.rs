@@ -48,6 +48,17 @@ impl AgentConfig {
         }
     }
 
+    /// What the inbox sends to this agent's pane for `key`, if the key is
+    /// a quick answer (`y` on Claude Code presses `1`); `None` means type
+    /// the key as it is.
+    #[must_use]
+    pub fn quick_answer(&self, key: char) -> Option<&str> {
+        let mut buf = [0; 4];
+        self.quick_answers
+            .get(key.encode_utf8(&mut buf) as &str)
+            .map(String::as_str)
+    }
+
     /// Expands `{session_id}` in `args` (or `resume_args` when resuming).
     #[must_use]
     pub fn argv(&self, session_id: &str, resume: bool) -> Vec<String> {
@@ -83,6 +94,16 @@ mod tests {
         let claude = AgentConfig::claude();
         assert_eq!(claude.argv("abc", false), ["--session-id", "abc"]);
         assert_eq!(claude.argv("abc", true), ["--resume", "abc"]);
+    }
+
+    #[test]
+    fn quick_answers_map_keys_and_leave_the_rest() {
+        let claude = AgentConfig::claude();
+        assert_eq!(claude.quick_answer('y'), Some("1"));
+        assert_eq!(claude.quick_answer('n'), Some("\x1b"));
+        assert_eq!(claude.quick_answer('2'), None, "typed as it is");
+        assert_eq!(AgentConfig::codex().quick_answer('y'), Some("y"));
+        assert_eq!(AgentConfig::default().quick_answer('y'), None);
     }
 
     #[test]

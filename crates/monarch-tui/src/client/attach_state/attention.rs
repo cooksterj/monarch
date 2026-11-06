@@ -1,7 +1,7 @@
 //! Which agents need the user, most urgent first: what the inbox lists
 //! and `next-blocked` cycles through.
 
-use monarch_core::{AgentState, PaneId};
+use monarch_core::{AgentKind, AgentState, PaneId};
 use monarch_proto::AgentStatus;
 
 use super::AttachState;
@@ -38,6 +38,12 @@ impl AttachState {
             .collect();
         out.sort_by_key(|(_, _, _, status)| urgency(status.state));
         out
+    }
+
+    /// Which agent `pane` runs, if one has reported or Monarch launched it.
+    #[must_use]
+    pub fn agent_kind(&self, pane: PaneId) -> Option<AgentKind> {
+        self.agents.get(&pane).and_then(|s| s.agent)
     }
 
     /// The first blocked pane after `from` in tab order, wrapping; `from`

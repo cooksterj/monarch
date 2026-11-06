@@ -9,7 +9,7 @@ use monarch_proto::ClientMsg;
 
 use super::AttachApp;
 use super::select::NOTICE;
-use crate::{Picker, PickerItem};
+use crate::{Picker, PickerItem, QuickAnswer};
 
 impl AttachApp {
     /// The inbox over the agents needing attention now.
@@ -44,17 +44,17 @@ impl AttachApp {
         }
     }
 
-    /// Sends `key` to the pane `row` is about, as if typed there.
+    /// Answers the pane `row` is about with `key`: what `[agents.<id>]`
+    /// maps it to for that pane's agent, else the key as typed.
     pub(super) fn answer(&mut self, row: Action, key: char) {
         let Action::FocusPane(pane) = row else {
             return;
         };
-        let bytes = key.to_string().into_bytes();
+        let kind = self.state.agent_kind(pane);
+        let answer = QuickAnswer::resolve(&self.opts.agents, kind, key);
+        let bytes = answer.bytes.clone();
         let _ = self.link.send(&ClientMsg::Input { pane, bytes });
-        self.notice = Some((
-            format!("sent {key} to pane {}", pane.0),
-            Instant::now() + NOTICE,
-        ));
+        self.notice = Some((answer.notice(pane), Instant::now() + NOTICE));
         self.dirty = true;
     }
 
