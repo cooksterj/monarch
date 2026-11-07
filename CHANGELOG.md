@@ -10,6 +10,13 @@ they need polishing.
 
 ## [Unreleased]
 
+## [0.1.2](https://github.com/cooksterj/monarch/compare/v0.1.1...v0.1.2) - 2026-11-07
+
+### Other
+
+- *(assets)* the social preview shows the whole screen, closer to the words ([#114](https://github.com/cooksterj/monarch/pull/114))
+- *(readme)* point the latest release at v0.1.1 ([#112](https://github.com/cooksterj/monarch/pull/112))
+
 ## [0.1.1](https://github.com/cooksterj/monarch/compare/v0.1.0...v0.1.1) - 2026-11-07
 
 ### Added
