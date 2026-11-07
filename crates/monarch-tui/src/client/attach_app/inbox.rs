@@ -18,8 +18,8 @@ impl AttachApp {
     }
 
     /// One row per agent: glyph, tab, name and what it said; at the
-    /// right its state and how long it has waited (`blocked 3m`), or how
-    /// long its turn took (`done in 45s`).
+    /// right its state and how long it has waited (`blocked 3m`), or for
+    /// a finished turn how long it worked (`done in 45s`).
     fn inbox_items(&self) -> Vec<PickerItem> {
         self.state
             .needing_attention(Self::now())
@@ -35,12 +35,12 @@ impl AttachApp {
                         item.tab + 1,
                         item.name
                     ),
-                    detail: match (item.status.state, item.age) {
-                        (AgentState::Done, Some(took)) => {
-                            format!("{state} in {}", age_label(took))
+                    detail: match (item.status.state, item.age, item.waited) {
+                        (AgentState::Done, Some(worked), _) => {
+                            format!("{state} in {}", age_label(worked))
                         }
-                        (_, Some(age)) => format!("{state} {}", age_label(age)),
-                        (_, None) => state,
+                        (AgentState::Done, None, _) | (_, _, None) => state,
+                        (_, _, Some(waited)) => format!("{state} {}", age_label(waited)),
                     },
                     action: Action::FocusPane(item.pane),
                 }
