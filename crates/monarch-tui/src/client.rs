@@ -1,6 +1,7 @@
 //! Attaching to a session server: the socket link, a pure model of the
 //! session built from frames, the raw-input thread and the main loop.
 
+mod agent_info;
 mod applied;
 mod attach_app;
 mod attach_options;
@@ -17,7 +18,10 @@ mod copy_step;
 mod drag_scroll;
 mod focus_view;
 mod glyph_animator;
+mod goto_pane;
+mod goto_picker;
 mod help_state;
+mod info_step;
 mod input_keys;
 mod input_thread;
 mod mouse_action;
@@ -54,6 +58,7 @@ mod window_title;
 mod worktree_form;
 mod worktree_step;
 
+pub use agent_info::AgentInfo;
 pub use applied::Applied;
 pub use attach_app::AttachApp;
 pub use attach_options::AttachOptions;
@@ -70,7 +75,10 @@ pub use copy_step::CopyStep;
 pub use drag_scroll::{DRAG_STEP, DragScroll};
 pub use focus_view::FocusView;
 pub use glyph_animator::{ANIMATION_STEP, GlyphAnimator};
+pub use goto_pane::GoToPane;
+pub use goto_picker::GoToPicker;
 pub use help_state::HelpState;
+pub use info_step::InfoStep;
 pub use input_keys::InputKeys;
 pub use input_thread::{InputParams, InputThread, PROBE_TIMEOUT};
 pub use mouse_action::MouseAction;

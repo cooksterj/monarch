@@ -4,7 +4,7 @@ use monarch_core::PaneId;
 use serde::{Deserialize, Serialize};
 
 use super::{AgentStatus, AgentTiming, Delta, LayoutMsg, PanePlace, Snapshot, StyleDef};
-use crate::{GridPoint, Review, WorktreeCreated, WorktreeEntry};
+use crate::{GridPoint, PaneExplanation, Review, WorktreeCreated, WorktreeEntry};
 
 /// One server → client attach-stream message.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -88,6 +88,15 @@ pub enum ServerMsg {
         /// When its state and turn began and how long its last turn
         /// took; `None` for a plain shell.
         timing: Option<AgentTiming>,
+    },
+    /// Answer to [`super::ClientMsg::Explain`]: the pane's status, where
+    /// it came from, its recent transitions and what its screen shows to
+    /// its agent's manifest; `None` for a pane that is gone.
+    Explained {
+        /// The pane asked about.
+        pane: PaneId,
+        /// Why it is in its state.
+        explained: Option<Box<PaneExplanation>>,
     },
 }
 

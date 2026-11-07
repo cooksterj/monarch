@@ -13,6 +13,7 @@ use tokio_util::codec::{FramedRead, FramedWrite};
 
 use crate::{ActionEffect, RENDER_LANE, ServerContext, ServerError, SessionState};
 
+mod explain;
 mod history;
 mod review;
 mod worktree;
@@ -87,6 +88,7 @@ fn handle(ctx: &Arc<ServerContext>, id: ClientId, msg: ClientMsg) -> bool {
         ClientMsg::OpenWorktree(path) => worktree::open(ctx, &path),
         ClientMsg::RemoveWorktree(path) => worktree::remove(ctx, id, path),
         ClientMsg::Send { pane, text, enter } => review::send(ctx, pane, text, enter),
+        ClientMsg::Explain(pane) => explain::request(ctx, id, pane),
         msg => apply(ctx, id, &msg),
     }
     true

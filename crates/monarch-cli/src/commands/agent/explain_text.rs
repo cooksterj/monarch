@@ -3,8 +3,8 @@
 
 use std::fmt::Write;
 
-use monarch_core::AgentState;
-use monarch_proto::{PaneExplanation, RuleOutcome, StatusSource};
+use monarch_core::{AgentState, UnixMillis, age_label};
+use monarch_proto::{AgentTransition, PaneExplanation, RuleOutcome, StatusSource};
 
 /// Longest rule preview printed, in characters.
 const PREVIEW: usize = 100;
@@ -47,9 +47,10 @@ pub(super) fn list(panes: &[PaneExplanation]) -> String {
     text
 }
 
-/// One pane: its status and source, then its manifest's rules, the
-/// winner marked `▶` and other matches `✓`, with what matched rules read.
-pub(super) fn detail(pane: &PaneExplanation) -> String {
+/// One pane: its status and source, the states it entered lately (aged
+/// against `now`), then its manifest's rules, the winner marked `▶` and
+/// other matches `✓`, with what matched rules read.
+pub(super) fn detail(pane: &PaneExplanation, now: UnixMillis) -> String {
     let mut text = format!(
         "pane {} (tab {}) · {}\n",
         pane.pane,
@@ -65,6 +66,7 @@ pub(super) fn detail(pane: &PaneExplanation) -> String {
     if let Some(activity) = &pane.status.activity {
         let _ = writeln!(text, "activity  {activity}");
     }
+    text.push_str(&history(&pane.transitions, now));
     let Some(manifest) = &pane.manifest else {
         let _ = writeln!(
             text,
@@ -73,11 +75,7 @@ pub(super) fn detail(pane: &PaneExplanation) -> String {
         );
         return text;
     };
-    let shows = match (pane.screen_state, pane.winner.as_deref()) {
-        (Some(s), Some(rule)) => format!("{} (rule {rule})", state(s)),
-        (Some(s), None) => format!("{} (no rule matched)", state(s)),
-        (None, rule) => format!("unchanged (rule {} keeps the state)", rule.unwrap_or("?")),
-    };
+    let shows = shows(pane);
     let _ = writeln!(text, "manifest  {manifest}\nscreen    {shows}\n");
     let id_width = pane
         .rules
@@ -88,6 +86,36 @@ pub(super) fn detail(pane: &PaneExplanation) -> String {
     for rule in &pane.rules {
         let won = pane.winner.as_deref() == Some(rule.id.as_str());
         text.push_str(&rule_line(rule, won, id_width));
+    }
+    text
+}
+
+/// What the screen shows to the manifest, with the rule that decided.
+fn shows(pane: &PaneExplanation) -> String {
+    match (pane.screen_state, pane.winner.as_deref()) {
+        (Some(s), Some(rule)) => format!("{} (rule {rule})", state(s)),
+        (Some(s), None) => format!("{} (no rule matched)", state(s)),
+        (None, rule) => format!("unchanged (rule {} keeps the state)", rule.unwrap_or("?")),
+    }
+}
+
+/// `history   3m ago  ● Working  from its hooks  Edit a.rs`, one line
+/// per state entered, oldest first; nothing for a pane with no history.
+fn history(transitions: &[AgentTransition], now: UnixMillis) -> String {
+    let mut text = String::new();
+    for (i, t) in transitions.iter().enumerate() {
+        let head = if i == 0 { "history" } else { "" };
+        let ago = format!("{} ago", age_label(t.at.age_at(now)));
+        let _ = write!(
+            text,
+            "{head:<9} {ago:>8}  {:<11} from {}",
+            state(t.state),
+            t.source.describe()
+        );
+        if let Some(activity) = &t.activity {
+            let _ = write!(text, "  {activity}");
+        }
+        text.push('\n');
     }
     text
 }
@@ -172,6 +200,20 @@ mod tests {
                 rule("busy", AgentState::Working, true),
                 rule("menu", AgentState::Unknown, false),
             ],
+            transitions: vec![
+                AgentTransition {
+                    state: AgentState::Working,
+                    source: StatusSource::Screen,
+                    activity: None,
+                    at: UnixMillis(1_000),
+                },
+                AgentTransition {
+                    state: AgentState::Blocked,
+                    source: StatusSource::Screen,
+                    activity: Some("Allow?".into()),
+                    at: UnixMillis(61_000),
+                },
+            ],
         }
     }
 
@@ -186,6 +228,7 @@ mod tests {
             rules: Vec::new(),
             source: StatusSource::None,
             status: AgentStatus::default(),
+            transitions: Vec::new(),
         }
     }
 
@@ -213,9 +256,15 @@ mod tests {
 
     #[test]
     fn the_detail_marks_the_winner_and_shows_what_matched() {
-        let text = detail(&gemini());
+        let text = detail(&gemini(), UnixMillis(121_000));
         assert!(
             text.starts_with("pane p3 (tab 2) · gemini\nstatus    ◆ Blocked, from its screen\n")
+        );
+        assert!(
+            text.contains(
+                "history     2m ago  ● Working   from its screen\n            1m ago  ◆ Blocked   from its screen  Allow?\n"
+            ),
+            "{text}"
         );
         assert!(text.contains("screen    ◆ Blocked (rule ask)\n"));
         assert!(
@@ -228,8 +277,9 @@ mod tests {
             text.contains("· menu  unknown    900  whole_recent\n"),
             "{text}"
         );
-        let plain = detail(&shell());
+        let plain = detail(&shell(), UnixMillis(0));
         assert!(plain.ends_with("screen    no detection manifest for zsh\n"));
+        assert!(!plain.contains("history"), "{plain}");
     }
 
     #[test]

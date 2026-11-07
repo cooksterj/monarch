@@ -1,7 +1,7 @@
 //! What applying server messages asks the client to do.
 
 use monarch_core::PaneId;
-use monarch_proto::{GridPoint, Review, WorktreeCreated, WorktreeEntry};
+use monarch_proto::{GridPoint, PaneExplanation, Review, WorktreeCreated, WorktreeEntry};
 
 /// Side effects collected by [`super::AttachState::apply`].
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -26,6 +26,11 @@ pub struct Applied {
     pub worktree_lists: Vec<Vec<WorktreeEntry>>,
     /// Answers to worktree removals.
     pub removed: Vec<Result<String, String>>,
+    /// Answers to explain requests: the pane and why its agent is in its
+    /// state (`None` for a pane that is gone).
+    pub explained: Vec<(PaneId, Option<Box<PaneExplanation>>)>,
+    /// Panes whose agent status changed.
+    pub agents: Vec<PaneId>,
 }
 
 impl Applied {

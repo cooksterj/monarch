@@ -1,0 +1,10 @@
+---
+source: crates/monarch-tui/src/widgets/agent_info_view.rs
+expression: "draw(&info, 60, 8).join(\"\\n\")"
+---
+┌ agent info · pane 2 codex ───────────────────────────────┐
+│   state     ● Working · from a terminal notification     │
+│   activity  Edit a.rs                                    │
+│   program   codex                                        │
+│   screen    no detection manifest for codex              │
+└ ↑↓ scroll · r refresh · esc close ───────────────────────┘

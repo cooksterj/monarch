@@ -10,7 +10,9 @@ impl SessionState {
     /// `pane`'s agent status changed to `status`: remember the state for
     /// waiters and tell every client.
     pub(super) fn agent_changed(&mut self, pane: PaneId, status: AgentStatus) {
-        let timing = self.agents.record(pane, status.state, self.clock.now());
+        let now = self.clock.now();
+        let timing = self.agents.record(pane, status.state, now);
+        self.agents.log(pane, &status, now);
         self.broadcast(&ServerMsg::Agent {
             pane,
             status,

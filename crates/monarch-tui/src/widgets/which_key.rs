@@ -179,13 +179,13 @@ mod tests {
         │ " -        split down     1-9        go to tab      [          copy mode    │
         │ % |        split right    c          new tab        a          inbox        │
         │ x          close pane     n          next tab       g w        go to pane   │
-        │ z          zoom           p          prev tab       m          toggle mouse │
-        │ hjkl ←↓↑→  focus          ,          rename tab     s          projects     │
-        │ o          focus next     .          rename pane    t          sidebar      │
-        │ {          swap prev      :          palette        v          review       │
-        │ }          swap next      N          new worktree   tab        next blocked │
-        │ =          equalize       R          reload         d          detach       │
-        │ HJKL       resize         S          sessions                               │
+        │ z          zoom           p          prev tab       i          agent info   │
+        │ hjkl ←↓↑→  focus          ,          rename tab     m          toggle mouse │
+        │ o          focus next     .          rename pane    s          projects     │
+        │ {          swap prev      :          palette        t          sidebar      │
+        │ }          swap next      N          new worktree   v          review       │
+        │ =          equalize       R          reload         tab        next blocked │
+        │ HJKL       resize         S          sessions       d          detach       │
         └ ? all keys and help ────────────────────────────────────────────────────────┘
         "#);
     }
@@ -199,7 +199,7 @@ mod tests {
         │ x          close pane│
         │ z          zoom      │
         │ hjkl ←↓↑→  focus     │
-        │ …          24 more   │
+        │ …          25 more   │
         └ ? all keys and help ─┘
         "#);
     }

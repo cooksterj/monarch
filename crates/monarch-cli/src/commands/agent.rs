@@ -9,7 +9,7 @@ mod wait;
 use std::io::Write;
 use std::process::ExitCode;
 
-use monarch_core::Config;
+use monarch_core::{Clock, Config, SystemClock};
 use monarch_proto::{ExplainPanes, PaneExplanation};
 
 use crate::{AgentCommand, ExplainArgs};
@@ -43,7 +43,7 @@ fn explain(args: &ExplainArgs, config: &Config, out: &mut dyn Write) -> anyhow::
         "agent explain",
     )?;
     let text = match (args.pane, explained.as_slice()) {
-        (Some(_), [one]) => explain_text::detail(one),
+        (Some(_), [one]) => explain_text::detail(one, SystemClock.now()),
         _ => explain_text::list(&explained),
     };
     write!(out, "{text}")?;

@@ -41,7 +41,7 @@ pub(super) fn request(ctx: &Arc<ServerContext>, id: ClientId, request: NewWorktr
 }
 
 /// Runs `work` on a blocking thread and sends its message to client `id`.
-fn answer(
+pub(super) fn answer(
     ctx: &Arc<ServerContext>,
     id: ClientId,
     work: impl FnOnce(&ServerContext) -> ServerMsg + Send + 'static,

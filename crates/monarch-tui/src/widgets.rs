@@ -1,11 +1,13 @@
 //! ratatui widgets. Each widget is a pure function of its inputs.
 
+mod agent_info_view;
 mod chrome;
 mod context_menu_view;
 mod glyph_look;
 mod help_line;
 mod help_view;
 mod mouse_owner;
+mod page_view;
 mod pane_borders;
 mod pane_view;
 mod picker_view;
@@ -21,12 +23,14 @@ mod which_key;
 mod which_key_entry;
 mod worktree_form_view;
 
+pub use agent_info_view::AgentInfoView;
 pub use chrome::Chrome;
 pub use context_menu_view::ContextMenuView;
 pub use glyph_look::GlyphLook;
 pub use help_line::HelpLine;
 pub use help_view::HelpView;
 pub use mouse_owner::MouseOwner;
+pub use page_view::PageView;
 pub use pane_borders::PaneBorders;
 pub use pane_view::PaneView;
 pub use picker_view::PickerView;

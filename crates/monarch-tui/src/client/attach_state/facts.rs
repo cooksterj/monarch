@@ -4,10 +4,12 @@
 use monarch_proto::ServerMsg;
 
 use super::AttachState;
+use crate::Applied;
 
 impl AttachState {
-    /// Records a `Title`, `Command`, `Place` or `Agent` message.
-    pub(super) fn apply_fact(&mut self, msg: ServerMsg) {
+    /// Records a `Title`, `Command`, `Place` or `Agent` message; an
+    /// `Agent` also names its pane in `out.agents`.
+    pub(super) fn apply_fact(&mut self, msg: ServerMsg, out: &mut Applied) {
         match msg {
             ServerMsg::Title { pane, title } => {
                 self.titles.insert(pane, title.unwrap_or_default());
@@ -25,6 +27,7 @@ impl AttachState {
             } => {
                 self.agents.insert(pane, status);
                 self.timing.insert(pane, timing);
+                out.agents.push(pane);
             }
             _ => {}
         }

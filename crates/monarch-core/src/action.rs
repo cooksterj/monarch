@@ -72,6 +72,9 @@ pub enum Action {
     Inbox,
     /// Focus the next blocked agent, in tab order after the focused pane.
     NextBlocked,
+    /// Show why the focused pane's agent is in its state: the signal, the
+    /// rule that fired and its recent transitions.
+    AgentInfo,
     /// Review the uncommitted changes in the focused pane's checkout:
     /// changed files and their diffs.
     Review,
@@ -108,6 +111,7 @@ impl Action {
                 | Self::ReloadConfig
                 | Self::Inbox
                 | Self::NextBlocked
+                | Self::AgentInfo
                 | Self::Review
                 | Self::NewWorktree
                 | Self::Projects
@@ -143,6 +147,7 @@ mod tests {
         assert!(Action::ToggleSidebar.is_local());
         assert!(Action::ReloadConfig.is_local());
         assert!(Action::Inbox.is_local() && Action::NextBlocked.is_local());
+        assert!(Action::AgentInfo.is_local());
         assert!(Action::Review.is_local());
         assert!(Action::NewWorktree.is_local());
         assert!(Action::Projects.is_local());

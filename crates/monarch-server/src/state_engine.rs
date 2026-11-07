@@ -9,6 +9,7 @@ mod guesses;
 mod history;
 mod said;
 mod screen;
+mod transitions;
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -36,6 +37,8 @@ pub struct StateEngine {
     timing: BTreeMap<PaneId, (AgentState, AgentTiming)>,
     /// The full text of each pane's last answer (see `said`).
     said: BTreeMap<PaneId, String>,
+    /// The last few states each pane entered (see `transitions`).
+    transitions: BTreeMap<PaneId, transitions::TransitionLog>,
 }
 
 impl StateEngine {
@@ -143,6 +146,7 @@ impl StateEngine {
         self.entered.remove(&pane);
         self.timing.remove(&pane);
         self.said.remove(&pane);
+        self.forget_transitions(pane);
     }
 }
 

@@ -39,8 +39,10 @@ impl ServerContext {
                 .filter(|p| only.is_none_or(|o| o == p.pane))
             {
                 let text = state.pane(pane.pane).map(|io| io.shared().lock().text());
+                let mut explained = blank(pane, tab, state.agent_source(pane.pane));
+                explained.transitions = state.agent_transitions(pane.pane);
                 snapshots.push(Snapshot {
-                    explained: blank(pane, tab, state.agent_source(pane.pane)),
+                    explained,
                     title: pane.title.clone().unwrap_or_default(),
                     text: text.unwrap_or_default(),
                 });
@@ -62,6 +64,7 @@ fn blank(pane: &PaneSummary, tab: u32, source: monarch_proto::StatusSource) -> P
         screen_state: None,
         winner: None,
         rules: Vec::new(),
+        transitions: Vec::new(),
     }
 }
 
