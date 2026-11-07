@@ -17,6 +17,7 @@ use super::{
 };
 use crate::{HostModeMirror, TuiError, WhichKeyEntry};
 
+mod agent_info;
 mod ages;
 mod animate;
 mod copy;
@@ -241,11 +242,18 @@ impl AttachApp {
         for removed in applied.removed {
             self.worktree_removed(removed);
         }
+        for (pane, explained) in applied.explained {
+            self.explained(pane, explained);
+        }
+        for pane in applied.agents {
+            self.agent_changed(pane);
+        }
         if applied.redraw && self.drag.is_some() {
             self.drag_extend();
         }
         if applied.redraw {
             self.refresh_inbox();
+            self.refresh_goto();
             self.publish_panes();
         } else {
             self.focus.set(&self.state.focus_view());

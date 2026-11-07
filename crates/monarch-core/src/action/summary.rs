@@ -34,6 +34,7 @@ impl Action {
             Self::ReloadConfig => "read the config file again",
             Self::Inbox => "agents waiting for you, done or failed",
             Self::NextBlocked => "jump to the next agent waiting for you",
+            Self::AgentInfo => "why the agent is in its state, and its history",
             Self::Review => "review the checkout's uncommitted changes",
             Self::NewWorktree => "new worktree with an agent or a shell",
             Self::Projects => "jump to, open or remove worktrees",
@@ -68,7 +69,7 @@ impl Action {
             Self::NewTab | Self::NextTab | Self::PrevTab | Self::SelectTab(_) | Self::RenameTab => {
                 ActionGroup::Tabs
             }
-            Self::Inbox | Self::NextBlocked => ActionGroup::Agents,
+            Self::Inbox | Self::NextBlocked | Self::AgentInfo => ActionGroup::Agents,
             Self::Review | Self::NewWorktree | Self::Projects => ActionGroup::Projects,
             Self::Detach
             | Self::ToggleMouse

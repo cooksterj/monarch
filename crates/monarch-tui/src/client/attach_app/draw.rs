@@ -9,9 +9,11 @@ use ratatui::crossterm::terminal::{BeginSynchronizedUpdate, EndSynchronizedUpdat
 use ratatui::crossterm::{execute, queue};
 
 use super::AttachApp;
+use super::popups::Popups;
 use crate::client::{AttachOptions, AttachView, WindowTitle};
 use crate::{
-    Chrome, MouseOwner, ReviewView, Sidebar, SidebarGroup, StatusLine, TuiError, WhichKey,
+    Chrome, MouseOwner, PopupViews, ReviewView, Sidebar, SidebarGroup, StatusLine, TuiError,
+    WhichKey,
 };
 
 impl AttachApp {
@@ -38,6 +40,7 @@ impl AttachApp {
         self.out.clear();
         self.size_review();
         self.size_help();
+        self.size_info();
         self.paint()?;
         if self.host.sync_output {
             execute!(self.ui.backend_mut(), EndSynchronizedUpdate).map_err(io)?;
@@ -55,7 +58,7 @@ impl AttachApp {
         let copy = self.copy_view();
         let notice = self.notice.as_ref().map(|(text, _)| text.as_str());
         let chrome = Chrome::new(self.glyphs.theme());
-        let popups = (self.popups).views(chrome, &self.opts.prefix_label, self.opts.animations);
+        let popups = popup_views(&self.popups, &self.opts, chrome);
         let view = AttachView {
             state: &self.state,
             status: StatusLine {
@@ -122,4 +125,14 @@ fn session_status(opts: &AttachOptions) -> StatusLine<'_> {
         mouse: MouseOwner::new(false),
         chrome: Chrome::default(),
     }
+}
+
+/// The open pop-ups as widgets, aged against the clock now.
+fn popup_views<'a>(
+    popups: &'a Popups,
+    opts: &'a AttachOptions,
+    chrome: Chrome<'a>,
+) -> PopupViews<'a> {
+    let now = AttachApp::now();
+    popups.views(chrome, &opts.prefix_label, opts.animations, now)
 }

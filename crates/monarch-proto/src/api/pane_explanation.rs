@@ -3,7 +3,7 @@
 use monarch_core::{AgentState, PaneId};
 use serde::{Deserialize, Serialize};
 
-use crate::{AgentStatus, RuleOutcome, StatusSource};
+use crate::{AgentStatus, AgentTransition, RuleOutcome, StatusSource};
 
 /// A pane's status, where it came from, and what its screen shows to
 /// its agent's detection manifest.
@@ -28,6 +28,8 @@ pub struct PaneExplanation {
     pub winner: Option<String>,
     /// Every rule, in manifest order.
     pub rules: Vec<RuleOutcome>,
+    /// The last few states the agent entered, oldest first.
+    pub transitions: Vec<AgentTransition>,
 }
 
 #[cfg(test)]
@@ -46,6 +48,7 @@ mod tests {
             screen_state: None,
             winner: None,
             rules: Vec::new(),
+            transitions: Vec::new(),
         };
         let json = serde_json::to_string(&explained).expect("json");
         assert_eq!(

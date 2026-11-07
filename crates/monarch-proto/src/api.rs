@@ -7,6 +7,7 @@
 mod agent_read;
 mod agent_read_reply;
 mod agent_report;
+mod agent_transition;
 mod agent_wait;
 mod agent_wait_reply;
 mod explain_panes;
@@ -28,6 +29,7 @@ mod worktree_created;
 pub use agent_read::AgentRead;
 pub use agent_read_reply::AgentReadReply;
 pub use agent_report::AgentReport;
+pub use agent_transition::AgentTransition;
 pub use agent_wait::AgentWait;
 pub use agent_wait_reply::AgentWaitReply;
 pub use explain_panes::ExplainPanes;

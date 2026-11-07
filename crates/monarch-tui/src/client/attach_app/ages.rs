@@ -17,7 +17,7 @@ impl AttachApp {
     }
 
     /// Redraws the ages when a second has passed and someone is showing
-    /// them: the sidebar, or an open inbox.
+    /// them: the sidebar, an open inbox, or the agent info.
     pub(super) fn tick_ages(&mut self) {
         let now = Instant::now();
         if now < self.next_age_tick {
@@ -29,7 +29,8 @@ impl AttachApp {
             .picker
             .as_ref()
             .is_some_and(crate::Picker::is_list);
-        if !self.state.any_running() || (self.state.left() == 0 && !inbox) {
+        let info = self.popups.info.is_some();
+        if !info && (!self.state.any_running() || (self.state.left() == 0 && !inbox)) {
             return;
         }
         self.refresh_inbox();

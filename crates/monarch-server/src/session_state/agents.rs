@@ -6,7 +6,7 @@ use std::path::Path;
 
 use monarch_core::{AgentKind, AgentState, PaneId};
 use monarch_detect::OscSignal;
-use monarch_proto::{AgentReport, AgentStatus, StatusSource};
+use monarch_proto::{AgentReport, AgentStatus, AgentTransition, StatusSource};
 
 use super::SessionState;
 
@@ -55,6 +55,12 @@ impl SessionState {
     #[must_use]
     pub fn agent_source(&self, pane: PaneId) -> StatusSource {
         self.agents.source(pane)
+    }
+
+    /// The states `pane`'s agent entered lately, oldest first.
+    #[must_use]
+    pub fn agent_transitions(&self, pane: PaneId) -> Vec<AgentTransition> {
+        self.agents.transitions(pane)
     }
 
     /// The full text of `pane`'s last answer, if its hooks sent one.

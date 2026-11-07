@@ -122,6 +122,9 @@ pub enum ClientMsg {
         /// Press Enter after it.
         enter: bool,
     },
+    /// Why `pane`'s agent is in its state (as the API's `agent.explain`);
+    /// answered with `ServerMsg::Explained`.
+    Explain(PaneId),
 }
 
 #[cfg(test)]

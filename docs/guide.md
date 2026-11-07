@@ -68,7 +68,7 @@ for the action. Wait a moment after the prefix and a pop-up lists every key you 
 | `"` or `-` | split down |
 | `h j k l` or arrows | focus the pane in that direction |
 | `o` | focus the next pane |
-| `g` or `w` | go to a pane by name (a searchable list) |
+| `g` or `w` | go to a pane by name (a searchable list). With nothing typed, `b`, `w`, `i` or `d` narrows it to blocked, working, idle or done agents; the same key again, or Backspace, widens it |
 | `H J K L` | move the divider that way |
 | `=` | make the panes equal |
 | `z` | zoom the focused pane (again to unzoom) |
@@ -128,6 +128,15 @@ on that row: Claude Code's permission prompt gets `1` and Esc, Codex gets `y` an
 prompt's second option. The status line says what was sent.
 
 **`prefix Tab`** jumps straight to the next blocked agent.
+
+**Why does it say Working?** `prefix i` opens the agent info for the focused pane: its state,
+how long it has been there and which signal set it (hooks, a notification, its screen, or
+Monarch launching it); what its screen shows to the detection rules now, with the rule that
+fired; the last few states it entered, oldest first, each with its signal and activity; and
+every rule of its manifest, `▶` the winner and `✓` other matches, with the end of the text a
+matched rule read. It follows the agent while open: each change of state asks the server again,
+and `r` asks by hand. `↑` `↓` scroll; `Esc`, `q` or `i` closes. `monarch agent explain p3` prints
+the same from a shell.
 
 ## Projects and worktrees
 
@@ -223,6 +232,7 @@ directory. Running programs and their screens can't survive the server, as with 
 |---|---|
 | `a` | inbox |
 | `Tab` | next blocked agent |
+| `i` | agent info: why the focused pane's agent is in its state |
 | `N` | new worktree |
 | `s` | projects |
 | `S` | sessions |

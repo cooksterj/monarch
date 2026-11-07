@@ -68,9 +68,10 @@ impl AttachState {
             | ServerMsg::Command { .. }
             | ServerMsg::Place { .. }
             | ServerMsg::Agent { .. }) => {
-                self.apply_fact(msg);
+                self.apply_fact(msg, out);
                 out.redraw = true;
             }
+            ServerMsg::Explained { pane, explained } => out.explained.push((pane, explained)),
             ServerMsg::HostWrite(bytes) => out.host_write.extend(bytes),
             ServerMsg::SearchResult { pane, found } => out.found.push((pane, found)),
             ServerMsg::Review { pane, review } => out.reviews.push((pane, review)),

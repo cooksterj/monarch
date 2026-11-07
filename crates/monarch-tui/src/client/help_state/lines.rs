@@ -62,11 +62,15 @@ const MOUSE: [(&str, &str); 7] = [
     ("shift+drag", "select even where the program uses the mouse"),
 ];
 
-const POPUPS: [(&str, &str); 4] = [
+const POPUPS: [(&str, &str); 5] = [
     ("type", "search"),
     ("↑ ↓", "move"),
     ("enter", "choose"),
     ("esc", "close"),
+    (
+        "b w i d",
+        "go-to picker: only blocked, working, idle or done agents",
+    ),
 ];
 
 const COMMANDS: [(&str, &str); 11] = [

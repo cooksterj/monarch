@@ -3,17 +3,23 @@
 
 use std::time::Instant;
 
+use monarch_core::UnixMillis;
+
 use crate::{
-    Chrome, ContextMenu, ContextMenuView, HelpState, HelpView, NamePrompt, NotePrompt, Picker,
-    PickerView, PopupViews, ProjectPicker, ReviewState, ReviewView, SessionPicker, WelcomeState,
-    WelcomeView, WorktreeForm, WorktreeFormView,
+    AgentInfo, AgentInfoView, Chrome, ContextMenu, ContextMenuView, GoToPicker, HelpState,
+    HelpView, NamePrompt, NotePrompt, Picker, PickerView, PopupViews, ProjectPicker, ReviewState,
+    ReviewView, SessionPicker, WelcomeState, WelcomeView, WorktreeForm, WorktreeFormView,
 };
 
 /// Every pop-up; each takes the keys while open.
 #[derive(Debug, Default)]
 pub(super) struct Popups {
-    /// The palette, go-to picker or inbox.
+    /// The palette or the inbox.
     pub picker: Option<Picker>,
+    /// The go-to picker.
+    pub goto: Option<GoToPicker>,
+    /// The agent info.
+    pub info: Option<AgentInfo>,
     /// The project picker.
     pub projects: Option<ProjectPicker>,
     /// The session picker.
@@ -38,6 +44,8 @@ impl Popups {
     /// Whether any is open.
     pub fn any(&self) -> bool {
         self.picker.is_some()
+            || self.goto.is_some()
+            || self.info.is_some()
             || self.projects.is_some()
             || self.sessions.is_some()
             || self.namer.is_some()
@@ -50,22 +58,29 @@ impl Popups {
     }
 
     /// The widgets for those open, coloured by `chrome`; the help names
-    /// `prefix` and the welcome is drawn at `now`, still unless `animate`.
+    /// `prefix`, the agent info ages states against `now`, and the
+    /// welcome is drawn still unless `animate`.
     pub fn views<'a>(
         &'a self,
         chrome: Chrome<'a>,
         prefix: &'a str,
         animate: bool,
+        now: UnixMillis,
     ) -> PopupViews<'a> {
         let theme = chrome.theme;
         let picker = (self.picker.as_ref())
+            .or(self.goto.as_ref().map(GoToPicker::picker))
             .or(self.projects.as_ref().map(ProjectPicker::picker))
             .or(self.sessions.as_ref().map(SessionPicker::picker))
             .or(self.namer.as_ref().map(NamePrompt::picker))
             .or(self.note.as_ref().map(NotePrompt::picker));
-        let now = Instant::now();
+        let instant = Instant::now();
         PopupViews {
             picker: picker.map(|picker| PickerView { picker }),
+            info: self
+                .info
+                .as_ref()
+                .map(|info| AgentInfoView { info, now, chrome }),
             menu: self.menu.as_ref().map(|menu| ContextMenuView { menu }),
             review: self
                 .review
@@ -82,7 +97,7 @@ impl Popups {
             }),
             welcome: self.welcome.as_ref().map(|state| WelcomeView {
                 keys: state.keys(),
-                tick: state.tick(now),
+                tick: state.tick(instant),
                 seed: state.seed(),
                 animate,
                 chrome,
@@ -98,13 +113,24 @@ mod tests {
     #[test]
     fn views_follow_what_is_open() {
         let mut popups = Popups::default();
-        let views = |p: &Popups| p.views(Chrome::default(), "ctrl+b", false).picker.is_some();
+        let now = UnixMillis(0);
+        let views = |p: &Popups| {
+            p.views(Chrome::default(), "ctrl+b", false, now)
+                .picker
+                .is_some()
+        };
         assert!(!popups.any() && !views(&popups));
         popups.projects = Some(ProjectPicker::default());
         assert!(popups.any());
         assert!(views(&popups), "the project picker draws as a picker");
         popups.help = Some(HelpState::new(&monarch_core::Keymap::default()));
-        let drawn = popups.views(Chrome::default(), "ctrl+b", false);
+        let drawn = popups.views(Chrome::default(), "ctrl+b", false, now);
         assert!(drawn.help.is_some() && drawn.menu.is_none() && drawn.welcome.is_none());
+        popups.projects = None;
+        popups.goto = Some(GoToPicker::new(Vec::new()));
+        popups.info = Some(AgentInfo::new(monarch_core::PaneId(1), "zsh"));
+        let drawn = popups.views(Chrome::default(), "ctrl+b", false, now);
+        assert!(drawn.picker.is_some(), "the go-to picker draws as a picker");
+        assert!(drawn.info.is_some());
     }
 }
