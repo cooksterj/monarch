@@ -847,18 +847,21 @@ def record_restored(monarch, out):
 
 
 def social(host, out):
-    """The image GitHub shows when the repository's link is shared."""
-    screen = page(host.snapshot(), Shot())[0]
+    """The image GitHub shows when the repository's link is shared: the
+    words at the left, the whole screen at the right, nothing cut off."""
+    screen, shot_w, shot_h = page(host.snapshot(), Shot())
+    SOCIAL_SCALE = round((1280 - 488 - 40) / shot_w, 4)
+    SOCIAL_SHOT_H = round(shot_h * SOCIAL_SCALE)
     with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../docs/assets/logo.svg")) as f:
         logo = f.read()
     style, body = screen.split("</style>", 1)
     doc = f"""{style}
 html,body{{width:1280px;height:640px;overflow:hidden;background:#0d0e13}}
-.card{{position:absolute;left:64px;top:56px;width:520px;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;color:#f5f0e6}}
-.card svg{{position:static;width:150px;height:150px;display:block;margin:0 0 18px -6px}}
-h1{{font-size:68px;line-height:1;margin:0 0 20px;font-weight:700;letter-spacing:-.02em}}
-p{{font-size:32px;line-height:1.28;margin:0;color:#d5d8e4;text-wrap:balance}}
-.shot{{position:absolute;left:616px;top:96px;transform-origin:0 0;transform:scale(.8)}}
+.card{{position:absolute;left:64px;top:92px;width:400px;font-family:-apple-system,'Segoe UI',Helvetica,Arial,sans-serif;color:#f5f0e6}}
+.card svg{{position:static;width:136px;height:136px;display:block;margin:0 0 16px -6px}}
+h1{{font-size:64px;line-height:1;margin:0 0 18px;font-weight:700;letter-spacing:-.02em}}
+p{{font-size:29px;line-height:1.28;margin:0;color:#d5d8e4;text-wrap:balance}}
+.shot{{position:absolute;left:488px;top:{(640 - SOCIAL_SHOT_H) // 2}px;transform-origin:0 0;transform:scale({SOCIAL_SCALE})}}
 </style><div class=card>{logo}<h1>Monarch</h1><p>Every agent in its own pane, and you always see which one needs you.</p></div>
 <div class=shot>{body}</div>"""
     src = os.path.join(out, "social.html")
@@ -887,7 +890,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("monarch")
     ap.add_argument("out")
-    ap.add_argument("--only", choices=["hero", "stills", "welcome", "restored"], help="capture just one set")
+    ap.add_argument("--only", choices=["hero", "stills", "social", "welcome", "restored"],
+                    help="capture just one set")
     ap.add_argument("--debug", action="store_true", help="print the opening screen and CLI output")
     args = ap.parse_args()
     monarch, out = os.path.abspath(args.monarch), os.path.abspath(args.out)
@@ -916,6 +920,13 @@ def main():
             record_hero(host, out, root)
         if args.only in (None, "stills"):
             stills(host, out)
+        if args.only == "social":
+            host.set_theme("monarch-dark", animations=False)
+            host.pump(8.0)
+            host.tell("retry", screen=RETRY_ASK, hook=ASK_RETRY)
+            host.tell("header", screen=HEADER, hook=STOP_HEADER)
+            host.pump(1.2)
+            social(host, out)
     finally:
         if host:
             host.close()
