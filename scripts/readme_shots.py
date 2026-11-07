@@ -777,6 +777,13 @@ def stills(host, out):
     popup("inbox", "inbox")
     host.keys(b"\x1b")
     host.pump(0.5)
+    host.keys(b"\x022")                # the retry tab: why it is blocked
+    host.pump(0.6)
+    host.keys(b"\x02i")
+    host.pump(1.5)
+    popup("agent-info", "agent info")
+    host.keys(b"\x1b")
+    host.pump(0.5)
     host.keys(b"\x024")                # the header tab: its real diff
     host.pump(0.6)
     host.keys(b"\x02v")
