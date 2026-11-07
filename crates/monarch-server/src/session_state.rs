@@ -16,8 +16,9 @@ mod screens;
 mod waits;
 
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
-use monarch_core::{AgentKind, ClientId, PaneId, Rect, Tab};
+use monarch_core::{AgentKind, ClientId, Clock, PaneId, Rect, SystemClock, Tab};
 use monarch_proto::{
     HostInfo, LayoutMsg, PaneLayout, PanePlace, ScreenSize, ServerMsg, TabSummary,
 };
@@ -58,6 +59,8 @@ pub struct SessionState {
     agents: StateEngine,
     /// Which agent a foreground program name is (see `LaunchConfig::programs`).
     agent_programs: BTreeMap<String, AgentKind>,
+    /// Stamps agent state changes.
+    clock: Arc<dyn Clock>,
 }
 
 impl Default for SessionState {
@@ -85,7 +88,13 @@ impl SessionState {
                 .into_iter()
                 .map(|kind| (kind.program().to_owned(), kind))
                 .collect(),
+            clock: Arc::new(SystemClock),
         }
+    }
+
+    /// Reads the time from `clock` instead of the system's (tests).
+    pub fn set_clock(&mut self, clock: Arc<dyn Clock>) {
+        self.clock = clock;
     }
 
     /// Reserves the id for a pane about to be spawned.

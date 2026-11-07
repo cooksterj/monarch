@@ -98,6 +98,10 @@ Each pane running an agent shows its state in the sidebar and the inbox:
 | `✓` | Done | finished a turn you haven't looked at yet: bright green, and listed in the inbox |
 | `✓` | Finished | a Done you've since focused: soft green, no longer asking for you |
 | `✗` | Error | the turn failed |
+
+At the right of each agent's row is how long it has been in that state: `42s`, then `3m`, `2h`,
+`1d`. A change of activity doesn't restart it, and looking at a Done agent keeps the moment it
+finished. So `◆ 12m` is a prompt you have been missing for twelve minutes.
 | `■` | Exited | the agent's process ended |
 | `$` | (none) | a plain shell |
 
@@ -113,7 +117,9 @@ about twenty agents. `monarch agent explain` shows each pane's state and where i
 `monarch attach -s work --agent claude`.
 
 **The inbox**, `prefix a`, lists every agent waiting on you with the question it asked or the
-last thing it said. Move with `j`/`k` or the arrows; `Enter` jumps to that pane. Any other letter
+last thing it said, and at the right its state and how long it has waited (`blocked 3m`).
+Blocked agents come first, then errors, then done; within each, the one waiting longest is at
+the top. Move with `j`/`k` or the arrows; `Enter` jumps to that pane. Any other letter
 or digit answers that agent without leaving the inbox. `y` and `n` are translated for the agent
 on that row: Claude Code's permission prompt gets `1` and Esc, Codex gets `y` and `n`, as
 `[agents.<id>].quick_answers` says. Every other key is typed as it is, so `2` still picks a

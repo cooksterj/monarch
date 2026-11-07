@@ -18,8 +18,13 @@ impl AttachState {
             ServerMsg::Place { pane, place } => {
                 self.places.insert(pane, place);
             }
-            ServerMsg::Agent { pane, status } => {
+            ServerMsg::Agent {
+                pane,
+                status,
+                since,
+            } => {
                 self.agents.insert(pane, status);
+                self.since.insert(pane, since);
             }
             _ => {}
         }

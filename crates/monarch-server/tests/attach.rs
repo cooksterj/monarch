@@ -219,10 +219,7 @@ async fn agent_reports_reach_attached_clients() {
         agent: Some(monarch_core::AgentKind::Claude),
     };
     until(&mut rx, |m| {
-        *m == ServerMsg::Agent {
-            pane: PaneId(1),
-            status: status.clone(),
-        }
+        matches!(m, ServerMsg::Agent { pane: PaneId(1), status: got, since: Some(_) } if *got == status)
     })
     .await;
     let missing = r#"{"id":2,"method":"agent.report","params":{"pane":9,"agent":"claude"}}"#;

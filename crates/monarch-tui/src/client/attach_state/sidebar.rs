@@ -3,8 +3,9 @@
 //! outside a repository last.
 
 use std::path::Path;
+use std::time::Duration;
 
-use monarch_core::{AgentState, PaneId};
+use monarch_core::{AgentState, PaneId, UnixMillis};
 use monarch_proto::{AgentStatus, PanePlace, PaneSummary};
 
 use super::AttachState;
@@ -13,9 +14,9 @@ use crate::{SidebarGroup, SidebarRow};
 impl AttachState {
     /// Every pane in every tab grouped by checkout, the groups sorted by
     /// project then branch (ignoring case), then the panes outside any
-    /// repository under `Scratch`.
+    /// repository under `Scratch`; agent ages are as of `now`.
     #[must_use]
-    pub fn sidebar_groups(&self) -> Vec<SidebarGroup> {
+    pub fn sidebar_groups(&self, now: UnixMillis) -> Vec<SidebarGroup> {
         let Some(layout) = self.layout.as_ref() else {
             return Vec::new();
         };
@@ -34,6 +35,7 @@ impl AttachState {
                     agent: agent.agent,
                     look: None,
                     detail: activity(agent).or_else(|| place.and_then(where_in)),
+                    age: self.age(pane, now),
                     focused: Some(pane.pane) == layout.focus,
                     shown: tab == layout.active_tab,
                 };
@@ -54,6 +56,17 @@ impl AttachState {
     /// layout.
     pub(super) fn agent<'a>(&'a self, sent: &'a PaneSummary) -> &'a AgentStatus {
         self.agents.get(&sent.pane).unwrap_or(&sent.agent)
+    }
+
+    /// When a pane's agent entered its state, from the latest `Agent` or
+    /// else the layout.
+    pub(super) fn since(&self, sent: &PaneSummary) -> Option<UnixMillis> {
+        self.since.get(&sent.pane).copied().unwrap_or(sent.since)
+    }
+
+    /// How long a pane's agent has been in its state at `now`, if known.
+    pub(super) fn age(&self, sent: &PaneSummary, now: UnixMillis) -> Option<Duration> {
+        self.since(sent).map(|began| began.age_at(now))
     }
 
     /// Where `pane` works, if it is in the layout and its place is known.
@@ -144,8 +157,11 @@ mod tests {
             command: Some(command.into()),
             place: at,
             agent: Default::default(),
+            since: None,
         }
     }
+
+    const NOW: UnixMillis = UnixMillis(100_000);
 
     fn state() -> AttachState {
         let tab = |focus, panes| TabSummary {
@@ -191,7 +207,7 @@ mod tests {
         layout.tabs[1].name = Some("api docs".into());
         layout.tabs[1].panes.truncate(1);
         let labels: Vec<String> = state
-            .sidebar_groups()
+            .sidebar_groups(NOW)
             .into_iter()
             .flat_map(|g| g.rows)
             .map(|r| r.label)
@@ -214,7 +230,7 @@ mod tests {
         layout.tabs[1].panes[0].given_name = Some("editor".into());
         layout.tabs[0].panes[1].given_name = Some("scratch".into());
         let labels: Vec<String> = state
-            .sidebar_groups()
+            .sidebar_groups(NOW)
             .into_iter()
             .flat_map(|g| g.rows)
             .map(|r| r.label)
@@ -244,7 +260,7 @@ mod tests {
         layout.tabs[1].name = Some("api".into());
         assert_eq!(state.tab_labels().0, ["1 ✻ claude", "2 api"]);
         let agents: Vec<_> = state
-            .sidebar_groups()
+            .sidebar_groups(NOW)
             .into_iter()
             .flat_map(|g| g.rows)
             .filter_map(|r| r.agent)
@@ -267,7 +283,7 @@ mod tests {
 
     #[test]
     fn panes_group_by_checkout_with_scratch_last() {
-        let groups = state().sidebar_groups();
+        let groups = state().sidebar_groups(NOW);
         let shape: Vec<(&str, Option<&str>, Vec<&str>)> = groups
             .iter()
             .map(|g| {
@@ -308,7 +324,7 @@ mod tests {
             state.apply(msg, &mut Applied::default());
         }
         let order: Vec<_> = state
-            .sidebar_groups()
+            .sidebar_groups(NOW)
             .into_iter()
             .map(|g| g.title)
             .collect();
@@ -332,13 +348,13 @@ mod tests {
         msgs.into_iter()
             .for_each(|m| state.apply(m, &mut Applied::default()));
         let titles: Vec<_> = state
-            .sidebar_groups()
+            .sidebar_groups(NOW)
             .into_iter()
             .map(|g| (g.detail, g.rows.len()))
             .collect();
         assert_eq!(titles, [(Some("feat".into()), 1), (None, 3)]);
         assert!(
-            AttachState::new().sidebar_groups().is_empty(),
+            AttachState::new().sidebar_groups(NOW).is_empty(),
             "no layout yet"
         );
     }
@@ -346,7 +362,7 @@ mod tests {
     #[test]
     fn a_group_shows_its_checkout_status() {
         let mut state = state();
-        assert_eq!(state.sidebar_groups()[0].status, None, "not read yet");
+        assert_eq!(state.sidebar_groups(NOW)[0].status, None, "not read yet");
         let dirty = CheckoutStatus {
             added: 2,
             removed: 0,
@@ -363,7 +379,11 @@ mod tests {
             place: Some(place),
         };
         state.apply(msg, &mut Applied::default());
-        assert_eq!(state.sidebar_groups()[0].status, Some(dirty), "from pane 3");
+        assert_eq!(
+            state.sidebar_groups(NOW)[0].status,
+            Some(dirty),
+            "from pane 3"
+        );
     }
 
     /// The test state with pane 1 blocked and pane 3 working, both Claude.
@@ -379,16 +399,18 @@ mod tests {
             ServerMsg::Agent {
                 pane: PaneId(1),
                 status: blocked,
+                since: Some(UnixMillis(10_000)),
             },
             ServerMsg::Agent {
                 pane: PaneId(3),
                 status: status(AgentState::Working, None),
+                since: None,
             },
         ];
         msgs.into_iter()
             .for_each(|m| state.apply(m, &mut Applied::default()));
         state
-            .sidebar_groups()
+            .sidebar_groups(NOW)
             .into_iter()
             .flat_map(|g| g.rows)
             .collect()
@@ -416,5 +438,32 @@ mod tests {
     fn agent_panes_are_named_after_their_agent() {
         let labels: Vec<String> = with_agents().into_iter().map(|r| r.label).collect();
         assert_eq!(labels, ["1 claude", "2 claude", "1 zsh", "2 sh"]);
+    }
+
+    #[test]
+    fn rows_age_their_agents_state() {
+        let mut state = state();
+        let status = AgentStatus {
+            state: AgentState::Working,
+            activity: Some("Edit a.rs".into()),
+            agent: Some(monarch_core::AgentKind::Claude),
+        };
+        let msg = ServerMsg::Agent {
+            pane: PaneId(1),
+            status,
+            since: Some(UnixMillis(100_000 - 42_000)),
+        };
+        state.apply(msg, &mut Applied::default());
+        let rows: Vec<SidebarRow> = state
+            .sidebar_groups(NOW)
+            .into_iter()
+            .flat_map(|g| g.rows)
+            .collect();
+        let claude = rows.iter().find(|r| r.pane == PaneId(1)).expect("row");
+        assert_eq!(claude.age, Some(Duration::from_secs(42)));
+        assert_eq!(claude.detail.as_deref(), Some("Edit a.rs"));
+        let shell = rows.iter().find(|r| r.pane == PaneId(2)).expect("row");
+        assert_eq!(shell.age, None, "a shell has no state to age");
+        assert!(state.any_aged());
     }
 }

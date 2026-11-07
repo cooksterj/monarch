@@ -1,8 +1,9 @@
 //! Test doubles shared by the crate's unit tests.
 
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
+use monarch_core::{Clock, UnixMillis};
 use monarch_proto::ScreenSize;
 use monarch_term::Terminal;
 use tokio::sync::mpsc;
@@ -76,4 +77,26 @@ pub fn context() -> ServerContext {
         ..LaunchConfig::default()
     };
     ServerContext::new(env, events, launch)
+}
+
+/// A clock that stands still until a test moves it.
+#[derive(Debug, Default)]
+pub struct FakeClock(AtomicU64);
+
+impl FakeClock {
+    /// A shared clock reading `now`.
+    pub fn at(now: u64) -> Arc<Self> {
+        Arc::new(Self(AtomicU64::new(now)))
+    }
+
+    /// Sets the time.
+    pub fn set(&self, now: u64) {
+        self.0.store(now, Ordering::SeqCst);
+    }
+}
+
+impl Clock for FakeClock {
+    fn now(&self) -> UnixMillis {
+        UnixMillis(self.0.load(Ordering::SeqCst))
+    }
 }

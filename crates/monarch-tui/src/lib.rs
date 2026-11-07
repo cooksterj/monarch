@@ -12,8 +12,8 @@ mod widgets;
 
 pub use client::{
     ANIMATION_STEP, Applied, AttachApp, AttachOptions, AttachOutcome, AttachState, AttachView,
-    CONFIG_POLL, ClickCounter, ClientEvent, ConfigWatch, ContextMenu, CopyMode, CopyStep,
-    DRAG_STEP, DragScroll, FocusView, GlyphAnimator, HelpState, InputKeys, MAX_EXCERPT,
+    AttentionItem, CONFIG_POLL, ClickCounter, ClientEvent, ConfigWatch, ContextMenu, CopyMode,
+    CopyStep, DRAG_STEP, DragScroll, FocusView, GlyphAnimator, HelpState, InputKeys, MAX_EXCERPT,
     MULTI_CLICK, MouseAction, MouseRouter, NamePrompt, NameStep, NameTarget, NotePrompt, NoteStep,
     PaneReplica, Picker, PickerItem, PickerStep, PopupViews, ProjectPicker, ProjectStep,
     QuickAnswer, ReviewNote, ReviewState, ReviewStep, SelectEvent, SelectUnit, Selection,

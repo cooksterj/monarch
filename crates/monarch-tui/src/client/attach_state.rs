@@ -2,7 +2,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use monarch_core::{PaneId, Rect};
+use monarch_core::{PaneId, Rect, UnixMillis};
 use monarch_proto::{
     AgentStatus, Delta, LayoutMsg, ModeFlags, PanePlace, PaneSummary, Screen, ServerMsg,
     StyleCache, TabSummary,
@@ -29,6 +29,8 @@ pub struct AttachState {
     commands: BTreeMap<PaneId, String>,
     places: BTreeMap<PaneId, Option<PanePlace>>,
     agents: BTreeMap<PaneId, AgentStatus>,
+    /// When each pane's agent entered its state, from the latest `Agent`.
+    since: BTreeMap<PaneId, Option<UnixMillis>>,
     resyncing: BTreeSet<PaneId>,
     /// Columns left of the panes (the sidebar); layout coordinates are
     /// shifted right by this on the host.

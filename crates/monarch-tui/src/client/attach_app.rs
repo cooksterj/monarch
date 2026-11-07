@@ -17,6 +17,7 @@ use super::{
 };
 use crate::{HostModeMirror, TuiError, WhichKeyEntry};
 
+mod ages;
 mod animate;
 mod copy;
 mod draw;
@@ -87,6 +88,8 @@ pub struct AttachApp {
     /// Agent glyph animation state, its colours and the next frame.
     glyphs: animate::Glyphs,
     notice: Option<(String, Instant)>,
+    /// When the agent ages are next redrawn.
+    next_age_tick: Instant,
     out: Vec<u8>,
     size: ScreenSize,
     dirty: bool,
@@ -149,6 +152,7 @@ impl AttachApp {
             passthrough: false,
             glyphs: animate::Glyphs::new(s.host.background, &opts.theme),
             notice: warnings_notice(opts),
+            next_age_tick: Instant::now() + ages::AGE_STEP,
             out: s.out,
             size: s.size,
             dirty: true,
@@ -176,6 +180,7 @@ impl AttachApp {
             self.check_resize()?;
             self.drag_tick();
             self.animate();
+            self.tick_ages();
             self.watch_config();
             self.expire_notice();
             self.show_which_key();
