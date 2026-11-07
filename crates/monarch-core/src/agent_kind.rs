@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::CoreError;
 
 /// An agent Monarch knows how to launch and resume.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AgentKind {
     /// Claude Code (`claude`).

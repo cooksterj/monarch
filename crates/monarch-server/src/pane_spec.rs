@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use monarch_core::{AgentKind, PaneId};
+use monarch_core::{AgentConfig, AgentKind, PaneId};
 use portable_pty::CommandBuilder;
 
 use crate::{PaneAgent, PaneEnv};
@@ -50,21 +50,23 @@ impl PaneSpec {
         }
     }
 
-    /// A new session of agent `kind` (Claude Code gets a chosen session id
-    /// so it can be resumed after a restart).
+    /// A new session of agent `kind` launched as `config` says (by default
+    /// Claude Code gets a chosen session id so it can be resumed after a
+    /// restart).
     #[must_use]
-    pub fn agent(kind: AgentKind) -> Self {
-        let agent = PaneAgent::new_session(kind);
+    pub fn agent(kind: AgentKind, config: &AgentConfig) -> Self {
+        let agent = PaneAgent::new_session(kind, config);
         Self {
-            argv: agent.launch_argv(),
+            argv: agent.launch_argv(config),
             cwd: None,
             agent: Some(agent),
         }
     }
 
-    /// The command to spawn, with an honest environment (G11): xterm-class
-    /// `TERM`, `TERM_PROGRAM=monarch`, Monarch's own variables, and no
-    /// variables from an enclosing tmux/screen/zellij.
+    /// The command to spawn, with an honest environment (G11): the user's
+    /// extra variables, then xterm-class `TERM`, `TERM_PROGRAM=monarch` and
+    /// Monarch's own variables (which win), and no variables from an
+    /// enclosing tmux/screen/zellij.
     #[must_use]
     pub fn command(&self, pane: PaneId, env: &PaneEnv) -> CommandBuilder {
         let mut argv = self.argv.iter();
@@ -73,6 +75,9 @@ impl PaneSpec {
         cmd.args(argv);
         if let Some(cwd) = self.cwd.clone().or_else(|| std::env::current_dir().ok()) {
             cmd.cwd(cwd);
+        }
+        for (key, value) in &env.extra {
+            cmd.env(key, value);
         }
         cmd.env("TERM", "xterm-256color");
         cmd.env("COLORTERM", "truecolor");
@@ -99,10 +104,17 @@ mod tests {
     use super::*;
 
     fn env() -> PaneEnv {
-        PaneEnv {
-            session: "main".into(),
-            socket: "/tmp/m.sock".into(),
-        }
+        PaneEnv::new("main", "/tmp/m.sock")
+    }
+
+    #[test]
+    fn extra_variables_are_set_but_never_override_monarchs() {
+        let mut env = env();
+        env.extra.insert("EDITOR".into(), "nvim".into());
+        env.extra.insert("TERM".into(), "xterm-kitty".into());
+        let cmd = PaneSpec::default().command(PaneId(1), &env);
+        assert_eq!(cmd.get_env("EDITOR"), Some(OsStr::new("nvim")));
+        assert_eq!(cmd.get_env("TERM"), Some(OsStr::new("xterm-256color")));
     }
 
     #[test]
@@ -144,9 +156,10 @@ mod tests {
 
     #[test]
     fn agent_panes_run_the_agent_and_remember_it() {
-        let spec = PaneSpec::agent(AgentKind::Claude);
+        let config = AgentConfig::for_kind(AgentKind::Claude);
+        let spec = PaneSpec::agent(AgentKind::Claude, &config);
         let agent = spec.agent.clone().expect("agent");
-        assert_eq!(spec.argv, agent.launch_argv());
+        assert_eq!(spec.argv, agent.launch_argv(&config));
         assert_eq!(spec.argv[0], "claude");
     }
 }

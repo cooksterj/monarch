@@ -1,6 +1,7 @@
 //! What each pane's agent is doing, published to every client, and which
 //! pane a report that names none belongs to.
 
+use std::collections::BTreeMap;
 use std::path::Path;
 
 use monarch_core::{AgentKind, PaneId};
@@ -10,6 +11,18 @@ use monarch_proto::{AgentReport, AgentStatus, StatusSource};
 use super::SessionState;
 
 impl SessionState {
+    /// Names the programs that count as agents (configured wrappers
+    /// beside the built-in names).
+    pub fn set_agent_programs(&mut self, programs: BTreeMap<String, AgentKind>) {
+        self.agent_programs = programs;
+    }
+
+    /// The agent `program` (a foreground process name) is, if any.
+    #[must_use]
+    pub fn agent_for_program(&self, program: &str) -> Option<AgentKind> {
+        self.agent_programs.get(program).copied()
+    }
+
     /// What `pane`'s agent is doing.
     #[must_use]
     pub fn agent_status(&self, pane: PaneId) -> AgentStatus {
@@ -50,7 +63,7 @@ impl SessionState {
     /// report) and tells every client if its status changed.
     pub fn signal_agent(&mut self, pane: PaneId, signal: &OscSignal) {
         let command = self.panes.get(&pane).and_then(|e| e.command.as_deref());
-        let agent = command.and_then(AgentKind::for_program);
+        let agent = command.and_then(|c| self.agent_for_program(c));
         if let Some(status) = self.agents.signal(pane, signal, agent) {
             self.agent_changed(pane, status);
         }
@@ -157,6 +170,21 @@ mod tests {
             "unchanged is still accepted"
         );
         assert!(rx.try_recv().is_err(), "but sends nothing");
+    }
+
+    #[test]
+    fn a_configured_wrapper_counts_as_its_agent() {
+        let mut state = SessionState::default();
+        assert_eq!(state.agent_for_program("claude"), Some(AgentKind::Claude));
+        assert_eq!(state.agent_for_program("my-claude"), None);
+        let mut programs = BTreeMap::new();
+        programs.insert("my-claude".to_owned(), AgentKind::Claude);
+        state.set_agent_programs(programs);
+        assert_eq!(
+            state.agent_for_program("my-claude"),
+            Some(AgentKind::Claude)
+        );
+        assert_eq!(state.agent_for_program("claude"), None, "as given");
     }
 
     #[test]

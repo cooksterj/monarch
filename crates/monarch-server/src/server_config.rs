@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use crate::{PaneSpec, StateFile};
+use crate::{LaunchConfig, PaneSpec, StateFile};
 
 /// Session name, socket, initial panes and where state is kept.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -13,8 +13,8 @@ pub struct ServerConfig {
     pub socket: Option<PathBuf>,
     /// Panes to start with (at least one is needed to stay alive).
     pub panes: Vec<PaneSpec>,
-    /// Scrollback lines per pane.
-    pub scrollback: usize,
+    /// Agent commands, scrollback, extra environment and restore policy.
+    pub launch: LaunchConfig,
     /// Where the session is saved for restore; `None` keeps no state.
     pub state: Option<StateFile>,
     /// Start from the saved session, if there is one, instead of `panes`.
@@ -27,7 +27,7 @@ impl Default for ServerConfig {
             session: "main".into(),
             socket: None,
             panes: vec![PaneSpec::default()],
-            scrollback: 10_000,
+            launch: LaunchConfig::default(),
             state: None,
             restore: false,
         }

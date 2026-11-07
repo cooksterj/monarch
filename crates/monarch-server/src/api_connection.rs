@@ -165,7 +165,7 @@ fn params<T: DeserializeOwned>(value: Value) -> Result<T, RpcError> {
 
 #[cfg(test)]
 mod tests {
-    use monarch_core::{AgentKind, AgentState, PaneId};
+    use monarch_core::{AgentConfig, AgentKind, AgentState, PaneId};
 
     use super::*;
     use crate::PaneSpec;
@@ -194,7 +194,10 @@ mod tests {
     #[test]
     fn agent_read_answers_with_the_last_message_or_refuses_the_pane() {
         let ctx = context();
-        let pane = ctx.insert_for_test(PaneSpec::agent(AgentKind::Claude), FakePane::shell());
+        let pane = ctx.insert_for_test(
+            PaneSpec::agent(AgentKind::Claude, &AgentConfig::for_kind(AgentKind::Claude)),
+            FakePane::shell(),
+        );
         let done = AgentReport {
             state: Some(AgentState::Done),
             activity: Some("All green.".into()),
@@ -217,7 +220,10 @@ mod tests {
     #[test]
     fn agent_panes_remember_the_reported_session() {
         let ctx = context();
-        let codex = ctx.insert_for_test(PaneSpec::agent(AgentKind::Codex), FakePane::shell());
+        let codex = ctx.insert_for_test(
+            PaneSpec::agent(AgentKind::Codex, &AgentConfig::for_kind(AgentKind::Codex)),
+            FakePane::shell(),
+        );
         let shell = ctx.insert_for_test(PaneSpec::shell_command("sh"), FakePane::shell());
         for pane in [codex, shell] {
             let report = AgentReport {

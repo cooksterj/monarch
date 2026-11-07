@@ -21,7 +21,10 @@ impl ServerContext {
         let (path, new_branch) = self.worktrees.create(request)?;
         let spec = PaneSpec {
             cwd: Some(path.clone()),
-            ..request.agent.map(PaneSpec::agent).unwrap_or_default()
+            ..request
+                .agent
+                .map(|kind| PaneSpec::agent(kind, &self.launch.agent(kind)))
+                .unwrap_or_default()
         };
         let pane = self.spawn(&spec, None, Placement::Tab { activate: true })?;
         Ok(WorktreeCreated {

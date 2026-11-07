@@ -104,6 +104,7 @@ impl AttachOptions {
                 .map(|k| format!("unknown key `{k}`")),
         );
         warnings.extend(config.theme.warnings());
+        warnings.extend(config.agent_warnings());
         self.prefix = prefix;
         self.prefix_label.clone_from(&config.keys.prefix);
         self.window_title.clone_from(&config.ui.window_title);
@@ -146,14 +147,16 @@ mod tests {
         config.keys.preset = "tmux".into();
         config.ui.sidebar_width = 40;
         config.theme.colors.insert("acent".into(), "#000000".into());
+        config.agents.insert("aider".into(), AgentConfig::default());
         let opts = AttachOptions::new("/tmp/m.sock".into(), "main".into(), &loaded(config))
             .expect("valid");
         assert_eq!((opts.prefix, opts.prefix_label.as_str()), (0x01, "ctrl+a"));
         assert_eq!(opts.keymap.action(Key::Char('w')), Some(Action::GoToPane));
         assert_eq!(opts.sidebar_width, 40);
-        assert_eq!(opts.warnings.len(), 2, "{:?}", opts.warnings);
+        assert_eq!(opts.warnings.len(), 3, "{:?}", opts.warnings);
         assert_eq!(opts.warnings[0], "unknown key `ui.sidebar_widht`");
         assert!(opts.warnings[1].contains("\"acent\""));
+        assert!(opts.warnings[2].contains("`agents.aider`"));
         assert!(opts.theme.colors.contains_key("acent"));
         assert!(opts.config_path.is_some_and(|p| p.ends_with("config.toml")));
         assert_eq!(opts.agents["claude"].quick_answer('y'), Some("1"));
