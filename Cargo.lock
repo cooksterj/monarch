@@ -1017,14 +1017,14 @@ dependencies = [
 
 [[package]]
 name = "monarch-mux"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "monarch-mux-cli",
 ]
 
 [[package]]
 name = "monarch-mux-cli"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -1041,7 +1041,7 @@ dependencies = [
 
 [[package]]
 name = "monarch-mux-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "proptest",
  "serde",
@@ -1054,7 +1054,7 @@ dependencies = [
 
 [[package]]
 name = "monarch-mux-detect"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "monarch-mux-core",
  "regex",
@@ -1065,7 +1065,7 @@ dependencies = [
 
 [[package]]
 name = "monarch-mux-proto"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "bitflags 2.13.2",
  "bytes",
@@ -1080,7 +1080,7 @@ dependencies = [
 
 [[package]]
 name = "monarch-mux-server"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "futures-util",
  "monarch-mux-core",
@@ -1101,7 +1101,7 @@ dependencies = [
 
 [[package]]
 name = "monarch-mux-term"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "alacritty_terminal",
  "memchr",
@@ -1113,7 +1113,7 @@ dependencies = [
 
 [[package]]
 name = "monarch-mux-tui"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "base64 0.23.1",
  "bytes",
