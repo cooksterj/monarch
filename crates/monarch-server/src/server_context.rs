@@ -10,9 +10,9 @@ use tokio::sync::Notify;
 use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{
-    CliGitRunner, DiffReader, InputRouter, PaneEnv, PaneEvent, PaneIo, PaneRuntime, PaneSpec,
-    PersistedPane, Placement, ProcessProbe, ServerError, SessionState, SpawnParams, SystemProbe,
-    WorktreeManager,
+    CliGitRunner, DiffReader, InputRouter, LaunchConfig, PaneEnv, PaneEvent, PaneIo, PaneRuntime,
+    PaneSpec, PersistedPane, Placement, ProcessProbe, ServerError, SessionState, SpawnParams,
+    SystemProbe, WorktreeManager,
 };
 
 mod explain;
@@ -36,7 +36,7 @@ pub struct ServerContext {
     pub persist: Notify,
     events: UnboundedSender<PaneEvent>,
     env: PaneEnv,
-    scrollback: usize,
+    launch: LaunchConfig,
     probe: Box<dyn ProcessProbe>,
     diffs: DiffReader,
     worktrees: WorktreeManager,
@@ -45,9 +45,11 @@ pub struct ServerContext {
 impl ServerContext {
     /// A context for an empty session.
     #[must_use]
-    pub fn new(env: PaneEnv, events: UnboundedSender<PaneEvent>, scrollback: usize) -> Self {
+    pub fn new(env: PaneEnv, events: UnboundedSender<PaneEvent>, launch: LaunchConfig) -> Self {
+        let mut state = SessionState::default();
+        state.set_agent_programs(launch.programs());
         Self {
-            state: Mutex::new(SessionState::default()),
+            state: Mutex::new(state),
             specs: Mutex::new(BTreeMap::new()),
             inputs: InputRouter::default(),
             wake: Arc::new(Notify::new()),
@@ -55,7 +57,7 @@ impl ServerContext {
             persist: Notify::new(),
             events,
             env,
-            scrollback,
+            launch,
             probe: Box::new(SystemProbe::new()),
             diffs: DiffReader::new(Box::new(CliGitRunner)),
             worktrees: WorktreeManager::new(Box::new(CliGitRunner)),
@@ -171,7 +173,12 @@ impl ServerContext {
     /// # Errors
     /// The PTY or program could not be started.
     pub fn spawn_restored(&self, pane: &PersistedPane) -> Result<PaneId, ServerError> {
-        self.spawn(&pane.restore(), Some(&pane.banner()), Placement::BACKGROUND)
+        let spec = pane.restore(&self.launch);
+        self.spawn(
+            &spec,
+            Some(&pane.banner(&self.launch)),
+            Placement::BACKGROUND,
+        )
     }
 
     fn spawn(
@@ -191,7 +198,7 @@ impl ServerContext {
             env: &self.env,
             size,
             profile,
-            scrollback: self.scrollback,
+            scrollback: self.launch.scrollback_for(spec),
             events: self.events.clone(),
             wake: Arc::clone(&self.wake),
         })?;
@@ -305,13 +312,16 @@ mod tests {
 
     #[test]
     fn hook_reports_record_the_session_and_whether_it_talked() {
-        use monarch_core::{AgentKind, AgentState};
+        use monarch_core::{AgentConfig, AgentKind, AgentState};
         use monarch_proto::AgentReport;
 
         use crate::AgentHistory;
 
         let ctx = context();
-        let id = ctx.insert_for_test(PaneSpec::agent(AgentKind::Codex), FakePane::shell());
+        let id = ctx.insert_for_test(
+            PaneSpec::agent(AgentKind::Codex, &AgentConfig::for_kind(AgentKind::Codex)),
+            FakePane::shell(),
+        );
         let history = |ctx: &super::ServerContext| ctx.specs()[&id].agent.clone().expect("agent");
         let start = AgentReport {
             state: Some(AgentState::Idle),

@@ -7,7 +7,7 @@ use monarch_proto::ScreenSize;
 use monarch_term::Terminal;
 use tokio::sync::mpsc;
 
-use crate::{PaneEnv, PaneIo, PaneShared, ServerContext};
+use crate::{LaunchConfig, PaneEnv, PaneIo, PaneShared, ServerContext};
 
 /// A pane with an emulator but no PTY; records what it was sent.
 pub struct FakePane {
@@ -69,9 +69,11 @@ impl PaneIo for FakePane {
 /// A server context with no panes whose events go nowhere.
 pub fn context() -> ServerContext {
     let (events, _rx) = mpsc::unbounded_channel();
-    let env = PaneEnv {
-        session: "test".into(),
-        socket: "/tmp/test.sock".into(),
+    let env = PaneEnv::new("test", "/tmp/test.sock");
+    let launch = LaunchConfig {
+        scrollback: 100,
+        agent_scrollback: 100,
+        ..LaunchConfig::default()
     };
-    ServerContext::new(env, events, 100)
+    ServerContext::new(env, events, launch)
 }

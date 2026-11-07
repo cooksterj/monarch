@@ -1,19 +1,20 @@
 //! An agent Monarch launched in a pane, and how to resume its session.
 
-use monarch_core::AgentKind;
+use monarch_core::{AgentConfig, AgentKind};
 use serde::{Deserialize, Serialize};
 
 use crate::AgentHistory;
 
 /// Which agent runs in a pane and, once known, its session id.
 ///
-/// Claude Code accepts a chosen id (`--session-id <uuid>`), so Monarch
-/// picks one at launch and resumes it with `claude --resume <uuid>`.
-/// Codex picks its own id; its hooks report it (`session_id`, from M3), and
-/// `codex resume <id>` reopens it. Until then a Codex pane resumes through
-/// `codex resume`'s picker, which lists that directory's sessions, rather
-/// than guessing with `--last` (another pane's session in the same
-/// directory may be newer).
+/// The commands come from `[agents.<id>]` in the config. By default Claude
+/// Code accepts a chosen id (`--session-id <uuid>`), so Monarch picks one
+/// at launch and resumes it with `claude --resume <uuid>`. Codex picks its
+/// own id; its hooks report it (`session_id`, from M3), and `codex resume
+/// <id>` reopens it. Until then a Codex pane resumes through `codex
+/// resume`'s picker, which lists that directory's sessions, rather than
+/// guessing with `--last` (another pane's session in the same directory
+/// may be newer).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PaneAgent {
     /// Which agent.
@@ -26,14 +27,13 @@ pub struct PaneAgent {
 }
 
 impl PaneAgent {
-    /// A new session of `kind`, with its id chosen now when the agent
-    /// allows that.
+    /// A new session of `kind`, with its id chosen now when `config`'s
+    /// launch arguments ask for one.
     #[must_use]
-    pub fn new_session(kind: AgentKind) -> Self {
-        let session_id = match kind {
-            AgentKind::Claude => Some(uuid::Uuid::new_v4().to_string()),
-            AgentKind::Codex => None,
-        };
+    pub fn new_session(kind: AgentKind, config: &AgentConfig) -> Self {
+        let session_id = config
+            .chooses_session_id()
+            .then(|| uuid::Uuid::new_v4().to_string());
         Self {
             kind,
             session_id,
@@ -43,44 +43,43 @@ impl PaneAgent {
 
     /// The command that starts this session for the first time.
     #[must_use]
-    pub fn launch_argv(&self) -> Vec<String> {
-        let mut argv = vec![self.kind.program().to_owned()];
-        if let (AgentKind::Claude, Some(id)) = (self.kind, &self.session_id) {
-            argv.extend(["--session-id".into(), id.clone()]);
-        }
-        argv
+    pub fn launch_argv(&self, config: &AgentConfig) -> Vec<String> {
+        config.launch_argv(self.session_id.as_deref())
     }
 
-    /// The command that brings this pane back after a restart: resume
-    /// its conversation, or start afresh (same id) when its hooks say it
-    /// never had one.
+    /// The command that resumes this session, if `config` has one.
     #[must_use]
-    pub fn restore_argv(&self) -> Vec<String> {
-        if self.history.resumable() {
-            self.resume_argv()
-        } else {
-            self.launch_argv()
-        }
+    pub fn resume_argv(&self, config: &AgentConfig) -> Option<Vec<String>> {
+        config.resume_argv(self.session_id.as_deref())
     }
 
-    /// The command that resumes this session.
+    /// The pane that replaces this one after a restart, as a command and
+    /// the agent it then runs: resume the conversation; start afresh with
+    /// the same id when its hooks say it never had one; or, when `config`
+    /// cannot resume, a new session.
     #[must_use]
-    pub fn resume_argv(&self) -> Vec<String> {
-        let mut argv = vec![self.kind.program().to_owned()];
-        match self.kind {
-            AgentKind::Claude => argv.push("--resume".into()),
-            AgentKind::Codex => argv.push("resume".into()),
+    pub fn restore(&self, config: &AgentConfig) -> (Vec<String>, Self) {
+        if !self.history.resumable() {
+            return (self.launch_argv(config), self.clone());
         }
-        argv.extend(self.session_id.clone());
-        argv
+        match self.resume_argv(config) {
+            Some(argv) => (argv, self.clone()),
+            None => {
+                let fresh = Self::new_session(self.kind, config);
+                (fresh.launch_argv(config), fresh)
+            }
+        }
     }
 
     /// What the restore notice says about this pane.
     #[must_use]
-    pub fn resume_note(&self) -> String {
+    pub fn resume_note(&self, config: &AgentConfig) -> String {
         let name = self.kind.display_name();
         if !self.history.resumable() {
             return format!("starting {name} again (it had no conversation yet)");
+        }
+        if config.resume_args.is_empty() {
+            return format!("starting a new {name} session (resume_args is empty)");
         }
         match &self.session_id {
             Some(id) => format!("resuming {name} session {id}"),
@@ -93,29 +92,51 @@ impl PaneAgent {
 mod tests {
     use super::*;
 
+    fn builtin(kind: AgentKind) -> AgentConfig {
+        AgentConfig::for_kind(kind)
+    }
+
     #[test]
     fn claude_launches_with_a_chosen_id_and_resumes_it() {
-        let agent = PaneAgent::new_session(AgentKind::Claude);
+        let config = builtin(AgentKind::Claude);
+        let agent = PaneAgent::new_session(AgentKind::Claude, &config);
         let id = agent.session_id.clone().expect("chosen at launch");
         assert!(uuid::Uuid::parse_str(&id).is_ok(), "claude requires a UUID");
-        assert_eq!(agent.launch_argv(), ["claude", "--session-id", id.as_str()]);
-        assert_eq!(agent.resume_argv(), ["claude", "--resume", id.as_str()]);
-        assert!(agent.resume_note().contains(&id));
+        assert_eq!(
+            agent.launch_argv(&config),
+            ["claude", "--session-id", id.as_str()]
+        );
+        assert_eq!(
+            agent.resume_argv(&config).expect("resumable"),
+            ["claude", "--resume", id.as_str()]
+        );
+        assert!(agent.resume_note(&config).contains(&id));
     }
 
     #[test]
     fn each_claude_session_gets_its_own_id() {
-        let a = PaneAgent::new_session(AgentKind::Claude);
-        let b = PaneAgent::new_session(AgentKind::Claude);
+        let config = builtin(AgentKind::Claude);
+        let a = PaneAgent::new_session(AgentKind::Claude, &config);
+        let b = PaneAgent::new_session(AgentKind::Claude, &config);
         assert_ne!(a.session_id, b.session_id);
     }
 
     #[test]
     fn codex_without_an_id_resumes_through_the_picker() {
-        let agent = PaneAgent::new_session(AgentKind::Codex);
-        assert_eq!(agent.launch_argv(), ["codex"]);
-        assert_eq!(agent.resume_argv(), ["codex", "resume"], "never --last");
-        assert!(agent.resume_note().starts_with("pick the Codex session"));
+        let config = builtin(AgentKind::Codex);
+        let agent = PaneAgent::new_session(AgentKind::Codex, &config);
+        assert_eq!(agent.session_id, None, "codex picks its own");
+        assert_eq!(agent.launch_argv(&config), ["codex"]);
+        assert_eq!(
+            agent.resume_argv(&config).expect("resumable"),
+            ["codex", "resume"],
+            "never --last"
+        );
+        assert!(
+            agent
+                .resume_note(&config)
+                .starts_with("pick the Codex session")
+        );
     }
 
     #[test]
@@ -126,28 +147,62 @@ mod tests {
             history: AgentHistory::Started,
         };
         assert_eq!(
-            agent.resume_argv(),
+            agent
+                .resume_argv(&builtin(AgentKind::Codex))
+                .expect("resumable"),
             ["codex", "resume", "0199a213-81c0-7800-8aa1-bbab2a035a53"]
         );
     }
 
     #[test]
     fn a_pane_never_prompted_starts_afresh_with_the_same_id() {
-        let mut agent = PaneAgent::new_session(AgentKind::Claude);
+        let config = builtin(AgentKind::Claude);
+        let mut agent = PaneAgent::new_session(AgentKind::Claude, &config);
         let id = agent.session_id.clone().expect("chosen");
         assert_eq!(
-            agent.restore_argv(),
-            agent.resume_argv(),
+            agent.restore(&config).0,
+            agent.resume_argv(&config).expect("resumable"),
             "no hooks: resume"
         );
         agent.history = AgentHistory::Empty;
-        assert_eq!(
-            agent.restore_argv(),
-            ["claude", "--session-id", id.as_str()]
-        );
-        assert!(agent.resume_note().contains("no conversation yet"));
+        let (argv, same) = agent.restore(&config);
+        assert_eq!(argv, ["claude", "--session-id", id.as_str()]);
+        assert_eq!(same, agent);
+        assert!(agent.resume_note(&config).contains("no conversation yet"));
         let old = r#"{"kind":"claude","session_id":"x"}"#;
         let read: PaneAgent = serde_json::from_str(old).expect("older state file");
         assert_eq!(read.history, AgentHistory::Unknown);
+    }
+
+    #[test]
+    fn without_resume_args_a_restore_is_a_new_session() {
+        let config = AgentConfig {
+            resume_args: Vec::new(),
+            ..builtin(AgentKind::Claude)
+        };
+        let agent = PaneAgent {
+            history: AgentHistory::Started,
+            ..PaneAgent::new_session(AgentKind::Claude, &config)
+        };
+        let (argv, fresh) = agent.restore(&config);
+        assert_ne!(fresh.session_id, agent.session_id, "the old id is taken");
+        assert_eq!(argv[..2], ["claude", "--session-id"]);
+        assert_eq!(Some(&argv[2]), fresh.session_id.as_ref());
+        assert!(
+            agent
+                .resume_note(&config)
+                .contains("new Claude Code session")
+        );
+    }
+
+    #[test]
+    fn a_configured_wrapper_launches_with_its_flags() {
+        let config = AgentConfig {
+            command: "my-codex".into(),
+            args: vec!["--full-auto".into()],
+            ..builtin(AgentKind::Codex)
+        };
+        let agent = PaneAgent::new_session(AgentKind::Codex, &config);
+        assert_eq!(agent.launch_argv(&config), ["my-codex", "--full-auto"]);
     }
 }

@@ -35,8 +35,8 @@ fn check(loader: &ConfigLoader, out: &mut dyn Write) -> anyhow::Result<ExitCode>
     Ok(ExitCode::SUCCESS)
 }
 
-/// Every problem in a config that loaded: unknown keys, bad bindings and
-/// bad theme values (each falls back to a default).
+/// Every problem in a config that loaded: unknown keys, bad bindings, bad
+/// theme values and bad agent tables (each falls back to a default).
 pub(crate) fn warnings(loaded: &LoadedConfig) -> Vec<String> {
     let path = loaded.path.display();
     let mut warnings: Vec<String> = (loaded.unknown_keys.iter())
@@ -44,6 +44,7 @@ pub(crate) fn warnings(loaded: &LoadedConfig) -> Vec<String> {
         .collect();
     warnings.extend(Keymap::from_config(&loaded.config.keys).1);
     warnings.extend(loaded.config.theme.warnings());
+    warnings.extend(loaded.config.agent_warnings());
     warnings
 }
 

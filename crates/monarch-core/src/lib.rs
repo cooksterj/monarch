@@ -23,8 +23,8 @@ pub use action_group::ActionGroup;
 pub use agent_kind::AgentKind;
 pub use agent_state::AgentState;
 pub use config::{
-    AgentConfig, Config, ConfigLoader, KeysConfig, LoadedConfig, MouseMode, NotificationsConfig,
-    ProjectsConfig, SessionConfig, TerminalConfig, ThemeConfig, UiConfig,
+    AgentConfig, Config, ConfigLoader, KeysConfig, LoadedConfig, MouseMode, ProjectsConfig,
+    SESSION_ID, SessionConfig, TerminalConfig, ThemeConfig, UiConfig,
 };
 pub use error::CoreError;
 pub use given_name::given_name;

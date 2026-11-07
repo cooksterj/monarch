@@ -7,7 +7,6 @@ mod agents;
 mod keys;
 mod loader;
 mod mouse_mode;
-mod notifications;
 mod projects;
 mod session;
 mod terminal;
@@ -18,11 +17,12 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-pub use agents::AgentConfig;
+use crate::AgentKind;
+
+pub use agents::{AgentConfig, SESSION_ID};
 pub use keys::KeysConfig;
 pub use loader::{ConfigLoader, LoadedConfig};
 pub use mouse_mode::MouseMode;
-pub use notifications::NotificationsConfig;
 pub use projects::ProjectsConfig;
 pub use session::SessionConfig;
 pub use terminal::TerminalConfig;
@@ -39,8 +39,6 @@ pub struct Config {
     pub ui: UiConfig,
     /// `[theme]`: colour theme selection.
     pub theme: ThemeConfig,
-    /// `[notifications]`: when and how agents get your attention.
-    pub notifications: NotificationsConfig,
     /// `[agents.<id>]`: how to launch and resume each agent.
     pub agents: BTreeMap<String, AgentConfig>,
     /// `[terminal]`: shell and scrollback for panes.
@@ -57,7 +55,6 @@ impl Default for Config {
             keys: KeysConfig::default(),
             ui: UiConfig::default(),
             theme: ThemeConfig::default(),
-            notifications: NotificationsConfig::default(),
             agents: AgentConfig::builtin(),
             terminal: TerminalConfig::default(),
             projects: ProjectsConfig::default(),
@@ -72,6 +69,26 @@ impl Config {
     #[must_use]
     pub fn default_toml() -> String {
         toml::to_string_pretty(&Self::default()).unwrap_or_default()
+    }
+
+    /// How to launch `kind`: its `[agents.<id>]` table, or the built-in
+    /// one when the table is missing or names no command.
+    #[must_use]
+    pub fn agent(&self, kind: AgentKind) -> AgentConfig {
+        self.agents
+            .get(kind.name())
+            .filter(|agent| !agent.command.trim().is_empty())
+            .cloned()
+            .unwrap_or_else(|| AgentConfig::for_kind(kind))
+    }
+
+    /// Problems in the `[agents]` tables (each falls back to a built-in).
+    #[must_use]
+    pub fn agent_warnings(&self) -> Vec<String> {
+        self.agents
+            .iter()
+            .flat_map(|(id, agent)| agent.warnings(id))
+            .collect()
     }
 }
 
@@ -97,5 +114,20 @@ mod tests {
         let config = Config::default();
         assert!(config.agents.contains_key("claude"));
         assert!(config.agents.contains_key("codex"));
+    }
+
+    #[test]
+    fn agent_lookup_honours_the_table_and_falls_back() {
+        let mut config = Config::default();
+        config.agents.get_mut("claude").expect("claude").command = "my-claude".into();
+        assert_eq!(config.agent(AgentKind::Claude).command, "my-claude");
+        config.agents.get_mut("codex").expect("codex").command = String::new();
+        assert_eq!(
+            config.agent(AgentKind::Codex),
+            AgentConfig::for_kind(AgentKind::Codex)
+        );
+        config.agents.remove("claude");
+        assert_eq!(config.agent(AgentKind::Claude).command, "claude");
+        assert_eq!(config.agent_warnings().len(), 1, "the empty command");
     }
 }

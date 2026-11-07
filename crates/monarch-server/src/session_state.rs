@@ -9,6 +9,7 @@ mod actions;
 mod adopt;
 mod agents;
 mod arrange;
+mod clients;
 mod commands;
 mod render;
 mod screens;
@@ -16,12 +17,11 @@ mod waits;
 
 use std::collections::BTreeMap;
 
-use monarch_core::{ClientId, PaneId, Rect, Tab};
+use monarch_core::{AgentKind, ClientId, PaneId, Rect, Tab};
 use monarch_proto::{
     HostInfo, LayoutMsg, PaneLayout, PanePlace, ScreenSize, ServerMsg, TabSummary,
 };
 use monarch_term::{HostProfile, ShadowGrid};
-use tokio::sync::mpsc::Sender;
 
 pub use actions::ActionEffect;
 
@@ -56,6 +56,8 @@ pub struct SessionState {
     next_client: ClientId,
     next_pane: PaneId,
     agents: StateEngine,
+    /// Which agent a foreground program name is (see `LaunchConfig::programs`).
+    agent_programs: BTreeMap<String, AgentKind>,
 }
 
 impl Default for SessionState {
@@ -79,6 +81,10 @@ impl SessionState {
             next_client: ClientId(1),
             next_pane: PaneId(1),
             agents: StateEngine::default(),
+            agent_programs: AgentKind::ALL
+                .into_iter()
+                .map(|kind| (kind.program().to_owned(), kind))
+                .collect(),
         }
     }
 
@@ -196,44 +202,6 @@ impl SessionState {
             entry.title.clone_from(&title);
             self.broadcast(&ServerMsg::Title { pane: id, title });
         }
-    }
-
-    /// Registers a client; it gets the layout and snapshots on the next frame.
-    pub fn add_client(&mut self, lane: Sender<Vec<ServerMsg>>) -> ClientId {
-        let id = self.next_client;
-        self.next_client = id.next();
-        let mut client = ClientHandle::new(id, lane);
-        client.resync(self.visible_panes());
-        self.clients.insert(id, client);
-        id
-    }
-
-    /// Forgets a client; the window takes the size of the client that
-    /// reported one most recently, so a smaller terminal left attached is
-    /// not drawn clipped.
-    pub fn remove_client(&mut self, id: ClientId) {
-        self.clients.remove(&id);
-        if let Some(size) = self.latest_window() {
-            self.resize(size);
-        }
-    }
-
-    /// A client, if still attached.
-    pub fn client_mut(&mut self, id: ClientId) -> Option<&mut ClientHandle> {
-        self.clients.get_mut(&id)
-    }
-
-    /// Number of attached clients.
-    #[must_use]
-    pub fn client_count(&self) -> usize {
-        self.clients.len()
-    }
-
-    /// Sends one message to every client.
-    pub fn broadcast(&mut self, msg: &ServerMsg) {
-        self.clients
-            .values_mut()
-            .for_each(|c| c.push(vec![msg.clone()]));
     }
 
     /// Panes clients currently see: the shown tab's (just the focused pane

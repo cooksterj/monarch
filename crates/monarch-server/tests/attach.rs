@@ -6,7 +6,7 @@ use std::time::Duration;
 use futures_util::{SinkExt, StreamExt};
 use monarch_core::{AgentState, PaneId};
 use monarch_proto::{AgentStatus, ClientMsg, FrameCodec, Hello, HelloAck, ScreenSize, ServerMsg};
-use monarch_server::{PaneSpec, Server, ServerConfig};
+use monarch_server::{LaunchConfig, PaneSpec, Server, ServerConfig};
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixStream;
 use tokio::net::unix::{OwnedReadHalf, OwnedWriteHalf};
@@ -67,7 +67,10 @@ fn config(socket: &Path, pane: PaneSpec) -> ServerConfig {
         session: "t".into(),
         socket: Some(socket.into()),
         panes: vec![pane],
-        scrollback: 100,
+        launch: LaunchConfig {
+            scrollback: 100,
+            ..LaunchConfig::default()
+        },
         ..ServerConfig::default()
     }
 }

@@ -3,7 +3,7 @@
 use std::process::ExitCode;
 
 use monarch_core::Config;
-use monarch_server::{Daemon, PaneSpec, Server, ServerConfig, StateFile};
+use monarch_server::{Daemon, LaunchConfig, PaneSpec, Server, ServerConfig, StateFile};
 
 use crate::ServerArgs;
 
@@ -25,7 +25,11 @@ fn server_config(args: &ServerArgs, config: &Config) -> ServerConfig {
         .panes
         .iter()
         .map(|cmd| PaneSpec::shell_command(cmd))
-        .chain(args.agents.iter().map(|kind| PaneSpec::agent(*kind)))
+        .chain(
+            args.agents
+                .iter()
+                .map(|kind| PaneSpec::agent(*kind, &config.agent(*kind))),
+        )
         .collect();
     let fresh = !panes.is_empty();
     if !fresh {
@@ -43,7 +47,7 @@ fn server_config(args: &ServerArgs, config: &Config) -> ServerConfig {
         session,
         socket: None,
         panes,
-        scrollback: config.terminal.scrollback,
+        launch: LaunchConfig::from(config),
     }
 }
 
@@ -57,9 +61,11 @@ mod tests {
     fn defaults_come_from_config() {
         let mut config = Config::default();
         config.terminal.scrollback = 42;
+        config.session.resume_agents = false;
         let server = server_config(&ServerArgs::default(), &config);
         assert_eq!(server.session, "main");
-        assert_eq!(server.scrollback, 42);
+        assert_eq!(server.launch.scrollback, 42);
+        assert!(!server.launch.resume_agents);
         assert_eq!(server.panes, [PaneSpec::default()]);
         assert!(server.restore);
     }
@@ -93,5 +99,27 @@ mod tests {
         assert!(!server.restore);
         assert_eq!(server.panes.len(), 2);
         assert_eq!(server.panes[1].argv[..2], ["claude", "--session-id"]);
+    }
+
+    #[test]
+    fn agents_launch_as_the_config_says() {
+        let mut config = Config::default();
+        let claude = config.agents.get_mut("claude").expect("claude");
+        claude.command = "my-claude".into();
+        claude.args = vec!["--model".into(), "opus".into()];
+        let args = ServerArgs {
+            agents: vec![AgentKind::Claude],
+            ..ServerArgs::default()
+        };
+        let server = server_config(&args, &config);
+        assert_eq!(server.panes[0].argv, ["my-claude", "--model", "opus"]);
+        assert_eq!(
+            server.panes[0]
+                .agent
+                .as_ref()
+                .and_then(|a| a.session_id.clone()),
+            None,
+            "no session id placeholder in args: the agent picks its own"
+        );
     }
 }

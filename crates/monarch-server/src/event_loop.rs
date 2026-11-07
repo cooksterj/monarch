@@ -99,15 +99,16 @@ mod tests {
 
     use super::*;
     use crate::test_support::FakePane;
-    use crate::{DEFAULT_SIZE, PaneEnv};
+    use crate::{DEFAULT_SIZE, LaunchConfig, PaneEnv};
 
     fn context() -> Arc<ServerContext> {
         let (events, _rx) = mpsc::unbounded_channel();
-        let env = PaneEnv {
-            session: "t".into(),
-            socket: "/tmp/t.sock".into(),
+        let env = PaneEnv::new("t", "/tmp/t.sock");
+        let launch = LaunchConfig {
+            scrollback: 10,
+            ..LaunchConfig::default()
         };
-        let ctx = Arc::new(ServerContext::new(env, events, 10));
+        let ctx = Arc::new(ServerContext::new(env, events, launch));
         let id = ctx.lock().allocate_pane_id();
         ctx.lock().insert_pane(id, FakePane::boxed(DEFAULT_SIZE));
         ctx

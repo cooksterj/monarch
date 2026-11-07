@@ -250,7 +250,9 @@ prefix = "ctrl+a"          # any single control key
 The file is `~/.config/monarch/config.toml` (`MONARCH_CONFIG` overrides it; `monarch config path`
 prints it). It is optional: `monarch config default` prints every setting with its default.
 Changes apply when you save; `prefix R` reloads by hand. A bad value is reported and its default
-used, never a crash. `monarch config check` validates the file and flags unknown keys.
+used, never a crash. `monarch config check` validates the file and flags unknown keys. The
+settings a server reads when it starts panes (`[agents.*]`, `[terminal]`, `session.resume_agents`)
+take effect for the next session you start; a running server keeps the values it started with.
 
 | Setting | Default | Meaning |
 |---|---|---|
@@ -266,16 +268,26 @@ used, never a crash. `monarch config check` validates the file and flags unknown
 | `ui.window_title` | `"{title} — monarch:{session}"` | your terminal's title; `{session}`, `{pane}`, `{title}` expand |
 | `ui.animations` | `true` | animate state glyphs |
 | `terminal.shell` | `$SHELL` | shell for new panes |
-| `terminal.scrollback` | `10000` | history lines per pane |
+| `terminal.scrollback` | `10000` | history lines per shell pane |
+| `terminal.agent_scrollback` | `5000` | history lines per pane Monarch started as an agent (they redraw a lot) |
+| `terminal.env` | `{}` | extra environment for every pane, e.g. `{ EDITOR = "nvim" }`; Monarch's own variables (`TERM`, `TERM_PROGRAM`, `MONARCH_*`) always win |
 | `session.default_name` | `"main"` | the session `monarch` attaches to |
+| `session.resume_agents` | `true` | restore relaunches agents; off, their panes come back as shells in the same directory |
 | `projects.worktree_root` | beside the repo | where new worktrees go |
+| `agents.<id>.command` | `claude` / `codex` | the program `--agent`, `monarch new --agent` and `prefix N` run; a wrapper script works and is recognised by name |
+| `agents.<id>.args` | `["--session-id", "{session_id}"]` / `[]` | its arguments for a new session; `{session_id}` makes Monarch choose a UUID so the pane can be resumed |
+| `agents.<id>.resume_args` | `["--resume", "{session_id}"]` / `["resume", "{session_id}"]` | arguments to resume after a restart; an argument naming `{session_id}` is left out when no id is known (Codex before its hooks report one); empty means start a new session instead |
 | `agents.<id>.quick_answers` | `y`/`n` per agent | what an inbox key sends to that agent's pane, e.g. `y = "1"` |
 
-**Not yet in effect.** The default file also has `[notifications]`, the `command`, `args` and
-`resume_args` of `[agents.claude]` and `[agents.codex]`, `terminal.agent_scrollback`,
-`terminal.env` and `session.resume_agents`. Monarch reads and checks them but doesn't act on
-them yet: notifications were dropped in favour of the sidebar and inbox, and the agent commands
-are built in.
+To add a default flag to every agent Monarch starts, keep the placeholder:
+
+```toml
+[agents.claude]
+args = ["--model", "opus", "--session-id", "{session_id}"]
+```
+
+Only `claude` and `codex` can be configured; any other `[agents.<id>]` table is reported and
+ignored, as is an empty `command` (the built-in one is used).
 
 ### Themes
 

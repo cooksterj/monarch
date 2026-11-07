@@ -61,16 +61,13 @@ mod tests {
     use tokio::sync::mpsc::unbounded_channel;
 
     use super::*;
-    use crate::{PaneEnv, PaneSpec, test_support::FakePane};
+    use crate::{LaunchConfig, PaneEnv, PaneSpec, test_support::FakePane};
 
     #[test]
     fn typing_reaches_the_pane_and_only_replies_reach_the_event_loop() {
         let (events, mut rx) = unbounded_channel();
-        let env = PaneEnv {
-            session: "t".into(),
-            socket: "/tmp/t.sock".into(),
-        };
-        let ctx = ServerContext::new(env, events, 100);
+        let env = PaneEnv::new("t", "/tmp/t.sock");
+        let ctx = ServerContext::new(env, events, LaunchConfig::default());
         let fake = ctx.insert_for_test(PaneSpec::default(), FakePane::shell());
         ctx.send_input(fake, b"\x1b[A".to_vec());
         assert!(rx.try_recv().is_err(), "an arrow is not a reply");

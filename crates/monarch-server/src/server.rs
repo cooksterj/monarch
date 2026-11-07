@@ -48,10 +48,10 @@ impl Server {
         let listener = bind(&config.session, &socket)?;
         let (events, events_rx) = mpsc::unbounded_channel();
         let env = PaneEnv {
-            session: config.session.clone(),
-            socket: socket.clone(),
+            extra: config.launch.env.clone(),
+            ..PaneEnv::new(config.session.clone(), socket.clone())
         };
-        let ctx = Arc::new(ServerContext::new(env, events, config.scrollback));
+        let ctx = Arc::new(ServerContext::new(env, events, config.launch.clone()));
         restore::start_panes(&ctx, &config)?;
         let stop = Arc::new(Notify::new());
         let (tasks, persister) = background(&ctx, &config, events_rx, &stop);

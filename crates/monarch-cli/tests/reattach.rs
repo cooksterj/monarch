@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 
 use monarch_core::PaneId;
 use monarch_proto::{ClientMsg, ScreenSize, ServerMsg};
-use monarch_server::{PaneSpec, Server, ServerConfig};
+use monarch_server::{LaunchConfig, PaneSpec, Server, ServerConfig};
 use monarch_tui::{Applied, AttachState, AttachView, ClientEvent, ServerLink, StatusLine};
 use ratatui::Terminal;
 use ratatui::backend::TestBackend;
@@ -138,7 +138,10 @@ fn a_reattached_client_sees_exactly_what_an_attached_one_sees() {
             argv: vec!["sh".into(), "-c".into(), SCRIPT.into()],
             ..PaneSpec::default()
         }],
-        scrollback: 100,
+        launch: LaunchConfig {
+            scrollback: 100,
+            ..LaunchConfig::default()
+        },
         ..ServerConfig::default()
     };
     thread::spawn(move || Server::run(config));

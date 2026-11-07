@@ -3,7 +3,7 @@
 
 use std::collections::BTreeSet;
 
-use monarch_core::{AgentKind, AgentState, PaneId};
+use monarch_core::{AgentState, PaneId};
 
 use super::SessionState;
 use crate::screen_watcher::PaneScreen;
@@ -40,7 +40,10 @@ impl SessionState {
         let Some(entry) = self.panes.get(&pane) else {
             return;
         };
-        let agent = entry.command.as_deref().and_then(AgentKind::for_program);
+        let agent = entry
+            .command
+            .as_deref()
+            .and_then(|c| self.agent_for_program(c));
         let watched = self.client_count() > 0 && self.focus() == Some(pane);
         if let Some(status) = self.agents.screen(pane, state, agent, watched) {
             self.agent_changed(pane, status);
