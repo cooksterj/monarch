@@ -83,6 +83,7 @@ impl AttachApp {
             which_key: (self.popup && !self.any_overlay()).then_some(WhichKey {
                 entries: &self.which_key,
                 title: &self.opts.prefix_label,
+                chrome,
             }),
         };
         self.ui

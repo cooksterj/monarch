@@ -6,20 +6,24 @@ use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::widgets::{Block, Borders, Clear, Widget};
 
-use super::WhichKeyEntry;
+use super::{Chrome, WhichKeyEntry};
 
-/// Space between columns.
+/// Space between columns: more than the two cells between a key and its
+/// label, so a label reads with its own key and not the next column's.
 const GAP: u16 = 3;
 
 /// Entries in as many columns as fit, filled top to bottom, in a box at the
-/// bottom of the pane area. The help key sits in the bottom border, so it
-/// shows however short the host is.
-#[derive(Debug, Clone, Copy)]
+/// bottom of the pane area. Keys are right-aligned against their labels and
+/// drawn in the accent, so each pair reads as one. The help key sits in the
+/// bottom border, so it shows however short the host is.
+#[derive(Debug, Clone, Copy, Default)]
 pub struct WhichKey<'a> {
     /// What to list.
     pub entries: &'a [WhichKeyEntry],
     /// The box title (the prefix, e.g. `ctrl+b`).
     pub title: &'a str,
+    /// The key colour.
+    pub chrome: Chrome<'a>,
 }
 
 impl WhichKey<'_> {
@@ -115,15 +119,19 @@ impl Widget for WhichKey<'_> {
 }
 
 impl WhichKey<'_> {
-    /// One `key  label` pair at `at`, cut at the box's edge.
+    /// One `key  label` pair at `at`, the key right-aligned to the label,
+    /// cut at the box's edge.
     fn cell(&self, buf: &mut Buffer, inner: Rect, at: (u16, u16), text: (&str, &str)) {
         let ((x, y), (keys, label)) = (at, text);
         if x >= inner.right() || y >= inner.bottom() {
             return;
         }
-        let bold = Style::new().add_modifier(Modifier::BOLD);
-        buf.set_stringn(x, y, keys, usize::from(inner.right() - x), bold);
-        let label_x = x + self.widths().0 + 2;
+        let keys_width = self.widths().0;
+        let shown = u16::try_from(keys.chars().count()).unwrap_or(u16::MAX);
+        let keys_x = (x + keys_width.saturating_sub(shown)).min(inner.right());
+        let room = usize::from(inner.right() - keys_x);
+        buf.set_stringn(keys_x, y, keys, room, self.chrome.key());
+        let label_x = x + keys_width + 2;
         if label_x < inner.right() {
             let room = usize::from(inner.right() - label_x);
             buf.set_stringn(label_x, y, label, room, Style::new());
@@ -144,6 +152,7 @@ mod tests {
         let popup = WhichKey {
             entries: &entries,
             title: "ctrl+b",
+            chrome: Chrome::default(),
         };
         let mut term = Terminal::new(TestBackend::new(width, height)).expect("terminal");
         term.draw(|f| f.render_widget(popup, f.area()))
@@ -176,16 +185,16 @@ mod tests {
     fn wide_hosts_get_columns() {
         insta::assert_snapshot!(draw(80, 12), @r#"
         ┌ ctrl+b ─────────────────────────────────────────────────────────────────────┐
-        │ " -        split down     1-9        go to tab      [          copy mode    │
-        │ % |        split right    c          new tab        a          inbox        │
-        │ x          close pane     n          next tab       g w        go to pane   │
-        │ z          zoom           p          prev tab       i          agent info   │
-        │ hjkl ←↓↑→  focus          ,          rename tab     m          toggle mouse │
-        │ o          focus next     .          rename pane    s          projects     │
-        │ {          swap prev      :          palette        t          sidebar      │
-        │ }          swap next      N          new worktree   v          review       │
-        │ =          equalize       R          reload         tab        next blocked │
-        │ HJKL       resize         S          sessions       d          detach       │
+        │       " -  split down           1-9  go to tab              [  copy mode    │
+        │       % |  split right            c  new tab                a  inbox        │
+        │         x  close pane             n  next tab             g w  go to pane   │
+        │         z  zoom                   p  prev tab               i  agent info   │
+        │ hjkl ←↓↑→  focus                  ,  rename tab             m  toggle mouse │
+        │         o  focus next             .  rename pane            s  projects     │
+        │         {  swap prev              :  palette                t  sidebar      │
+        │         }  swap next              N  new worktree           v  review       │
+        │         =  equalize               R  reload               tab  next blocked │
+        │      HJKL  resize                 S  sessions               d  detach       │
         └ ? all keys and help ────────────────────────────────────────────────────────┘
         "#);
     }
@@ -194,14 +203,32 @@ mod tests {
     fn narrow_hosts_get_one_column_and_a_count_of_the_rest() {
         insta::assert_snapshot!(draw(24, 8), @r#"
         ┌ ctrl+b ──────────────┐
-        │ " -        split down│
-        │ % |        split righ│
-        │ x          close pane│
-        │ z          zoom      │
+        │       " -  split down│
+        │       % |  split righ│
+        │         x  close pane│
+        │         z  zoom      │
         │ hjkl ←↓↑→  focus     │
-        │ …          25 more   │
+        │         …  25 more   │
         └ ? all keys and help ─┘
         "#);
+    }
+
+    #[test]
+    fn keys_take_the_accent_and_labels_do_not() {
+        let theme = monarch_core::Theme::dark();
+        let entries = WhichKeyEntry::from_keymap(&Keymap::default());
+        let popup = WhichKey {
+            entries: &entries,
+            title: "ctrl+b",
+            chrome: Chrome::new(Some(&theme)),
+        };
+        let mut buf = Buffer::empty(Rect::new(0, 0, 80, 12));
+        popup.render(buf.area, &mut buf);
+        // Row 3 is `x  close pane`: the key right-aligned at column 10.
+        assert_eq!(buf[(10, 3)].symbol(), "x");
+        assert_eq!(buf[(10, 3)].fg, Chrome::color(theme.accent));
+        assert_eq!(buf[(13, 3)].symbol(), "c");
+        assert_eq!(buf[(13, 3)].fg, ratatui::style::Color::Reset);
     }
 
     #[test]
@@ -209,6 +236,7 @@ mod tests {
         let popup = WhichKey {
             entries: &[],
             title: "ctrl+b",
+            chrome: Chrome::default(),
         };
         let area = Rect::new(0, 0, 40, 10);
         assert_eq!(popup.placement(area).height, 2);

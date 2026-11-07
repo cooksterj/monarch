@@ -49,6 +49,16 @@ impl<'a> Chrome<'a> {
         }
     }
 
+    /// A key in the which-key popup: bold, in the accent colour.
+    #[must_use]
+    pub fn key(&self) -> Style {
+        let bold = Style::new().add_modifier(Modifier::BOLD);
+        match self.theme {
+            Some(t) => bold.fg(Self::color(t.accent)),
+            None => bold,
+        }
+    }
+
     /// One part of a checkout's badge: lines added green, removed red,
     /// untracked files dim, commits to push in the accent, commits to pull
     /// amber. Without colours, commits to pull are bold.
