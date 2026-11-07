@@ -41,6 +41,7 @@ impl AttachState {
                     name: self.name(summary, pane),
                     status,
                     age: self.age(pane, now),
+                    waited: self.waited(pane, now),
                 };
                 Some((self.since(pane), item))
             })
@@ -143,7 +144,7 @@ mod tests {
                 status,
                 timing: Some(AgentTiming::begun(
                     UnixMillis(1_000 * u64::from(*id)),
-                    false,
+                    *s == AgentState::Working,
                 )),
             };
             state.apply(msg, &mut Applied::default());
@@ -189,13 +190,16 @@ mod tests {
         let order: Vec<(u32, Option<u64>)> = state
             .needing_attention(NOW)
             .iter()
-            .map(|item| (item.pane.0, item.age.map(|a| a.as_secs())))
+            .map(|item| (item.pane.0, item.waited.map(|a| a.as_secs())))
             .collect();
         assert_eq!(
             order,
-            [(2, Some(8)), (3, Some(7)), (1, None), (4, None)],
-            "pane 2 has waited longest; pane 1's wait is unknown; done last, \
-             with no turn behind it to show"
+            [(2, Some(8)), (3, Some(7)), (1, None), (4, Some(6))],
+            "pane 2 has waited longest; pane 1's wait is unknown; done last"
+        );
+        assert!(
+            state.needing_attention(NOW).iter().all(|i| i.age.is_none()),
+            "no turn behind any of them to show"
         );
         assert_eq!(state.next_blocked(Some(PaneId(3))), Some(PaneId(1)));
     }

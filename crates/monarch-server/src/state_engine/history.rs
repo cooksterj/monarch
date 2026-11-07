@@ -2,6 +2,8 @@
 //! a state can't miss one that came and went between two looks, and the
 //! sidebar can say how long an agent has been where it is.
 
+use std::time::Duration;
+
 use monarch_core::{AgentState, PaneId, UnixMillis};
 use monarch_proto::AgentTiming;
 
@@ -11,9 +13,8 @@ impl StateEngine {
     /// Notes that `pane` is now in `state`, at `now`, and returns the
     /// clock facts for it: when the state began (`now` if it is new; a
     /// change of activity keeps it, and so does Done becoming Finished,
-    /// since the agent finished at the same moment), when the turn in
-    /// progress began, and how long the last one took. `None` for a plain
-    /// shell.
+    /// since the agent finished at the same moment) and the turn's
+    /// stopwatch (see `advance`). `None` for a plain shell.
     pub fn record(
         &mut self,
         pane: PaneId,
@@ -69,9 +70,10 @@ impl StateEngine {
     }
 }
 
-/// The timing after `was` becomes `state` at `now`: a turn starts with
-/// Working (unless it resumes after a prompt), survives Blocked, and ends,
-/// measured, with anything else.
+/// The timing after `was` becomes `state` at `now`: Working starts the
+/// stopwatch (resuming the turn's after a prompt, else a new one), and
+/// anything else pauses it, so a wait on the user and the rest after a
+/// turn don't count as work.
 fn advance(
     was: AgentState,
     timing: AgentTiming,
@@ -82,26 +84,20 @@ fn advance(
         since: now,
         ..timing
     };
-    match state {
-        AgentState::Working => {
-            if was != AgentState::Blocked || next.turn_began.is_none() {
-                next.turn_began = Some(now);
-            }
+    if state == AgentState::Working {
+        if was != AgentState::Blocked || next.worked.is_none() {
+            next.worked = Some(Duration::ZERO);
         }
-        AgentState::Blocked => {}
-        _ => {
-            if let Some(began) = next.turn_began.take() {
-                next.took = Some(began.age_at(now));
-            }
-        }
+        next.working_since = Some(now);
+    } else if let Some(began) = next.working_since.take() {
+        let span = began.age_at(now);
+        next.worked = Some(next.worked.unwrap_or(Duration::ZERO) + span);
     }
     next
 }
 
 #[cfg(test)]
 mod tests {
-    use std::time::Duration;
-
     use super::*;
 
     const T0: UnixMillis = UnixMillis(1_000);
@@ -142,7 +138,7 @@ mod tests {
         let p = PaneId(1);
         assert_eq!(engine.timing(p), None, "nothing yet");
         let t0 = engine.record(p, AgentState::Working, T0).expect("timing");
-        assert_eq!((t0.since, t0.turn_began, t0.took), (T0, Some(T0), None));
+        assert_eq!(t0, AgentTiming::begun(T0, true));
         let later = UnixMillis(5_000);
         assert_eq!(
             engine.record(p, AgentState::Working, later),
@@ -151,8 +147,8 @@ mod tests {
         );
         let done = engine.record(p, AgentState::Done, later).expect("timing");
         assert_eq!(done.since, later);
-        assert_eq!(done.turn_began, None, "the turn is over");
-        assert_eq!(done.took, Some(Duration::from_secs(4)));
+        assert_eq!(done.working_since, None, "the stopwatch stopped");
+        assert_eq!(done.worked, Some(Duration::from_secs(4)));
         let seen = UnixMillis(9_000);
         assert_eq!(
             engine.record(p, AgentState::Finished, seen),
@@ -167,13 +163,13 @@ mod tests {
         );
         assert_eq!(engine.timing(p), None);
         let fresh = engine.record(p, AgentState::Idle, seen).expect("timing");
-        assert_eq!((fresh.since, fresh.took), (seen, None), "no turn behind it");
+        assert_eq!(fresh, AgentTiming::begun(seen, false), "no turn behind it");
         engine.forget(p);
         assert_eq!(engine.timing(p), None);
     }
 
     #[test]
-    fn a_turn_survives_a_prompt_and_ends_with_rest_or_failure() {
+    fn the_stopwatch_pauses_for_a_prompt_and_stops_with_rest_or_failure() {
         let mut engine = StateEngine::default();
         let p = PaneId(1);
         engine.record(p, AgentState::Idle, T0);
@@ -182,32 +178,26 @@ mod tests {
             .record(p, AgentState::Blocked, UnixMillis(3_000))
             .expect("timing");
         assert_eq!(blocked.since, UnixMillis(3_000), "the wait starts now");
-        assert_eq!(
-            blocked.turn_began,
-            Some(UnixMillis(2_000)),
-            "the turn goes on"
-        );
+        assert_eq!(blocked.working_since, None, "paused");
+        assert_eq!(blocked.worked, Some(Duration::from_secs(1)));
         let resumed = engine
             .record(p, AgentState::Working, UnixMillis(8_000))
             .expect("timing");
-        assert_eq!(
-            resumed.turn_began,
-            Some(UnixMillis(2_000)),
-            "still that turn"
-        );
+        assert_eq!(resumed.working_since, Some(UnixMillis(8_000)));
+        assert_eq!(resumed.worked, Some(Duration::from_secs(1)), "resumed");
         let failed = engine
             .record(p, AgentState::Error, UnixMillis(9_000))
             .expect("timing");
         assert_eq!(
-            failed.took,
-            Some(Duration::from_secs(7)),
-            "prompt time included"
+            failed.worked,
+            Some(Duration::from_secs(2)),
+            "the wait didn't count"
         );
-        assert_eq!(failed.turn_began, None);
+        assert_eq!(failed.working_since, None);
     }
 
     #[test]
-    fn a_new_turn_keeps_the_last_length_and_ends_when_answered_away() {
+    fn a_new_turn_starts_from_zero_and_a_prompt_answered_away_ends_it() {
         let mut engine = StateEngine::default();
         let p = PaneId(1);
         engine.record(p, AgentState::Working, T0);
@@ -215,27 +205,32 @@ mod tests {
         let again = engine
             .record(p, AgentState::Working, UnixMillis(20_000))
             .expect("timing");
-        assert_eq!(again.turn_began, Some(UnixMillis(20_000)), "a new turn");
-        assert_eq!(
-            again.took,
-            Some(Duration::from_secs(7)),
-            "the last one is kept"
-        );
+        assert_eq!(again, AgentTiming::begun(UnixMillis(20_000), true));
         let asked = engine
             .record(p, AgentState::Blocked, UnixMillis(21_000))
             .expect("timing");
+        assert_eq!(asked.worked, Some(Duration::from_secs(1)));
         let idle = engine
             .record(p, AgentState::Idle, UnixMillis(25_000))
             .expect("timing");
         assert_eq!(
-            idle.took,
-            Some(Duration::from_secs(5)),
-            "answered away: the turn ends"
+            idle.worked,
+            Some(Duration::from_secs(1)),
+            "answered away: the turn ends where it paused"
         );
-        assert_eq!(asked.turn_began, Some(UnixMillis(20_000)));
         let question = StateEngine::default()
             .record(p, AgentState::Blocked, T0)
             .expect("timing");
-        assert_eq!(question.turn_began, None, "a prompt with no turn behind it");
+        assert_eq!(question.worked, None, "a prompt with no turn behind it");
+        let mut fresh = StateEngine::default();
+        fresh.record(p, AgentState::Blocked, T0);
+        let after = fresh
+            .record(p, AgentState::Working, UnixMillis(4_000))
+            .expect("timing");
+        assert_eq!(
+            after,
+            AgentTiming::begun(UnixMillis(4_000), true),
+            "a turn starts"
+        );
     }
 }

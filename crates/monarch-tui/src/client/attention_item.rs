@@ -17,8 +17,10 @@ pub struct AttentionItem<'a> {
     pub name: &'a str,
     /// Its state and activity.
     pub status: &'a AgentStatus,
-    /// How long it has been in that state, when the server said.
+    /// Its turn's working time, when the server said.
     pub age: Option<Duration>,
+    /// How long it has been in that state, when the server said.
+    pub waited: Option<Duration>,
 }
 
 #[cfg(test)]
@@ -40,6 +42,7 @@ mod tests {
             name: "codex",
             status: &status,
             age: Some(Duration::from_secs(3)),
+            waited: Some(Duration::from_secs(9)),
         };
         let mut other = item.clone();
         assert_eq!(item, other);

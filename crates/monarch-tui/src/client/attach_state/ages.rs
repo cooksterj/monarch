@@ -1,5 +1,5 @@
-//! The age shown beside an agent: a running count while it works or
-//! waits on the user, the frozen length of its last turn once it rests.
+//! The age shown beside an agent: a stopwatch of its turn's working
+//! time, and how long it has been in its state for the inbox.
 
 use std::time::Duration;
 
@@ -15,18 +15,19 @@ impl AttachState {
         self.timing.get(&sent.pane).copied().unwrap_or(sent.timing)
     }
 
-    /// The age to show for a pane's agent at `now`: how long its turn has
-    /// run while Working (a prompt in the middle counts), how long it has
-    /// waited while Blocked or failed, and how long the last turn took
-    /// once it is Done, Finished or Idle; `None` with nothing to show.
+    /// The age to show for a pane's agent at `now`: the turn's working
+    /// time, running while Working, held while it waits on the user and
+    /// once the turn has ended; `None` with no turn to show.
     pub(super) fn age(&self, sent: &PaneSummary, now: UnixMillis) -> Option<Duration> {
-        let timing = self.timing(sent)?;
-        match self.agent(sent).state {
-            AgentState::Working => Some(timing.turn_began.unwrap_or(timing.since).age_at(now)),
-            AgentState::Blocked | AgentState::Error => Some(timing.since.age_at(now)),
-            AgentState::Done | AgentState::Finished | AgentState::Idle => timing.took,
-            _ => None,
+        if self.agent(sent).state == AgentState::Unknown {
+            return None;
         }
+        self.timing(sent)?.worked_at(now)
+    }
+
+    /// How long a pane's agent has been in its state at `now`, if known.
+    pub(super) fn waited(&self, sent: &PaneSummary, now: UnixMillis) -> Option<Duration> {
+        Some(self.timing(sent)?.since.age_at(now))
     }
 
     /// When a pane's agent entered its state, for ordering by wait.
@@ -43,11 +44,8 @@ impl AttachState {
         };
         let mut panes = layout.tabs.iter().flat_map(|t| t.panes.iter());
         panes.any(|p| {
-            let running = matches!(
-                self.agent(p).state,
-                AgentState::Working | AgentState::Blocked | AgentState::Error
-            );
-            running && self.timing(p).is_some()
+            self.agent(p).state == AgentState::Working
+                && self.timing(p).is_some_and(|t| t.working_since.is_some())
         })
     }
 }
@@ -112,40 +110,41 @@ mod tests {
     }
 
     #[test]
-    fn working_counts_the_turn_and_rest_shows_how_long_it_took() {
+    fn the_stopwatch_runs_while_working_and_holds_otherwise() {
         let mut state = state();
         assert_eq!(age(&state), None, "a shell");
         assert!(!state.any_running());
-        let turn = AgentTiming {
+        let running = AgentTiming {
             since: UnixMillis(90_000),
-            turn_began: Some(UnixMillis(70_000)),
-            took: Some(Duration::from_secs(5)),
+            working_since: Some(UnixMillis(80_000)),
+            worked: Some(Duration::from_secs(5)),
         };
-        tell(&mut state, AgentState::Working, Some(turn));
-        assert_eq!(
-            age(&state),
-            Some(30),
-            "the whole turn, not the last activity"
-        );
+        tell(&mut state, AgentState::Working, Some(running));
+        assert_eq!(age(&state), Some(25), "worked before plus the span so far");
         assert!(state.any_running());
-        tell(&mut state, AgentState::Blocked, Some(turn));
-        assert_eq!(age(&state), Some(10), "how long the prompt has waited");
-        let rested = AgentTiming {
+        let paused = AgentTiming {
             since: UnixMillis(95_000),
-            turn_began: None,
-            took: Some(Duration::from_secs(25)),
+            working_since: None,
+            worked: Some(Duration::from_secs(25)),
         };
-        for state_after in [AgentState::Done, AgentState::Finished, AgentState::Idle] {
-            tell(&mut state, state_after, Some(rested));
-            assert_eq!(
-                age(&state),
-                Some(25),
-                "{state_after:?} shows what the turn took"
-            );
-            assert!(!state.any_running(), "{state_after:?} stands still");
+        for held in [
+            AgentState::Blocked,
+            AgentState::Done,
+            AgentState::Finished,
+            AgentState::Idle,
+            AgentState::Error,
+        ] {
+            tell(&mut state, held, Some(paused));
+            assert_eq!(age(&state), Some(25), "{held:?} holds the stopwatch");
+            assert!(!state.any_running(), "{held:?} stands still");
         }
-        tell(&mut state, AgentState::Error, Some(rested));
-        assert_eq!(age(&state), Some(5), "how long it has been failed");
+        let layout = state.layout().expect("layout");
+        let pane = &layout.tabs[0].panes[0];
+        assert_eq!(
+            state.waited(pane, NOW),
+            Some(Duration::from_secs(5)),
+            "but the wait keeps counting"
+        );
         let fresh = AgentTiming::begun(UnixMillis(99_000), false);
         tell(&mut state, AgentState::Idle, Some(fresh));
         assert_eq!(age(&state), None, "no turn behind it");

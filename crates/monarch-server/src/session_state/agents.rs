@@ -230,7 +230,8 @@ mod tests {
         state.report_agent(&blocked);
         let waiting = state.summary(PaneId(1)).timing.expect("timing");
         assert_eq!(waiting.since, UnixMillis(61_000));
-        assert_eq!(waiting.turn_began, Some(UnixMillis(1_000)));
+        assert_eq!(waiting.working_since, None, "paused for the prompt");
+        assert_eq!(waiting.worked, Some(std::time::Duration::from_secs(60)));
     }
 
     /// A Claude hook report putting `pane` in `state`.
