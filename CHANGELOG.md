@@ -10,6 +10,26 @@ they need polishing.
 
 ## [Unreleased]
 
+## [0.1.1](https://github.com/cooksterj/monarch/compare/v0.1.0...v0.1.1) - 2026-11-07
+
+### Added
+
+- *(tui)* agent info overlay (prefix i) and go-to picker state filters ([#109](https://github.com/cooksterj/monarch/pull/109))
+- *(tui)* time in state beside agents in the sidebar and inbox ([#106](https://github.com/cooksterj/monarch/pull/106))
+- *(config)* act on agent commands, terminal env and scrollback, resume_agents ([#105](https://github.com/cooksterj/monarch/pull/105))
+
+### Fixed
+
+- *(tui)* the key popup right-aligns keys to their labels and colours them ([#110](https://github.com/cooksterj/monarch/pull/110))
+- *(tui)* the agent stopwatch pauses while it waits on the user ([#108](https://github.com/cooksterj/monarch/pull/108))
+- *(tui)* the agent age counts the turn, then freezes at how long it took ([#107](https://github.com/cooksterj/monarch/pull/107))
+
+### Other
+
+- *(readme)* agent info overlay, go-to filters and a still of the overlay ([#111](https://github.com/cooksterj/monarch/pull/111))
+- brew install by full name, bare monarch is a cask ([#104](https://github.com/cooksterj/monarch/pull/104))
+- tap before brew install; record the v0.1.0 release ([#103](https://github.com/cooksterj/monarch/pull/103))
+
 ## [0.1.0](https://github.com/cooksterj/monarch/releases/tag/v0.1.0) - 2026-11-06
 
 ### Added
