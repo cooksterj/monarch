@@ -60,7 +60,7 @@ Already inside Monarch? `prefix N` does the same from a form. The prefix is `Ctr
 
 You're working in `a11y`. In another tab, `retry` wants to run a command, and an amber diamond appears on its row in the sidebar.
 
-`prefix a` opens the inbox: every agent waiting on you, longest wait first, with the question it asked or the last thing it said and how long it has been waiting. Type `y` or `n` and the answer goes to that agent in the form it expects, while you stay where you are. `Enter` jumps to its pane instead, and `prefix Tab` goes straight to the next blocked agent.
+`prefix a` opens the inbox: every agent waiting on you, longest wait first, with the question it asked or the last thing it said and how long it has been waiting. Type `y` or `n` and the answer goes to that agent in the form it expects, while you stay where you are. `Enter` jumps to its pane instead, `prefix Tab` goes straight to the next blocked agent, and `prefix g` then `b` lists only the agents waiting on you, as a jump list.
 
 <img src="docs/assets/inbox.png" width="640" alt="The inbox. It lists retry, blocked on 'Allow Bash cargo clean and cargo test', and header, done with its last message. A hint line reads: move, enter jump, y/n/1-9 answer, esc close.">
 
@@ -68,13 +68,20 @@ Monarch knew because the agent told it. `monarch setup` adds hooks to Claude Cod
 
 <img src="docs/assets/signals.svg" width="560" alt="A diagram. Monarch learns an agent's state from three sources, most trusted first: the agent's own hooks, terminal notifications, and detection rules for 22 agents reading the screen. They resolve to one state per pane: working, blocked, idle, done, error or exited.">
 
-You can always ask why:
+You can always ask why. `prefix i` shows it for the pane you're in: the state and which signal set it, what the screen looks like to the detection rules, and the last few states the agent went through. It follows the agent while open.
+
+<img src="docs/assets/agent-info.png" width="640" alt="The agent info for retry. State: Blocked for 5s, from its hooks. Activity: Allow Bash cargo clean and cargo test retry. Program: claude. Screen: Blocked by rule bash_permission_prompt, claude 2026.10.11. Under Recent states, oldest first: Idle from its screen 22 seconds ago, Working from its hooks 21 seconds ago with the prompt fix the retry backoff, then Blocked from its hooks 5 seconds ago. Under Rules, thirteen rules of the Claude manifest with their state, priority and region; bash_permission_prompt is marked as the one that fired, with the text it read.">
+
+The same answer from a shell:
 
 ```text
 $ monarch agent explain p2
 pane p2 (tab 2) · claude
 status    ◆ Blocked, from its hooks
 activity  Allow Bash cargo clean && cargo test retry?
+history    22s ago  ○ Idle      from its screen
+           21s ago  ● Working   from its hooks  fix the retry backoff
+            5s ago  ◆ Blocked   from its hooks  Allow Bash cargo clean && cargo test retry?
 manifest  claude 2026.10.11.1
 screen    ◆ Blocked (rule bash_permission_prompt)
 ```
@@ -162,7 +169,7 @@ Monarch is about two weeks old and the smallest project here. Several of these t
 | **Plugins** | — | ✓ | ✓ | custom sidebars | ✓ | via TPM | — |
 | **Platforms** | macOS, Linux | macOS, Linux, Windows | macOS, Linux, Windows, BSD | macOS | macOS, Linux, Windows | macOS, Linux, BSD | macOS, Linux |
 | **License** | MIT or Apache-2.0 | Apache-2.0 | MIT | GPL-3.0+, some parts BUSL-1.1 | MIT | ISC | AGPL-3.0 |
-| **Latest release** | none yet | v0.9.5 | v0.12.1 | v0.65.2.2 | v0.45.1 | 3.8 | v1.0.20 |
+| **Latest release** | v0.1.0 | v0.9.5 | v0.12.1 | v0.65.2.2 | v0.45.1 | 3.8 | v1.0.20 |
 
 <sub>Checked against each project's docs on 2026-11-05. The cmux column describes its macOS app; cmux also has a separate terminal multiplexer, cmux TUI. These tools move quickly: Zellij's unreleased changes already add an inbox and agent status.</sub>
 
@@ -283,7 +290,7 @@ None of these change anything:
 |---|---|
 | `monarch ls` | running sessions, with their panes, tabs and whether one is attached |
 | `monarch agent explain` | every pane, its program and its agent's state, with where the state came from |
-| `monarch agent explain p3` | one pane in detail: every detection rule and the text it matched |
+| `monarch agent explain p3` | one pane in detail: the states it went through lately, every detection rule and the text it matched |
 | `monarch agent wait p3 --timeout 600` | waits until pane `p3`'s agent needs you, then prints its status |
 | `monarch agent read p3` | the last thing pane `p3`'s agent said, in full (its screen, for an agent without hooks) |
 | `monarch doctor` | the whole setup (binary, config, hooks, skill, git, terminal, sessions), with fixes |
