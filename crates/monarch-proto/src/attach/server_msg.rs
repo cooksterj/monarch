@@ -1,6 +1,6 @@
 //! Messages from the server to an attached client.
 
-use monarch_core::PaneId;
+use monarch_core::{PaneId, UnixMillis};
 use serde::{Deserialize, Serialize};
 
 use super::{AgentStatus, Delta, LayoutMsg, PanePlace, Snapshot, StyleDef};
@@ -85,6 +85,9 @@ pub enum ServerMsg {
         pane: PaneId,
         /// What its agent is doing now.
         status: AgentStatus,
+        /// When it entered this state (kept over activity-only changes
+        /// and from Done to Finished); `None` for a plain shell.
+        since: Option<UnixMillis>,
     },
 }
 

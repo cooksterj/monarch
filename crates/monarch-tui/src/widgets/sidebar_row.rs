@@ -1,5 +1,7 @@
 //! One pane as the sidebar lists it.
 
+use std::time::Duration;
+
 use monarch_core::{AgentKind, AgentState, PaneId};
 
 use super::GlyphLook;
@@ -22,6 +24,9 @@ pub struct SidebarRow {
     /// Its agent's activity, or where in the checkout it works (`src`),
     /// or its directory outside one; drawn dim after the label.
     pub detail: Option<String>,
+    /// How long its agent has been in its state; drawn dim at the right
+    /// (`3m`), taking room from the detail.
+    pub age: Option<Duration>,
     /// It is the focused pane.
     pub focused: bool,
     /// It is in the shown tab; others are drawn dim.
@@ -41,12 +46,16 @@ mod tests {
             agent: None,
             look: None,
             detail: None,
+            age: None,
             focused: true,
             shown: true,
         };
         let mut other = row.clone();
         assert_eq!(row, other);
         other.focused = false;
+        assert_ne!(row, other);
+        other.focused = true;
+        other.age = Some(Duration::from_secs(3));
         assert_ne!(row, other);
     }
 }

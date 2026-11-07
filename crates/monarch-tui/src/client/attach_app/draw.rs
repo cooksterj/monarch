@@ -99,7 +99,7 @@ impl AttachApp {
     /// The sidebar's groups with animated glyphs; none while it is hidden.
     fn sidebar_rows(&mut self) -> Vec<SidebarGroup> {
         let mut groups = if self.state.left() > 0 {
-            self.state.sidebar_groups()
+            self.state.sidebar_groups(Self::now())
         } else {
             Vec::new()
         };

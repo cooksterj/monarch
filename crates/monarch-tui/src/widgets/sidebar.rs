@@ -2,7 +2,7 @@
 //! focused one marked, scrolled to an offset, with a divider on its right
 //! edge that carries a scroll thumb when the groups don't all fit.
 
-use monarch_core::PaneId;
+use monarch_core::{PaneId, age_label};
 use monarch_proto::CheckoutStatus;
 use ratatui::buffer::{Buffer, Cell};
 use ratatui::layout::Rect;
@@ -176,9 +176,11 @@ fn shorten(text: &str, max: usize) -> String {
     format!("{kept}…")
 }
 
-/// `▸ ● ✻ label  detail`: the focus marker, the state's glyph, the
+/// `▸ ● ✻ label  detail  3m`: the focus marker, the state's glyph, the
 /// agent's icon (a blank keeps rows aligned when some have one and this
-/// doesn't) and the pane's activity or directory, dim.
+/// doesn't), the pane's activity or directory, dim, and at the right how
+/// long its agent has been in its state, dim, which the detail makes
+/// room for.
 fn pane_line(pane: &SidebarRow, row: Rect, (icons, chrome): (bool, Chrome<'_>), buf: &mut Buffer) {
     let marker = if pane.focused { "▸" } else { " " };
     let glyph = pane.look.map_or(pane.state.glyph(), |l| l.symbol);
@@ -200,10 +202,20 @@ fn pane_line(pane: &SidebarRow, row: Rect, (icons, chrome): (bool, Chrome<'_>), 
     {
         buf[(row.x + 4, row.y)].set_fg(color);
     }
-    let left = usize::from(row.right() - x);
-    if let Some(detail) = pane.detail.as_deref().filter(|_| left > 2) {
-        let dim = Style::new().add_modifier(Modifier::DIM);
-        buf.set_stringn(x + 2, row.y, detail, left - 2, dim);
+    let dim = Style::new().add_modifier(Modifier::DIM);
+    let mut end = row.right();
+    let mut gap = 2;
+    if let Some(age) = pane.age.map(age_label) {
+        let width = u16::try_from(age.len()).unwrap_or(u16::MAX);
+        if row.right() - x >= width + 2 {
+            end = row.right() - width;
+            buf.set_stringn(end, row.y, &age, usize::from(width), dim);
+            gap = 3;
+        }
+    }
+    let left = usize::from(end.saturating_sub(x));
+    if let Some(detail) = pane.detail.as_deref().filter(|_| left > gap) {
+        buf.set_stringn(x + 2, row.y, detail, left - gap, dim);
     }
 }
 
@@ -251,9 +263,27 @@ mod tests {
             agent: None,
             look: None,
             detail: detail.map(Into::into),
+            age: None,
             focused: pane == 1,
             shown: pane < 3,
         }
+    }
+
+    #[test]
+    fn an_age_sits_at_the_right_and_the_detail_makes_room() {
+        let mut groups = groups();
+        groups[1].rows[0].age = Some(std::time::Duration::from_secs(3 * 60));
+        let (text, buf) = draw(&groups, 24, 6);
+        assert!(text.contains("    $ 2 htop  tmp    3m│"), "{text}");
+        assert!(buf[(21, 5)].modifier.contains(Modifier::DIM), "age is dim");
+        let (text, _) = draw(&groups, 18, 6);
+        assert!(text.contains("    $ 2 htop   3m│"), "age wins: {text}");
+        let (text, _) = draw(&groups, 16, 6);
+        assert!(!text.contains("3m"), "no room for the age: {text}");
+        assert!(
+            text.contains("    $ 2 htop  t"),
+            "the detail as before: {text}"
+        );
     }
 
     fn groups() -> Vec<SidebarGroup> {

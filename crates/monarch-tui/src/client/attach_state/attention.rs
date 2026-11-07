@@ -1,10 +1,13 @@
 //! Which agents need the user, most urgent first: what the inbox lists
 //! and `next-blocked` cycles through.
 
-use monarch_core::{AgentKind, AgentState, PaneId};
+use std::cmp::Reverse;
+
+use monarch_core::{AgentKind, AgentState, PaneId, UnixMillis};
 use monarch_proto::AgentStatus;
 
 use super::AttachState;
+use crate::AttentionItem;
 
 /// Urgency of a state that needs the user; `None` for the rest.
 fn urgency(state: AgentState) -> Option<u8> {
@@ -17,15 +20,16 @@ fn urgency(state: AgentState) -> Option<u8> {
 }
 
 impl AttachState {
-    /// Every pane whose agent is blocked, failed or done, as (tab, pane,
-    /// name, status): blocked first, then errors, then done, each in tab
+    /// Every pane whose agent is blocked, failed or done, at `now`:
+    /// blocked first, then errors, then done; within each, the one
+    /// waiting longest first (those with no known age last), then tab
     /// order.
     #[must_use]
-    pub fn needing_attention(&self) -> Vec<(usize, PaneId, &str, &AgentStatus)> {
+    pub fn needing_attention(&self, now: UnixMillis) -> Vec<AttentionItem<'_>> {
         let Some(layout) = self.layout.as_ref() else {
             return Vec::new();
         };
-        let mut out: Vec<_> = layout
+        let mut out: Vec<AttentionItem<'_>> = layout
             .tabs
             .iter()
             .enumerate()
@@ -33,11 +37,28 @@ impl AttachState {
             .filter_map(|(tab, summary, pane)| {
                 let status = self.agent(pane);
                 urgency(status.state)?;
-                Some((tab, pane.pane, self.name(summary, pane), status))
+                Some(AttentionItem {
+                    tab,
+                    pane: pane.pane,
+                    name: self.name(summary, pane),
+                    status,
+                    age: self.age(pane, now),
+                })
             })
             .collect();
-        out.sort_by_key(|(_, _, _, status)| urgency(status.state));
+        out.sort_by_key(|item| (urgency(item.status.state), Reverse(item.age)));
         out
+    }
+
+    /// Whether any pane's agent has a state with a known start, so ages
+    /// are being shown somewhere.
+    #[must_use]
+    pub fn any_aged(&self) -> bool {
+        let Some(layout) = self.layout.as_ref() else {
+            return false;
+        };
+        let mut panes = layout.tabs.iter().flat_map(|t| t.panes.iter());
+        panes.any(|p| self.since(p).is_some())
     }
 
     /// What `pane`'s agent is doing: the latest `Agent` message, else what
@@ -72,9 +93,8 @@ impl AttachState {
     pub fn next_blocked(&self, from: Option<PaneId>) -> Option<PaneId> {
         let order: Vec<PaneId> = self.all_panes().into_iter().map(|(_, p, _)| p).collect();
         let blocked = |p: &PaneId| {
-            self.needing_attention()
-                .iter()
-                .any(|(_, q, _, s)| q == p && s.state == AgentState::Blocked)
+            self.agent_status(*p)
+                .is_some_and(|s| s.state == AgentState::Blocked)
         };
         let start = from
             .and_then(|f| order.iter().position(|p| *p == f))
@@ -100,6 +120,7 @@ mod tests {
             command: Some("zsh".into()),
             place: None,
             agent: AgentStatus::default(),
+            since: None,
         };
         let tab = |ids: &[u32]| TabSummary {
             name: None,
@@ -126,11 +147,14 @@ mod tests {
             let msg = ServerMsg::Agent {
                 pane: PaneId(*id),
                 status,
+                since: Some(UnixMillis(1_000 * u64::from(*id))),
             };
             state.apply(msg, &mut Applied::default());
         }
         state
     }
+
+    const NOW: UnixMillis = UnixMillis(10_000);
 
     #[test]
     fn blocked_first_then_errors_then_done() {
@@ -141,12 +165,41 @@ mod tests {
             (4, AgentState::Blocked),
         ]);
         let order: Vec<(usize, u32, &str)> = state
-            .needing_attention()
+            .needing_attention(NOW)
             .iter()
-            .map(|(tab, pane, name, _)| (*tab, pane.0, *name))
+            .map(|item| (item.tab, item.pane.0, item.name))
             .collect();
         assert_eq!(order, [(1, 4, "codex"), (1, 3, "codex"), (0, 1, "codex")]);
-        assert!(AttachState::new().needing_attention().is_empty());
+        assert!(AttachState::new().needing_attention(NOW).is_empty());
+        assert!(!AttachState::new().any_aged());
+        assert!(state.any_aged());
+    }
+
+    #[test]
+    fn the_longest_wait_comes_first_and_unknown_ages_last() {
+        let mut state = state(&[
+            (1, AgentState::Blocked),
+            (2, AgentState::Blocked),
+            (3, AgentState::Blocked),
+            (4, AgentState::Done),
+        ]);
+        let unknown = ServerMsg::Agent {
+            pane: PaneId(1),
+            status: state.agent_status(PaneId(1)).cloned().expect("status"),
+            since: None,
+        };
+        state.apply(unknown, &mut Applied::default());
+        let order: Vec<(u32, Option<u64>)> = state
+            .needing_attention(NOW)
+            .iter()
+            .map(|item| (item.pane.0, item.age.map(|a| a.as_secs())))
+            .collect();
+        assert_eq!(
+            order,
+            [(2, Some(8)), (3, Some(7)), (1, None), (4, Some(6))],
+            "pane 2 has waited longest; pane 1's wait is unknown; done last"
+        );
+        assert_eq!(state.next_blocked(Some(PaneId(3))), Some(PaneId(1)));
     }
 
     #[test]

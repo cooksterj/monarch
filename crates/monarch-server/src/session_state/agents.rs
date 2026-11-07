@@ -135,12 +135,15 @@ mod tests {
     use monarch_proto::ServerMsg;
     use tokio::sync::mpsc;
 
+    use monarch_core::UnixMillis;
+
     use super::*;
-    use crate::test_support::FakePane;
+    use crate::test_support::{FakeClock, FakePane};
 
     #[test]
     fn reports_reach_clients_and_the_layout() {
         let mut state = SessionState::default();
+        state.set_clock(FakeClock::at(1_000));
         state.insert_pane(PaneId(1), FakePane::shell());
         let (lane, mut rx) = mpsc::channel(64);
         state.add_client(lane);
@@ -161,15 +164,62 @@ mod tests {
             sent,
             vec![ServerMsg::Agent {
                 pane: PaneId(1),
-                status: status.clone()
+                status: status.clone(),
+                since: Some(UnixMillis(1_000)),
             }]
         );
-        assert_eq!(state.summary(PaneId(1)).agent, status);
+        let summary = state.summary(PaneId(1));
+        assert_eq!(summary.agent, status);
+        assert_eq!(summary.since, Some(UnixMillis(1_000)));
         assert!(
             state.report_agent(&report).is_some(),
             "unchanged is still accepted"
         );
         assert!(rx.try_recv().is_err(), "but sends nothing");
+    }
+
+    #[test]
+    fn a_state_keeps_its_start_until_the_state_changes() {
+        let mut state = SessionState::default();
+        let clock = FakeClock::at(1_000);
+        state.set_clock(clock.clone());
+        state.insert_pane(PaneId(1), FakePane::shell());
+        let (lane, mut rx) = mpsc::channel(64);
+        state.add_client(lane);
+        while rx.try_recv().is_ok() {}
+        let report = AgentReport {
+            state: Some(AgentState::Working),
+            ..AgentReport::new(PaneId(1), AgentKind::Claude)
+        };
+        state.report_agent(&report);
+        assert_eq!(state.summary(PaneId(1)).since, Some(UnixMillis(1_000)));
+        clock.set(61_000);
+        let busier = AgentReport {
+            activity: Some("Edit a.rs".into()),
+            ..report.clone()
+        };
+        state.report_agent(&busier);
+        let sent: Vec<_> = std::iter::from_fn(|| rx.try_recv().ok())
+            .flatten()
+            .collect();
+        let stamps: Vec<Option<UnixMillis>> = sent
+            .iter()
+            .filter_map(|m| match m {
+                ServerMsg::Agent { since, .. } => Some(*since),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            stamps,
+            [Some(UnixMillis(1_000)), Some(UnixMillis(1_000))],
+            "still working since the start"
+        );
+        let blocked = AgentReport {
+            state: Some(AgentState::Blocked),
+            ..report.clone()
+        };
+        state.report_agent(&blocked);
+        assert_eq!(state.summary(PaneId(1)).since, Some(UnixMillis(61_000)));
     }
 
     #[test]

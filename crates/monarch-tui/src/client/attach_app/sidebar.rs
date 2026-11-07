@@ -42,7 +42,7 @@ impl AttachApp {
         let mut rects = self.state.pane_rects();
         let left = self.state.left();
         if left > 0 {
-            let groups = self.state.sidebar_groups();
+            let groups = self.state.sidebar_groups(Self::now());
             let rows = self.sidebar_widget(&groups).targets(self.sidebar_area());
             rects.extend(
                 rows.into_iter()
@@ -57,7 +57,7 @@ impl AttachApp {
 impl AttachApp {
     /// The wheel over the sidebar.
     pub(super) fn scroll_sidebar(&mut self, lines: i32) {
-        let groups = self.state.sidebar_groups();
+        let groups = self.state.sidebar_groups(Self::now());
         let total = self.sidebar_widget(&groups).total_lines();
         let rows = self.sidebar_area().height;
         self.sidebar_scroll.scroll(lines, total, rows);

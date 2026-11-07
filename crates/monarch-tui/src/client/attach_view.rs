@@ -240,6 +240,7 @@ mod tests {
             command: None,
             place: None,
             agent: Default::default(),
+            since: None,
         };
         let layout = LayoutMsg {
             generation: 1,
@@ -263,7 +264,7 @@ mod tests {
     fn panes_sit_right_of_the_sidebar() {
         let mut state = two_panes();
         state.set_left(8);
-        let groups = state.sidebar_groups();
+        let groups = state.sidebar_groups(monarch_core::UnixMillis::default());
         let mut term = Terminal::new(TestBackend::new(15, 3)).expect("terminal");
         let view = AttachView {
             state: &state,
