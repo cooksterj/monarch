@@ -15,7 +15,7 @@ fn pane(id: u32, title: Option<&str>) -> PaneSummary {
         command: None,
         place: None,
         agent: Default::default(),
-        since: None,
+        timing: None,
     }
 }
 

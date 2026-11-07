@@ -1,9 +1,9 @@
 //! One pane as tab labels and the go-to picker name it.
 
-use monarch_core::{PaneId, UnixMillis};
+use monarch_core::PaneId;
 use serde::{Deserialize, Serialize};
 
-use super::{AgentStatus, PanePlace};
+use super::{AgentStatus, AgentTiming, PanePlace};
 
 /// A pane's names when the layout was sent: the title its program set and
 /// the program in the foreground, and where it works. Later changes arrive
@@ -21,8 +21,9 @@ pub struct PaneSummary {
     pub place: Option<PanePlace>,
     /// What its agent is doing (`Unknown` for a plain shell).
     pub agent: AgentStatus,
-    /// When its agent entered that state; `None` for a plain shell.
-    pub since: Option<UnixMillis>,
+    /// When its agent's state and turn began and how long its last turn
+    /// took; `None` for a plain shell.
+    pub timing: Option<AgentTiming>,
     /// The name the user gave it, if any (it wins over title and
     /// command wherever the pane is named).
     pub given_name: Option<String>,
@@ -93,7 +94,7 @@ mod tests {
             command: Some("vim".into()),
             place: None,
             agent: AgentStatus::default(),
-            since: None,
+            timing: None,
         };
         assert_eq!(pane.name(), Some("vim main.rs"));
         pane.title = Some("  ".into());

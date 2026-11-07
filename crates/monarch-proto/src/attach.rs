@@ -8,6 +8,7 @@
 //! behind a big-endian `u32` length ([`FrameCodec`]).
 
 mod agent_status;
+mod agent_timing;
 mod client_msg;
 mod delta;
 mod frame_codec;
@@ -30,6 +31,7 @@ mod style_table;
 mod tab_summary;
 
 pub use agent_status::AgentStatus;
+pub use agent_timing::AgentTiming;
 pub use client_msg::ClientMsg;
 pub use delta::Delta;
 pub use frame_codec::FrameCodec;

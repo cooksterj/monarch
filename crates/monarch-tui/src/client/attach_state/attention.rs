@@ -1,8 +1,6 @@
 //! Which agents need the user, most urgent first: what the inbox lists
 //! and `next-blocked` cycles through.
 
-use std::cmp::Reverse;
-
 use monarch_core::{AgentKind, AgentState, PaneId, UnixMillis};
 use monarch_proto::AgentStatus;
 
@@ -21,15 +19,15 @@ fn urgency(state: AgentState) -> Option<u8> {
 
 impl AttachState {
     /// Every pane whose agent is blocked, failed or done, at `now`:
-    /// blocked first, then errors, then done; within each, the one
-    /// waiting longest first (those with no known age last), then tab
-    /// order.
+    /// blocked first, then errors, then done; within each, the one that
+    /// has been so longest first (those with no known start last), then
+    /// tab order.
     #[must_use]
     pub fn needing_attention(&self, now: UnixMillis) -> Vec<AttentionItem<'_>> {
         let Some(layout) = self.layout.as_ref() else {
             return Vec::new();
         };
-        let mut out: Vec<AttentionItem<'_>> = layout
+        let mut out: Vec<(Option<UnixMillis>, AttentionItem<'_>)> = layout
             .tabs
             .iter()
             .enumerate()
@@ -37,28 +35,21 @@ impl AttachState {
             .filter_map(|(tab, summary, pane)| {
                 let status = self.agent(pane);
                 urgency(status.state)?;
-                Some(AttentionItem {
+                let item = AttentionItem {
                     tab,
                     pane: pane.pane,
                     name: self.name(summary, pane),
                     status,
                     age: self.age(pane, now),
-                })
+                };
+                Some((self.since(pane), item))
             })
             .collect();
-        out.sort_by_key(|item| (urgency(item.status.state), Reverse(item.age)));
-        out
-    }
-
-    /// Whether any pane's agent has a state with a known start, so ages
-    /// are being shown somewhere.
-    #[must_use]
-    pub fn any_aged(&self) -> bool {
-        let Some(layout) = self.layout.as_ref() else {
-            return false;
-        };
-        let mut panes = layout.tabs.iter().flat_map(|t| t.panes.iter());
-        panes.any(|p| self.since(p).is_some())
+        out.sort_by_key(|(since, item)| {
+            let wait = since.map_or(u64::MAX, |s| s.0);
+            (urgency(item.status.state), wait)
+        });
+        out.into_iter().map(|(_, item)| item).collect()
     }
 
     /// What `pane`'s agent is doing: the latest `Agent` message, else what
@@ -107,21 +98,24 @@ impl AttachState {
 #[cfg(test)]
 mod tests {
     use monarch_core::AgentKind;
-    use monarch_proto::{LayoutMsg, PaneSummary, ScreenSize, ServerMsg, TabSummary};
+    use monarch_proto::{AgentTiming, LayoutMsg, PaneSummary, ScreenSize, ServerMsg, TabSummary};
 
     use super::*;
     use crate::Applied;
 
-    fn state(states: &[(u32, AgentState)]) -> AttachState {
-        let pane = |id| PaneSummary {
+    fn pane(id: u32) -> PaneSummary {
+        PaneSummary {
             given_name: None,
             pane: PaneId(id),
             title: None,
             command: Some("zsh".into()),
             place: None,
             agent: AgentStatus::default(),
-            since: None,
-        };
+            timing: None,
+        }
+    }
+
+    fn state(states: &[(u32, AgentState)]) -> AttachState {
         let tab = |ids: &[u32]| TabSummary {
             name: None,
             focus: PaneId(ids[0]),
@@ -147,7 +141,10 @@ mod tests {
             let msg = ServerMsg::Agent {
                 pane: PaneId(*id),
                 status,
-                since: Some(UnixMillis(1_000 * u64::from(*id))),
+                timing: Some(AgentTiming::begun(
+                    UnixMillis(1_000 * u64::from(*id)),
+                    false,
+                )),
             };
             state.apply(msg, &mut Applied::default());
         }
@@ -171,8 +168,8 @@ mod tests {
             .collect();
         assert_eq!(order, [(1, 4, "codex"), (1, 3, "codex"), (0, 1, "codex")]);
         assert!(AttachState::new().needing_attention(NOW).is_empty());
-        assert!(!AttachState::new().any_aged());
-        assert!(state.any_aged());
+        assert!(!AttachState::new().any_running());
+        assert!(state.any_running());
     }
 
     #[test]
@@ -186,7 +183,7 @@ mod tests {
         let unknown = ServerMsg::Agent {
             pane: PaneId(1),
             status: state.agent_status(PaneId(1)).cloned().expect("status"),
-            since: None,
+            timing: None,
         };
         state.apply(unknown, &mut Applied::default());
         let order: Vec<(u32, Option<u64>)> = state
@@ -196,8 +193,9 @@ mod tests {
             .collect();
         assert_eq!(
             order,
-            [(2, Some(8)), (3, Some(7)), (1, None), (4, Some(6))],
-            "pane 2 has waited longest; pane 1's wait is unknown; done last"
+            [(2, Some(8)), (3, Some(7)), (1, None), (4, None)],
+            "pane 2 has waited longest; pane 1's wait is unknown; done last, \
+             with no turn behind it to show"
         );
         assert_eq!(state.next_blocked(Some(PaneId(3))), Some(PaneId(1)));
     }

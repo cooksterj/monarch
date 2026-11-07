@@ -4,7 +4,7 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
-use monarch_core::{AgentKind, PaneId};
+use monarch_core::{AgentKind, AgentState, PaneId};
 use monarch_detect::OscSignal;
 use monarch_proto::{AgentReport, AgentStatus, StatusSource};
 
@@ -30,14 +30,25 @@ impl SessionState {
     }
 
     /// Applies an agent's hook report and tells every client if the
-    /// pane's status changed. Returns the pane, or `None` if the report
-    /// belongs to no pane in this session.
+    /// pane's status changed. A turn that ends in the pane someone is
+    /// looking at has been seen: Finished, not Done. Returns the pane,
+    /// or `None` if the report belongs to no pane in this session.
     pub fn report_agent(&mut self, report: &AgentReport) -> Option<PaneId> {
         let pane = self.locate(report)?;
-        if let Some(status) = self.agents.report(pane, report) {
+        if let Some(mut status) = self.agents.report(pane, report) {
+            if status.state == AgentState::Done && self.watched(pane) {
+                status = self.agents.seen(pane).unwrap_or(status);
+            }
             self.agent_changed(pane, status);
         }
         Some(pane)
+    }
+
+    /// Whether someone is looking at `pane`: a client is attached and
+    /// the pane is focused.
+    #[must_use]
+    pub fn watched(&self, pane: PaneId) -> bool {
+        self.client_count() > 0 && self.focus() == Some(pane)
     }
 
     /// Which signal `pane`'s status came from.
@@ -131,11 +142,12 @@ impl SessionState {
 
 #[cfg(test)]
 mod tests {
-    use monarch_core::{AgentKind, AgentState};
+    use monarch_core::AgentKind;
     use monarch_proto::ServerMsg;
     use tokio::sync::mpsc;
 
-    use monarch_core::UnixMillis;
+    use monarch_core::{AgentState, UnixMillis};
+    use monarch_proto::AgentTiming;
 
     use super::*;
     use crate::test_support::{FakeClock, FakePane};
@@ -165,12 +177,12 @@ mod tests {
             vec![ServerMsg::Agent {
                 pane: PaneId(1),
                 status: status.clone(),
-                since: Some(UnixMillis(1_000)),
+                timing: Some(AgentTiming::begun(UnixMillis(1_000), true)),
             }]
         );
         let summary = state.summary(PaneId(1));
         assert_eq!(summary.agent, status);
-        assert_eq!(summary.since, Some(UnixMillis(1_000)));
+        assert_eq!(summary.timing.map(|t| t.since), Some(UnixMillis(1_000)));
         assert!(
             state.report_agent(&report).is_some(),
             "unchanged is still accepted"
@@ -192,7 +204,8 @@ mod tests {
             ..AgentReport::new(PaneId(1), AgentKind::Claude)
         };
         state.report_agent(&report);
-        assert_eq!(state.summary(PaneId(1)).since, Some(UnixMillis(1_000)));
+        let timing = state.summary(PaneId(1)).timing;
+        assert_eq!(timing.map(|t| t.since), Some(UnixMillis(1_000)));
         clock.set(61_000);
         let busier = AgentReport {
             activity: Some("Edit a.rs".into()),
@@ -202,24 +215,62 @@ mod tests {
         let sent: Vec<_> = std::iter::from_fn(|| rx.try_recv().ok())
             .flatten()
             .collect();
-        let stamps: Vec<Option<UnixMillis>> = sent
+        let stamps: Vec<Option<AgentTiming>> = sent
             .iter()
             .filter_map(|m| match m {
-                ServerMsg::Agent { since, .. } => Some(*since),
+                ServerMsg::Agent { timing, .. } => Some(*timing),
                 _ => None,
             })
             .collect();
-        assert_eq!(
-            stamps,
-            [Some(UnixMillis(1_000)), Some(UnixMillis(1_000))],
-            "still working since the start"
-        );
+        assert_eq!(stamps, [timing, timing], "still working since the start");
         let blocked = AgentReport {
             state: Some(AgentState::Blocked),
             ..report.clone()
         };
         state.report_agent(&blocked);
-        assert_eq!(state.summary(PaneId(1)).since, Some(UnixMillis(61_000)));
+        let waiting = state.summary(PaneId(1)).timing.expect("timing");
+        assert_eq!(waiting.since, UnixMillis(61_000));
+        assert_eq!(waiting.turn_began, Some(UnixMillis(1_000)));
+    }
+
+    /// A Claude hook report putting `pane` in `state`.
+    fn claude(pane: PaneId, state: AgentState) -> AgentReport {
+        AgentReport {
+            state: Some(state),
+            activity: Some("Fixed it.".into()),
+            ..AgentReport::new(pane, AgentKind::Claude)
+        }
+    }
+
+    #[test]
+    fn a_turn_ending_in_the_watched_pane_is_finished_not_done() {
+        let mut state = SessionState::default();
+        state.set_clock(FakeClock::at(1_000));
+        state.insert_pane(PaneId(1), FakePane::shell());
+        state.insert_pane(PaneId(2), FakePane::shell());
+        state.report_agent(&claude(PaneId(1), AgentState::Done));
+        assert_eq!(
+            state.agent_status(PaneId(1)).state,
+            AgentState::Done,
+            "nobody is attached"
+        );
+        let (lane, _rx) = mpsc::channel(64);
+        state.add_client(lane);
+        let focus = state.focus();
+        let other = [PaneId(1), PaneId(2)]
+            .into_iter()
+            .find(|p| Some(*p) != focus)
+            .expect("two panes");
+        state.report_agent(&claude(other, AgentState::Done));
+        assert_eq!(state.agent_status(other).state, AgentState::Done);
+        let focused = focus.expect("a focused pane");
+        state.report_agent(&claude(focused, AgentState::Working));
+        state.report_agent(&claude(focused, AgentState::Done));
+        let status = state.agent_status(focused);
+        assert_eq!(status.state, AgentState::Finished, "seen as it happened");
+        assert_eq!(status.activity.as_deref(), Some("Fixed it."));
+        assert!(state.watched(focused));
+        assert!(!state.watched(other));
     }
 
     #[test]

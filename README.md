@@ -60,7 +60,7 @@ Already inside Monarch? `prefix N` does the same from a form. The prefix is `Ctr
 
 You're working in `a11y`. In another tab, `retry` wants to run a command, and an amber diamond appears on its row in the sidebar.
 
-`prefix a` opens the inbox: every agent waiting on you, longest wait first, with the question it asked or the last thing it said and how long ago. Type `y` or `n` and the answer goes to that agent in the form it expects, while you stay where you are. `Enter` jumps to its pane instead, and `prefix Tab` goes straight to the next blocked agent.
+`prefix a` opens the inbox: every agent waiting on you, longest wait first, with the question it asked or the last thing it said and how long it has been waiting. Type `y` or `n` and the answer goes to that agent in the form it expects, while you stay where you are. `Enter` jumps to its pane instead, and `prefix Tab` goes straight to the next blocked agent.
 
 <img src="docs/assets/inbox.png" width="640" alt="The inbox. It lists retry, blocked on 'Allow Bash cargo clean and cargo test', and header, done with its last message. A hint line reads: move, enter jump, y/n/1-9 answer, esc close.">
 

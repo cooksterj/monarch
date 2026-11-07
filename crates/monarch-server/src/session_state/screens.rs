@@ -44,7 +44,7 @@ impl SessionState {
             .command
             .as_deref()
             .and_then(|c| self.agent_for_program(c));
-        let watched = self.client_count() > 0 && self.focus() == Some(pane);
+        let watched = self.watched(pane);
         if let Some(status) = self.agents.screen(pane, state, agent, watched) {
             self.agent_changed(pane, status);
         }
