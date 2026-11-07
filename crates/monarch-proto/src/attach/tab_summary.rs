@@ -40,7 +40,7 @@ mod tests {
             command: None,
             place: None,
             agent: Default::default(),
-            since: None,
+            timing: None,
         }
     }
 

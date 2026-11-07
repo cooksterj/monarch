@@ -3,7 +3,6 @@
 //! outside a repository last.
 
 use std::path::Path;
-use std::time::Duration;
 
 use monarch_core::{AgentState, PaneId, UnixMillis};
 use monarch_proto::{AgentStatus, PanePlace, PaneSummary};
@@ -56,17 +55,6 @@ impl AttachState {
     /// layout.
     pub(super) fn agent<'a>(&'a self, sent: &'a PaneSummary) -> &'a AgentStatus {
         self.agents.get(&sent.pane).unwrap_or(&sent.agent)
-    }
-
-    /// When a pane's agent entered its state, from the latest `Agent` or
-    /// else the layout.
-    pub(super) fn since(&self, sent: &PaneSummary) -> Option<UnixMillis> {
-        self.since.get(&sent.pane).copied().unwrap_or(sent.since)
-    }
-
-    /// How long a pane's agent has been in its state at `now`, if known.
-    pub(super) fn age(&self, sent: &PaneSummary, now: UnixMillis) -> Option<Duration> {
-        self.since(sent).map(|began| began.age_at(now))
     }
 
     /// Where `pane` works, if it is in the layout and its place is known.
@@ -134,7 +122,9 @@ fn where_in(place: &PanePlace) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use monarch_core::PaneId;
-    use monarch_proto::{CheckoutStatus, LayoutMsg, ScreenSize, ServerMsg, TabSummary};
+    use monarch_proto::{
+        AgentTiming, CheckoutStatus, LayoutMsg, ScreenSize, ServerMsg, TabSummary,
+    };
 
     use super::*;
     use crate::Applied;
@@ -157,7 +147,7 @@ mod tests {
             command: Some(command.into()),
             place: at,
             agent: Default::default(),
-            since: None,
+            timing: None,
         }
     }
 
@@ -399,12 +389,12 @@ mod tests {
             ServerMsg::Agent {
                 pane: PaneId(1),
                 status: blocked,
-                since: Some(UnixMillis(10_000)),
+                timing: Some(AgentTiming::begun(UnixMillis(10_000), false)),
             },
             ServerMsg::Agent {
                 pane: PaneId(3),
                 status: status(AgentState::Working, None),
-                since: None,
+                timing: None,
             },
         ];
         msgs.into_iter()
@@ -451,7 +441,7 @@ mod tests {
         let msg = ServerMsg::Agent {
             pane: PaneId(1),
             status,
-            since: Some(UnixMillis(100_000 - 42_000)),
+            timing: Some(AgentTiming::begun(UnixMillis(100_000 - 42_000), true)),
         };
         state.apply(msg, &mut Applied::default());
         let rows: Vec<SidebarRow> = state
@@ -460,10 +450,10 @@ mod tests {
             .flat_map(|g| g.rows)
             .collect();
         let claude = rows.iter().find(|r| r.pane == PaneId(1)).expect("row");
-        assert_eq!(claude.age, Some(Duration::from_secs(42)));
+        assert_eq!(claude.age, Some(std::time::Duration::from_secs(42)));
         assert_eq!(claude.detail.as_deref(), Some("Edit a.rs"));
         let shell = rows.iter().find(|r| r.pane == PaneId(2)).expect("row");
         assert_eq!(shell.age, None, "a shell has no state to age");
-        assert!(state.any_aged());
+        assert!(state.any_running());
     }
 }

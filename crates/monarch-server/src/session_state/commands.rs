@@ -63,7 +63,7 @@ impl SessionState {
             command: entry.and_then(|e| e.command.clone()),
             place: entry.and_then(|e| e.place.clone()),
             agent: self.agents.status(pane),
-            since: self.agents.since(pane),
+            timing: self.agents.timing(pane),
         }
     }
 }

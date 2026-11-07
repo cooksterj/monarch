@@ -4,7 +4,7 @@
 
 use std::time::Instant;
 
-use monarch_core::{Action, age_label};
+use monarch_core::{Action, AgentState, age_label};
 use monarch_proto::ClientMsg;
 
 use super::AttachApp;
@@ -17,8 +17,9 @@ impl AttachApp {
         Picker::list("inbox", self.inbox_items())
     }
 
-    /// One row per agent: glyph, tab, name and what it said; its state
-    /// and how long it has been there (`blocked 3m`) at the right.
+    /// One row per agent: glyph, tab, name and what it said; at the
+    /// right its state and how long it has waited (`blocked 3m`), or how
+    /// long its turn took (`done in 45s`).
     fn inbox_items(&self) -> Vec<PickerItem> {
         self.state
             .needing_attention(Self::now())
@@ -34,9 +35,12 @@ impl AttachApp {
                         item.tab + 1,
                         item.name
                     ),
-                    detail: match item.age {
-                        Some(age) => format!("{state} {}", age_label(age)),
-                        None => state,
+                    detail: match (item.status.state, item.age) {
+                        (AgentState::Done, Some(took)) => {
+                            format!("{state} in {}", age_label(took))
+                        }
+                        (_, Some(age)) => format!("{state} {}", age_label(age)),
+                        (_, None) => state,
                     },
                     action: Action::FocusPane(item.pane),
                 }

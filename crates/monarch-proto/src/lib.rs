@@ -22,9 +22,9 @@ pub use api::{
     SessionInfo, StatusSource, TabRename, TabRenamed, WorktreeCreated,
 };
 pub use attach::{
-    AgentStatus, ClientMsg, Delta, FrameCodec, HostInfo, LayoutMsg, PaneLayout, PanePlace,
-    PaneState, PaneSummary, RowCodec, RowDelta, Run, SelectShape, ServerMsg, Snapshot, StyleCache,
-    StyleDef, StyleId, StyleTable, TabSummary,
+    AgentStatus, AgentTiming, ClientMsg, Delta, FrameCodec, HostInfo, LayoutMsg, PaneLayout,
+    PanePlace, PaneState, PaneSummary, RowCodec, RowDelta, Run, SelectShape, ServerMsg, Snapshot,
+    StyleCache, StyleDef, StyleId, StyleTable, TabSummary,
 };
 pub use badge_part::BadgePart;
 pub use checkout_status::CheckoutStatus;

@@ -12,8 +12,8 @@ mod screen;
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use monarch_core::{AgentKind, AgentState, PaneId, UnixMillis};
-use monarch_proto::{AgentReport, AgentStatus, StatusSource};
+use monarch_core::{AgentKind, AgentState, PaneId};
+use monarch_proto::{AgentReport, AgentStatus, AgentTiming, StatusSource};
 
 /// Agent status per pane (panes never reported on are plain shells),
 /// which pane each agent session id was seen in, and where each status
@@ -32,8 +32,8 @@ pub struct StateEngine {
     changes: u64,
     /// When each pane last entered each state, by change count.
     entered: BTreeMap<PaneId, Vec<(AgentState, u64)>>,
-    /// Each pane's state and when, on the wall clock, it began.
-    since: BTreeMap<PaneId, (AgentState, UnixMillis)>,
+    /// Each pane's state and the clock facts behind its age.
+    timing: BTreeMap<PaneId, (AgentState, AgentTiming)>,
     /// The full text of each pane's last answer (see `said`).
     said: BTreeMap<PaneId, String>,
 }
@@ -141,7 +141,7 @@ impl StateEngine {
         self.guessed.remove(&pane);
         self.screened.remove(&pane);
         self.entered.remove(&pane);
-        self.since.remove(&pane);
+        self.timing.remove(&pane);
         self.said.remove(&pane);
     }
 }

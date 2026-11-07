@@ -21,10 +21,10 @@ impl AttachState {
             ServerMsg::Agent {
                 pane,
                 status,
-                since,
+                timing,
             } => {
                 self.agents.insert(pane, status);
-                self.since.insert(pane, since);
+                self.timing.insert(pane, timing);
             }
             _ => {}
         }

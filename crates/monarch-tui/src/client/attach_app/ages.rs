@@ -1,5 +1,5 @@
 //! Keeps the ages shown beside agents (`3m` in the sidebar and inbox)
-//! moving: once a second, while any agent has one to show.
+//! moving: once a second, while any of them is a running count.
 
 use std::time::{Duration, Instant};
 
@@ -29,7 +29,7 @@ impl AttachApp {
             .picker
             .as_ref()
             .is_some_and(crate::Picker::is_list);
-        if !self.state.any_aged() || (self.state.left() == 0 && !inbox) {
+        if !self.state.any_running() || (self.state.left() == 0 && !inbox) {
             return;
         }
         self.refresh_inbox();

@@ -1,9 +1,9 @@
 //! Messages from the server to an attached client.
 
-use monarch_core::{PaneId, UnixMillis};
+use monarch_core::PaneId;
 use serde::{Deserialize, Serialize};
 
-use super::{AgentStatus, Delta, LayoutMsg, PanePlace, Snapshot, StyleDef};
+use super::{AgentStatus, AgentTiming, Delta, LayoutMsg, PanePlace, Snapshot, StyleDef};
 use crate::{GridPoint, Review, WorktreeCreated, WorktreeEntry};
 
 /// One server → client attach-stream message.
@@ -85,9 +85,9 @@ pub enum ServerMsg {
         pane: PaneId,
         /// What its agent is doing now.
         status: AgentStatus,
-        /// When it entered this state (kept over activity-only changes
-        /// and from Done to Finished); `None` for a plain shell.
-        since: Option<UnixMillis>,
+        /// When its state and turn began and how long its last turn
+        /// took; `None` for a plain shell.
+        timing: Option<AgentTiming>,
     },
 }
 
