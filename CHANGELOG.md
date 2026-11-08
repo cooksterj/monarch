@@ -10,6 +10,19 @@ they need polishing.
 
 ## [Unreleased]
 
+## [0.1.2](https://github.com/cooksterj/monarch/compare/v0.1.1...v0.1.2) - 2026-11-08
+
+### Fixed
+
+- *(tui)* re-home the cursor after every non-ASCII glyph so a host width disagreement cannot shift a row ([#117](https://github.com/cooksterj/monarch/pull/117))
+
+### Other
+
+- Bump release-plz/action from 0.5.147 to 0.5.148 in the actions group ([#115](https://github.com/cooksterj/monarch/pull/115))
+- *(deps)* Bump the minor-and-patch group with 2 updates ([#116](https://github.com/cooksterj/monarch/pull/116))
+- *(assets)* the social preview shows the whole screen, closer to the words ([#114](https://github.com/cooksterj/monarch/pull/114))
+- *(readme)* point the latest release at v0.1.1 ([#112](https://github.com/cooksterj/monarch/pull/112))
+
 ## [0.1.1](https://github.com/cooksterj/monarch/compare/v0.1.0...v0.1.1) - 2026-11-07
 
 ### Added
