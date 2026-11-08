@@ -10,18 +10,18 @@ use std::sync::mpsc::{self, Receiver};
 use std::time::Instant;
 
 use monarch_proto::{ClientMsg, HostInfo, ScreenSize};
-use ratatui::DefaultTerminal;
+use ratatui::Terminal;
 
 use super::{WARNING, sidebar};
 use crate::client::{
     AttachOptions, AttachState, AttachView, ClientEvent, InputKeys, InputParams, InputThread,
     PROBE_TIMEOUT, ServerLink, SharedFocus,
 };
-use crate::{HostModeMirror, HostProbe, TuiError};
+use crate::{HostBackend, HostModeMirror, HostProbe, TuiError};
 
 /// What an attach session has once it is connected and introduced.
 pub(super) struct Started {
-    pub ui: DefaultTerminal,
+    pub ui: Terminal<HostBackend>,
     pub link: ServerLink,
     pub events: Receiver<ClientEvent>,
     pub post: mpsc::Sender<ClientEvent>,
@@ -40,7 +40,7 @@ impl Started {
     /// Starts the input and server threads, probes the host and
     /// introduces this client to the server.
     pub fn new(
-        mut ui: DefaultTerminal,
+        mut ui: Terminal<HostBackend>,
         link: ServerLink,
         reader: UnixStream,
         opts: &AttachOptions,
@@ -113,7 +113,7 @@ pub(super) fn enter_host(host: &HostInfo, opts: &AttachOptions) -> (HostModeMirr
 
 /// Tells the server what the host can do and how big the panes are.
 pub(super) fn introduce(
-    ui: &DefaultTerminal,
+    ui: &Terminal<HostBackend>,
     link: &ServerLink,
     host: HostInfo,
     opts: &AttachOptions,
@@ -142,7 +142,7 @@ pub(super) fn wait_for_host(events: &Receiver<ClientEvent>) -> (HostInfo, VecDeq
     (HostInfo::default(), backlog)
 }
 
-pub(super) fn write_host(ui: &mut DefaultTerminal, bytes: &[u8]) -> Result<(), TuiError> {
+pub(super) fn write_host(ui: &mut Terminal<HostBackend>, bytes: &[u8]) -> Result<(), TuiError> {
     let backend = ui.backend_mut();
     backend
         .write_all(bytes)

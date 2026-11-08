@@ -136,7 +136,9 @@ def run_all(binary):
         first.wait_for(b"monarch-42", "echo output")
         os.write(first.fd, binary.encode() + b"\r")
         first.wait_for(f"`{SESSION}`;".encode(), "nested attach refused")  # spaces are cursor moves
-        first.wait_for(b"monarch \xe2\x94\x82 " + SESSION.encode(), "status line")
+        # The cursor is re-homed after every non-ASCII glyph, so the bar is
+        # never one contiguous write: read it back as a row.
+        first.wait_for_bar(b"monarch \xe2\x94\x82 " + SESSION.encode(), "status line")
         first.wait_for(b"\x1b]2;monarch:" + SESSION.encode(), "window title")
         # The bar is rebuilt from all output so far: never reset `seen` first.
         first.wait_for_bar(b"bash ", "the tab named after the shell")

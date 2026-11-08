@@ -22,7 +22,7 @@ pub use client::{
     WindowTitle, WorktreeForm, WorktreeStep,
 };
 pub use error::TuiError;
-pub use host::{HostClipboard, HostModeMirror, HostProbe, HostReply};
+pub use host::{HostBackend, HostClipboard, HostModeMirror, HostProbe, HostReply};
 pub use input::{
     HostFocus, HostInput, HostInputFilter, InputEvent, MOD_BITS, MouseButton, MouseEncoder,
     MouseEvent, MouseExtractor, MouseKind, OverlayKey, PrefixParser, WheelDirection,

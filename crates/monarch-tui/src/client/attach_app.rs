@@ -9,13 +9,13 @@ use std::time::{Duration, Instant};
 
 use monarch_core::Key;
 use monarch_proto::{ClientMsg, HostInfo, ScreenSize};
-use ratatui::DefaultTerminal;
+use ratatui::Terminal;
 
 use super::{
     Applied, AttachOptions, AttachOutcome, AttachState, ClientEvent, ConfigWatch, CopyMode,
     DragScroll, InputKeys, Selection, ServerLink, SessionLister, SharedFocus, SidebarScroll,
 };
-use crate::{HostModeMirror, TuiError, WhichKeyEntry};
+use crate::{HostBackend, HostModeMirror, TuiError, WhichKeyEntry};
 
 mod agent_info;
 mod ages;
@@ -49,7 +49,7 @@ const WARNING: Duration = Duration::from_secs(8);
 
 /// A running attach session.
 pub struct AttachApp {
-    ui: DefaultTerminal,
+    ui: Terminal<HostBackend>,
     link: ServerLink,
     events: Receiver<ClientEvent>,
     /// For results worked out off this thread (the session list).
@@ -107,7 +107,7 @@ impl AttachApp {
         lister: Arc<dyn SessionLister>,
     ) -> Result<AttachOutcome, TuiError> {
         let (link, reader) = ServerLink::connect(&opts.socket)?;
-        let ui = ratatui::init();
+        let ui = HostBackend::init().map_err(|e| TuiError::io("taking over the terminal", e))?;
         let result = Self::start(ui, link, reader, opts, lister).and_then(|mut app| {
             let outcome = app.run();
             app.finish()?;
@@ -118,7 +118,7 @@ impl AttachApp {
     }
 
     fn start(
-        ui: DefaultTerminal,
+        ui: Terminal<HostBackend>,
         link: ServerLink,
         reader: UnixStream,
         opts: &AttachOptions,
