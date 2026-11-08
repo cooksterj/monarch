@@ -35,6 +35,7 @@ impl Action {
             Self::Inbox => "agents waiting for you, done or failed",
             Self::NextBlocked => "jump to the next agent waiting for you",
             Self::AgentInfo => "why the agent is in its state, and its history",
+            Self::LaunchAgent => "start Claude Code or Codex in a new tab",
             Self::Review => "review the checkout's uncommitted changes",
             Self::NewWorktree => "new worktree with an agent or a shell",
             Self::Projects => "jump to, open or remove worktrees",
@@ -69,7 +70,9 @@ impl Action {
             Self::NewTab | Self::NextTab | Self::PrevTab | Self::SelectTab(_) | Self::RenameTab => {
                 ActionGroup::Tabs
             }
-            Self::Inbox | Self::NextBlocked | Self::AgentInfo => ActionGroup::Agents,
+            Self::Inbox | Self::NextBlocked | Self::AgentInfo | Self::LaunchAgent => {
+                ActionGroup::Agents
+            }
             Self::Review | Self::NewWorktree | Self::Projects => ActionGroup::Projects,
             Self::Detach
             | Self::ToggleMouse
@@ -107,6 +110,7 @@ mod tests {
     #[test]
     fn actions_fall_into_their_area() {
         assert_eq!(Action::Inbox.group(), ActionGroup::Agents);
+        assert_eq!(Action::LaunchAgent.group(), ActionGroup::Agents);
         assert_eq!(Action::SelectTab(3).group(), ActionGroup::Tabs);
         assert_eq!(Action::Help.group(), ActionGroup::Session);
         assert!(

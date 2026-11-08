@@ -39,6 +39,7 @@ impl From<&AttachOptions> for InputKeys {
                     | Action::GoToPane
                     | Action::CopyMode
                     | Action::Inbox
+                    | Action::LaunchAgent
                     | Action::Review
                     | Action::NewWorktree
                     | Action::Projects

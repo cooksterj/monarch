@@ -1,6 +1,6 @@
 //! Messages from an attached client to the server.
 
-use monarch_core::{Action, PaneId};
+use monarch_core::{Action, AgentKind, PaneId};
 use serde::{Deserialize, Serialize};
 
 use super::{HostInfo, SelectShape};
@@ -125,6 +125,10 @@ pub enum ClientMsg {
     /// Why `pane`'s agent is in its state (as the API's `agent.explain`);
     /// answered with `ServerMsg::Explained`.
     Explain(PaneId),
+    /// Start this agent in a new tab, in the focused pane's directory (as
+    /// `prefix c` starts a shell). The tab reaches every client through
+    /// the layout.
+    LaunchAgent(AgentKind),
 }
 
 #[cfg(test)]
@@ -147,6 +151,13 @@ mod tests {
             text: "Review note on a.rs:\n\nfix it".into(),
             enter: true,
         };
+        let bytes = postcard::to_allocvec(&msg).expect("encode");
+        assert_eq!(postcard::from_bytes::<ClientMsg>(&bytes).ok(), Some(msg));
+    }
+
+    #[test]
+    fn launches_survive_the_attach_encoding() {
+        let msg = ClientMsg::LaunchAgent(AgentKind::Codex);
         let bytes = postcard::to_allocvec(&msg).expect("encode");
         assert_eq!(postcard::from_bytes::<ClientMsg>(&bytes).ok(), Some(msg));
     }

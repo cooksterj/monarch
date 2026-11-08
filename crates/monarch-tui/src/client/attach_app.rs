@@ -24,6 +24,7 @@ mod copy;
 mod draw;
 mod help;
 mod inbox;
+mod launch;
 mod menu;
 mod picker;
 mod popups;

@@ -22,6 +22,7 @@ impl AttachApp {
             Action::Inbox => self.open_picker(self.inbox()),
             Action::NextBlocked => self.next_blocked(),
             Action::AgentInfo => self.open_agent_info(),
+            Action::LaunchAgent => self.open_launch(),
             Action::Review => self.open_review(),
             Action::NewWorktree => self.open_worktree_form(),
             Action::Projects => self.open_projects(),
@@ -60,6 +61,8 @@ impl AttachApp {
             self.worktree_input(bytes);
         } else if self.popups.projects.is_some() {
             self.projects_input(bytes);
+        } else if self.popups.launch.is_some() {
+            self.launch_input(bytes);
         } else if self.popups.namer.is_some() {
             self.rename_input(bytes);
         } else if self.popups.sessions.is_some() {
