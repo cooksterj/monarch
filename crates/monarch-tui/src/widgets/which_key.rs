@@ -185,16 +185,16 @@ mod tests {
     fn wide_hosts_get_columns() {
         insta::assert_snapshot!(draw(80, 12), @r#"
         ┌ ctrl+b ─────────────────────────────────────────────────────────────────────┐
-        │       " -  split down           1-9  go to tab              [  copy mode    │
-        │       % |  split right            c  new tab                a  inbox        │
-        │         x  close pane             n  next tab             g w  go to pane   │
-        │         z  zoom                   p  prev tab               i  agent info   │
-        │ hjkl ←↓↑→  focus                  ,  rename tab             m  toggle mouse │
-        │         o  focus next             .  rename pane            s  projects     │
-        │         {  swap prev              :  palette                t  sidebar      │
-        │         }  swap next              N  new worktree           v  review       │
-        │         =  equalize               R  reload               tab  next blocked │
-        │      HJKL  resize                 S  sessions               d  detach       │
+        │       " -  split down           1-9  go to tab              S  sessions     │
+        │       % |  split right            c  new tab                [  copy mode    │
+        │         x  close pane             n  next tab               a  inbox        │
+        │         z  zoom                   p  prev tab             g w  go to pane   │
+        │ hjkl ←↓↑→  focus                  ,  rename tab             i  agent info   │
+        │         o  focus next             .  rename pane            m  toggle mouse │
+        │         {  swap prev              :  palette                s  projects     │
+        │         }  swap next              A  launch agent           t  sidebar      │
+        │         =  equalize               N  new worktree           v  review       │
+        │      HJKL  resize                 R  reload                 …  2 more       │
         └ ? all keys and help ────────────────────────────────────────────────────────┘
         "#);
     }
@@ -208,7 +208,7 @@ mod tests {
         │         x  close pane│
         │         z  zoom      │
         │ hjkl ←↓↑→  focus     │
-        │         …  25 more   │
+        │         …  26 more   │
         └ ? all keys and help ─┘
         "#);
     }

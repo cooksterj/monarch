@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use futures_util::{SinkExt, StreamExt};
-use monarch_core::{Action, ClientId, PaneId};
+use monarch_core::{Action, AgentKind, ClientId, PaneId};
 use monarch_proto::{ClientMsg, FrameCodec, ServerMsg};
 use monarch_term::ScrollRequest;
 use tokio::net::UnixStream;
@@ -11,7 +11,7 @@ use tokio::net::unix::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::sync::mpsc::{self, Receiver};
 use tokio_util::codec::{FramedRead, FramedWrite};
 
-use crate::{ActionEffect, RENDER_LANE, ServerContext, ServerError, SessionState};
+use crate::{ActionEffect, Placement, RENDER_LANE, ServerContext, ServerError, SessionState};
 
 mod explain;
 mod history;
@@ -89,6 +89,7 @@ fn handle(ctx: &Arc<ServerContext>, id: ClientId, msg: ClientMsg) -> bool {
         ClientMsg::RemoveWorktree(path) => worktree::remove(ctx, id, path),
         ClientMsg::Send { pane, text, enter } => review::send(ctx, pane, text, enter),
         ClientMsg::Explain(pane) => explain::request(ctx, id, pane),
+        ClientMsg::LaunchAgent(kind) => launch_agent(ctx, kind),
         msg => apply(ctx, id, &msg),
     }
     true
@@ -143,6 +144,15 @@ fn saw_new_focus(state: &mut SessionState, before: Option<PaneId>) {
     if let Some(now) = state.focus().filter(|p| Some(*p) != before) {
         state.saw(now);
     }
+}
+
+/// Starts `kind` in a new tab, shown at once (as `Action::NewTab` starts
+/// a shell).
+fn launch_agent(ctx: &ServerContext, kind: AgentKind) {
+    if let Err(e) = ctx.spawn_agent_at(kind, Placement::Tab { activate: true }) {
+        eprintln!("monarch: {e}");
+    }
+    ctx.wake();
 }
 
 fn run_action(ctx: &ServerContext, action: Action) {

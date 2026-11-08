@@ -263,6 +263,7 @@ Everything starts with the prefix, `Ctrl-b`. Press it and wait to see every key.
 | `prefix Tab` | jump to the next agent waiting on a decision |
 | `prefix i` | agent info: the signal, the rule that fired and the last few states |
 | `prefix g`, then `b` `w` `i` `d` | go to a pane; narrow to blocked, working, idle or done agents |
+| `prefix A` | launch Claude Code or Codex in a new tab, here |
 | `prefix N` | new worktree: branch name, then shell, Claude Code or Codex |
 | `prefix s` | projects: every worktree |
 | `prefix v` | review the focused pane's uncommitted changes |

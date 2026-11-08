@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use std::path::{Component, Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard};
 
-use monarch_core::PaneId;
+use monarch_core::{AgentKind, PaneId};
 use monarch_proto::{AgentReport, Review};
 use tokio::sync::Notify;
 use tokio::sync::mpsc::UnboundedSender;
@@ -157,6 +157,30 @@ impl ServerContext {
         self.spawn(&spec, None, placement)
     }
 
+    /// Starts agent `kind` where `placement` says, in the focused pane's
+    /// current directory, launched as `[agents.<id>]` says.
+    ///
+    /// # Errors
+    /// The PTY or program could not be started.
+    pub fn spawn_agent_at(
+        &self,
+        kind: AgentKind,
+        placement: Placement,
+    ) -> Result<PaneId, ServerError> {
+        let spec = self.agent_spec(kind);
+        self.spawn(&spec, None, placement)
+    }
+
+    /// What a pane running agent `kind` in the focused pane's directory
+    /// starts with.
+    #[must_use]
+    pub fn agent_spec(&self, kind: AgentKind) -> PaneSpec {
+        PaneSpec {
+            cwd: self.focused_cwd(),
+            ..PaneSpec::agent(kind, &self.launch.agent(kind))
+        }
+    }
+
     /// The focused pane's working directory, if it can be read.
     #[must_use]
     pub fn focused_cwd(&self) -> Option<PathBuf> {
@@ -274,6 +298,7 @@ impl ServerContext {
 
 #[cfg(test)]
 mod tests {
+    use monarch_core::AgentKind;
     use monarch_proto::PanePlace;
 
     use crate::PaneSpec;
@@ -298,6 +323,20 @@ mod tests {
             assert_eq!(ctx.edit_spec(id, bad, "vi"), None, "{bad}");
         }
         assert_eq!(ctx.edit_spec(id, "a.rs", " "), None, "no editor");
+    }
+
+    #[test]
+    fn agent_specs_launch_the_configured_command_where_the_focus_is() {
+        let ctx = context();
+        let spec = ctx.agent_spec(AgentKind::Codex);
+        assert_eq!(spec.agent.as_ref().map(|a| a.kind), Some(AgentKind::Codex));
+        assert_eq!(spec.argv, ["codex"]);
+        assert_eq!(spec.cwd, None, "no pane focused");
+        let id = ctx.insert_for_test(PaneSpec::default(), FakePane::with_pid(std::process::id()));
+        ctx.lock().set_focus(id);
+        let spec = ctx.agent_spec(AgentKind::Claude);
+        assert_eq!(spec.argv.first().map(String::as_str), Some("claude"));
+        assert!(spec.cwd.is_some(), "the focused pane's directory");
     }
 
     #[test]

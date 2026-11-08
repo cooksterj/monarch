@@ -75,6 +75,9 @@ pub enum Action {
     /// Show why the focused pane's agent is in its state: the signal, the
     /// rule that fired and its recent transitions.
     AgentInfo,
+    /// Choose an agent to start in a new tab (client-local: the client
+    /// asks which).
+    LaunchAgent,
     /// Review the uncommitted changes in the focused pane's checkout:
     /// changed files and their diffs.
     Review,
@@ -112,6 +115,7 @@ impl Action {
                 | Self::Inbox
                 | Self::NextBlocked
                 | Self::AgentInfo
+                | Self::LaunchAgent
                 | Self::Review
                 | Self::NewWorktree
                 | Self::Projects
@@ -148,6 +152,10 @@ mod tests {
         assert!(Action::ReloadConfig.is_local());
         assert!(Action::Inbox.is_local() && Action::NextBlocked.is_local());
         assert!(Action::AgentInfo.is_local());
+        assert!(
+            Action::LaunchAgent.is_local(),
+            "the client asks which agent"
+        );
         assert!(Action::Review.is_local());
         assert!(Action::NewWorktree.is_local());
         assert!(Action::Projects.is_local());

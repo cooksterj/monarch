@@ -7,8 +7,9 @@ use monarch_core::UnixMillis;
 
 use crate::{
     AgentInfo, AgentInfoView, Chrome, ContextMenu, ContextMenuView, GoToPicker, HelpState,
-    HelpView, NamePrompt, NotePrompt, Picker, PickerView, PopupViews, ProjectPicker, ReviewState,
-    ReviewView, SessionPicker, WelcomeState, WelcomeView, WorktreeForm, WorktreeFormView,
+    HelpView, LaunchPicker, NamePrompt, NotePrompt, Picker, PickerView, PopupViews, ProjectPicker,
+    ReviewState, ReviewView, SessionPicker, WelcomeState, WelcomeView, WorktreeForm,
+    WorktreeFormView,
 };
 
 /// Every pop-up; each takes the keys while open.
@@ -24,6 +25,8 @@ pub(super) struct Popups {
     pub projects: Option<ProjectPicker>,
     /// The session picker.
     pub sessions: Option<SessionPicker>,
+    /// The launch picker.
+    pub launch: Option<LaunchPicker>,
     /// The rename-tab or rename-pane prompt.
     pub namer: Option<NamePrompt>,
     /// The right-click menu, which also takes clicks.
@@ -48,6 +51,7 @@ impl Popups {
             || self.info.is_some()
             || self.projects.is_some()
             || self.sessions.is_some()
+            || self.launch.is_some()
             || self.namer.is_some()
             || self.menu.is_some()
             || self.review.is_some()
@@ -72,6 +76,7 @@ impl Popups {
             .or(self.goto.as_ref().map(GoToPicker::picker))
             .or(self.projects.as_ref().map(ProjectPicker::picker))
             .or(self.sessions.as_ref().map(SessionPicker::picker))
+            .or(self.launch.as_ref().map(LaunchPicker::picker))
             .or(self.namer.as_ref().map(NamePrompt::picker))
             .or(self.note.as_ref().map(NotePrompt::picker));
         let instant = Instant::now();
@@ -127,6 +132,12 @@ mod tests {
         let drawn = popups.views(Chrome::default(), "ctrl+b", false, now);
         assert!(drawn.help.is_some() && drawn.menu.is_none() && drawn.welcome.is_none());
         popups.projects = None;
+        popups.launch = Some(LaunchPicker::new(&monarch_core::AgentConfig::builtin()));
+        assert!(
+            popups.any() && views(&popups),
+            "the launch picker draws as a picker"
+        );
+        popups.launch = None;
         popups.goto = Some(GoToPicker::new(Vec::new()));
         popups.info = Some(AgentInfo::new(monarch_core::PaneId(1), "zsh"));
         let drawn = popups.views(Chrome::default(), "ctrl+b", false, now);

@@ -115,7 +115,9 @@ States come from, in order of trust: the agent's own **hooks** (installed by `mo
 terminal **notifications** the agent sends, and its **screen**, read with detection rules for
 about twenty agents. `monarch agent explain` shows each pane's state and where it came from.
 
-**Start an agent** in a new worktree with `prefix N` (below), or in a new session with
+**Start an agent** with `prefix A`: choose Claude Code or Codex (each row shows the command
+`agents.<id>.command` runs) and it opens in a new tab in the focused pane's directory, as
+`prefix c` opens a shell. For a new worktree use `prefix N` (below); for a new session,
 `monarch attach -s work --agent claude`.
 
 **The inbox**, `prefix a`, lists every agent waiting on you with the question it asked or the
@@ -233,6 +235,7 @@ directory. Running programs and their screens can't survive the server, as with 
 | `a` | inbox |
 | `Tab` | next blocked agent |
 | `i` | agent info: why the focused pane's agent is in its state |
+| `A` | launch an agent in a new tab |
 | `N` | new worktree |
 | `s` | projects |
 | `S` | sessions |
@@ -292,7 +295,7 @@ take effect for the next session you start; a running server keeps the values it
 | `session.default_name` | `"main"` | the session `monarch` attaches to |
 | `session.resume_agents` | `true` | restore relaunches agents; off, their panes come back as shells in the same directory |
 | `projects.worktree_root` | beside the repo | where new worktrees go |
-| `agents.<id>.command` | `claude` / `codex` | the program `--agent`, `monarch new --agent` and `prefix N` run; a wrapper script works and is recognised by name |
+| `agents.<id>.command` | `claude` / `codex` | the program `--agent`, `monarch new --agent`, `prefix A` and `prefix N` run; a wrapper script works and is recognised by name |
 | `agents.<id>.args` | `["--session-id", "{session_id}"]` / `[]` | its arguments for a new session; `{session_id}` makes Monarch choose a UUID so the pane can be resumed |
 | `agents.<id>.resume_args` | `["--resume", "{session_id}"]` / `["resume", "{session_id}"]` | arguments to resume after a restart; an argument naming `{session_id}` is left out when no id is known (Codex before its hooks report one); empty means start a new session instead |
 | `agents.<id>.quick_answers` | `y`/`n` per agent | what an inbox key sends to that agent's pane, e.g. `y = "1"` |
