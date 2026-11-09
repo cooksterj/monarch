@@ -56,7 +56,11 @@ fn family(action: Action) -> Family {
         Action::FocusNext | Action::FocusPrev => 3,
         Action::SwapNext | Action::SwapPrev => 4,
         Action::Equalize => 5,
-        Action::NewTab | Action::NextTab | Action::PrevTab => 6,
+        Action::NewTab
+        | Action::BreakPane
+        | Action::CloseTab
+        | Action::NextTab
+        | Action::PrevTab => 6,
         Action::Detach => 8,
         _ => 7,
     };

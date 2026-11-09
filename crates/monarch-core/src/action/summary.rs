@@ -22,6 +22,8 @@ impl Action {
             Self::ToggleZoom => "zoom the pane to fill the tab, or unzoom",
             Self::Equalize => "give the tab's panes equal space",
             Self::NewTab => "open a tab",
+            Self::BreakPane => "move the pane to a tab of its own",
+            Self::CloseTab => "close the tab and every pane in it",
             Self::NextTab => "show the next tab",
             Self::PrevTab => "show the previous tab",
             Self::SelectTab(_) => "show that tab",
@@ -67,9 +69,13 @@ impl Action {
             | Self::GoToPane
             | Self::CopyMode
             | Self::FocusPane(_) => ActionGroup::Panes,
-            Self::NewTab | Self::NextTab | Self::PrevTab | Self::SelectTab(_) | Self::RenameTab => {
-                ActionGroup::Tabs
-            }
+            Self::NewTab
+            | Self::BreakPane
+            | Self::CloseTab
+            | Self::NextTab
+            | Self::PrevTab
+            | Self::SelectTab(_)
+            | Self::RenameTab => ActionGroup::Tabs,
             Self::Inbox | Self::NextBlocked | Self::AgentInfo | Self::LaunchAgent => {
                 ActionGroup::Agents
             }
@@ -112,6 +118,8 @@ mod tests {
         assert_eq!(Action::Inbox.group(), ActionGroup::Agents);
         assert_eq!(Action::LaunchAgent.group(), ActionGroup::Agents);
         assert_eq!(Action::SelectTab(3).group(), ActionGroup::Tabs);
+        assert_eq!(Action::BreakPane.group(), ActionGroup::Tabs);
+        assert_eq!(Action::CloseTab.group(), ActionGroup::Tabs);
         assert_eq!(Action::Help.group(), ActionGroup::Session);
         assert!(
             ActionGroup::ALL

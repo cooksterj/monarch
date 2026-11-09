@@ -7,7 +7,7 @@ use super::Action;
 use crate::{CoreError, Direction, SplitAxis};
 
 /// Actions without a parameter, by name.
-const PLAIN: [(&str, Action); 13] = [
+const PLAIN: [(&str, Action); 15] = [
     ("split-right", Action::Split(SplitAxis::Columns)),
     ("split-down", Action::Split(SplitAxis::Rows)),
     ("close-pane", Action::ClosePane),
@@ -18,6 +18,8 @@ const PLAIN: [(&str, Action); 13] = [
     ("zoom", Action::ToggleZoom),
     ("equalize", Action::Equalize),
     ("new-tab", Action::NewTab),
+    ("break-pane", Action::BreakPane),
+    ("close-tab", Action::CloseTab),
     ("next-tab", Action::NextTab),
     ("prev-tab", Action::PrevTab),
     ("detach", Action::Detach),

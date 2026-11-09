@@ -99,6 +99,8 @@ fn monarch() -> Vec<(Key, Action)> {
         (ch('}'), Action::SwapNext),
         (ch('='), Action::Equalize),
         (ch('c'), Action::NewTab),
+        (ch('!'), Action::BreakPane),
+        (ch('&'), Action::CloseTab),
         (ch('n'), Action::NextTab),
         (ch('p'), Action::PrevTab),
         (ch(','), Action::RenameTab),
@@ -137,6 +139,8 @@ fn tmux() -> Vec<(Key, Action)> {
         (ch('{'), Action::SwapPrev),
         (ch('}'), Action::SwapNext),
         (ch('c'), Action::NewTab),
+        (ch('!'), Action::BreakPane),
+        (ch('&'), Action::CloseTab),
         (ch('n'), Action::NextTab),
         (ch('p'), Action::PrevTab),
         (ch(','), Action::RenameTab),
@@ -169,6 +173,8 @@ fn herdr() -> Vec<(Key, Action)> {
         (ch('x'), Action::ClosePane),
         (ch('z'), Action::ToggleZoom),
         (ch('c'), Action::NewTab),
+        (ch('!'), Action::BreakPane),
+        (ch('&'), Action::CloseTab),
         (ch('n'), Action::NextTab),
         (ch('p'), Action::PrevTab),
         (ch(','), Action::RenameTab),
@@ -236,6 +242,8 @@ mod tests {
             assert!(has(preset, ch('?'), Action::Help));
             assert!(has(preset, ch('i'), Action::AgentInfo));
             assert!(has(preset, ch('A'), Action::LaunchAgent));
+            assert!(has(preset, ch('!'), Action::BreakPane), "tmux's key");
+            assert!(has(preset, ch('&'), Action::CloseTab), "tmux's key");
         }
         assert!(has(
             KeymapPreset::Herdr,
