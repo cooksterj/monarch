@@ -43,6 +43,11 @@ pub enum Action {
     Equalize,
     /// Open a tab with a shell in the focused pane's directory.
     NewTab,
+    /// Move the focused pane out of its split into a tab of its own
+    /// (nothing happens when it is alone already).
+    BreakPane,
+    /// Close the shown tab: end every pane's program in it.
+    CloseTab,
     /// Show the next tab.
     NextTab,
     /// Show the previous tab.

@@ -75,6 +75,8 @@ for the action. Wait a moment after the prefix and a pop-up lists every key you 
 | `{` `}` | swap with the previous / next pane |
 | `x` | close the pane |
 | `c` | new tab |
+| `!` | break the pane out of its split into a tab of its own (it keeps its name) |
+| `&` | close the tab: ends every pane's program in it |
 | `n` `p` | next / previous tab |
 | `1`–`9` | go to that tab |
 | `,` | rename the tab. A tab with one pane shows the name in the sidebar too; in a split tab each pane keeps its own name until you name it with `.`. A blank name gives back the automatic one (the program's) |
