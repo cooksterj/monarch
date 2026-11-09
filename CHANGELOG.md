@@ -10,6 +10,18 @@ they need polishing.
 
 ## [Unreleased]
 
+## [0.1.3](https://github.com/cooksterj/monarch/compare/v0.1.2...v0.1.3) - 2026-11-09
+
+### Added
+
+- *(tui)* drag dividers to resize panes and the sidebar's edge to resize it ([#122](https://github.com/cooksterj/monarch/pull/122))
+- *(tabs)* prefix ! breaks a pane into its own tab, prefix & closes the tab ([#121](https://github.com/cooksterj/monarch/pull/121))
+- *(tui)* prefix A launches Claude Code or Codex in a new tab ([#120](https://github.com/cooksterj/monarch/pull/120))
+
+### Other
+
+- *(readme)* point the latest release at v0.1.2 ([#118](https://github.com/cooksterj/monarch/pull/118))
+
 ## [0.1.2](https://github.com/cooksterj/monarch/compare/v0.1.1...v0.1.2) - 2026-11-08
 
 ### Fixed
