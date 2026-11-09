@@ -1,6 +1,6 @@
 //! Messages from an attached client to the server.
 
-use monarch_core::{Action, AgentKind, PaneId};
+use monarch_core::{Action, AgentKind, Direction, PaneId};
 use serde::{Deserialize, Serialize};
 
 use super::{HostInfo, SelectShape};
@@ -129,6 +129,16 @@ pub enum ClientMsg {
     /// `prefix c` starts a shell). The tab reaches every client through
     /// the layout.
     LaunchAgent(AgentKind),
+    /// A mouse drag on a divider: put the divider on `pane`'s `dir` side
+    /// at column (or row, for `Up`/`Down`) `to` of the pane area.
+    DragDivider {
+        /// The pane the divider borders.
+        pane: PaneId,
+        /// Which of its sides.
+        dir: Direction,
+        /// Where the divider should sit, in pane-area cells.
+        to: u16,
+    },
 }
 
 #[cfg(test)]
@@ -150,6 +160,17 @@ mod tests {
             pane: PaneId(3),
             text: "Review note on a.rs:\n\nfix it".into(),
             enter: true,
+        };
+        let bytes = postcard::to_allocvec(&msg).expect("encode");
+        assert_eq!(postcard::from_bytes::<ClientMsg>(&bytes).ok(), Some(msg));
+    }
+
+    #[test]
+    fn divider_drags_survive_the_attach_encoding() {
+        let msg = ClientMsg::DragDivider {
+            pane: PaneId(4),
+            dir: Direction::Down,
+            to: 17,
         };
         let bytes = postcard::to_allocvec(&msg).expect("encode");
         assert_eq!(postcard::from_bytes::<ClientMsg>(&bytes).ok(), Some(msg));

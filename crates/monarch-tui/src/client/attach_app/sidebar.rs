@@ -54,7 +54,23 @@ impl AttachApp {
     }
 }
 
+/// The narrowest the sidebar can be dragged, and the least the panes keep.
+const MIN_SIDEBAR: u16 = 12;
+const MIN_PANES: u16 = 20;
+
 impl AttachApp {
+    /// A drag on the sidebar's edge: the sidebar becomes `cols` wide (kept
+    /// between `MIN_SIDEBAR` and what leaves the panes `MIN_PANES`) until
+    /// the config is read again.
+    pub(super) fn resize_sidebar(&mut self, cols: u16) {
+        let most = self.size.cols.saturating_sub(MIN_PANES);
+        let cols = cols.clamp(MIN_SIDEBAR.min(most), most);
+        if cols != self.opts.sidebar_width && self.state.left() > 0 {
+            self.opts.sidebar_width = cols;
+            self.relayout();
+        }
+    }
+
     /// The wheel over the sidebar.
     pub(super) fn scroll_sidebar(&mut self, lines: i32) {
         let groups = self.state.sidebar_groups(Self::now());

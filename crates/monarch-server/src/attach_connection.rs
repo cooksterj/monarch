@@ -113,6 +113,9 @@ fn apply(ctx: &ServerContext, id: ClientId, msg: &ClientMsg) {
                 client.mark_stale(*pane);
             }
         }
+        ClientMsg::DragDivider { pane, dir, to } => {
+            state.drag_divider(*pane, *dir, *to);
+        }
         ClientMsg::RenameTab { pane, name } => {
             state.rename_tab(*pane, name);
         }

@@ -15,16 +15,13 @@ use monarch_core::Key;
 use monarch_proto::ClientMsg;
 
 mod mouse_log;
+mod route_mouse;
 
 use mouse_log::MouseLog;
+use route_mouse::route_mouse;
 
-use super::{
-    ClientEvent, InputKeys, MouseAction, MouseRouter, ServerLink, SharedFocus, TtyFeed, WHEEL_LINES,
-};
-use crate::{
-    HostInput, HostInputFilter, HostProbe, InputEvent, MouseButton, MouseEvent, MouseExtractor,
-    MouseKind, PrefixParser, WheelDirection,
-};
+use super::{ClientEvent, DividerGrab, InputKeys, MouseRouter, ServerLink, SharedFocus, TtyFeed};
+use crate::{HostInput, HostInputFilter, HostProbe, InputEvent, MouseExtractor, PrefixParser};
 
 /// How long to wait for the host to answer the startup probe.
 pub const PROBE_TIMEOUT: Duration = Duration::from_millis(500);
@@ -61,6 +58,8 @@ struct Pipeline {
     pieces: Vec<HostInput>,
     /// A click focused another pane; its drags and release go nowhere.
     focusing: bool,
+    /// A press took hold of a divider; drags move it, the release lets go.
+    divider: Option<DividerGrab>,
     /// Keys that open a pop-up.
     overlay_keys: Vec<Key>,
     /// The opt-in routing trace.
@@ -156,51 +155,6 @@ fn dispatch(p: &InputParams, pipe: &mut Pipeline, event: InputEvent) {
     }
 }
 
-/// A press on another pane focuses it (and nothing else); everything
-/// else goes through the router for the focused pane.
-fn route_mouse(p: &InputParams, pipe: &mut Pipeline, event: &MouseEvent) {
-    if pipe.focusing {
-        pipe.log.swallowed(event);
-        pipe.focusing = !matches!(event.kind, MouseKind::Release(_));
-        return;
-    }
-    if let MouseKind::Wheel(dir) = event.kind
-        && p.focus.in_sidebar(event.col)
-    {
-        let lines = match dir {
-            WheelDirection::Up => -WHEEL_LINES,
-            WheelDirection::Down => WHEEL_LINES,
-            WheelDirection::Left | WheelDirection::Right => return,
-        };
-        let _ = p.events.send(ClientEvent::SidebarScroll(lines));
-        return;
-    }
-    let view = p.focus.view();
-    if matches!(event.kind, MouseKind::Press(_))
-        && view.local(event.col, event.row).is_none()
-        && let Some(other) = p.focus.pane_at(event.col, event.row)
-    {
-        pipe.log.focused(event, &view, other);
-        let _ = p.link.send(&ClientMsg::Focus(other));
-        if matches!(event.kind, MouseKind::Press(MouseButton::Right)) {
-            // The menu acts on the focused pane: the one just clicked.
-            send_mouse(
-                p,
-                MouseAction::Menu {
-                    col: event.col,
-                    row: event.row,
-                },
-            );
-        } else {
-            pipe.focusing = true;
-        }
-        return;
-    }
-    let action = pipe.router.route(event, &view, Instant::now());
-    pipe.log.routed(event, &view, &action);
-    send_mouse(p, action);
-}
-
 /// Keys go to the focused pane; typing while scrolled back returns to live
 /// output first, as in a bare terminal.
 fn send_keys(p: &InputParams, filter: &mut HostInputFilter, raw: &[u8]) {
@@ -221,28 +175,6 @@ fn send_keys(p: &InputParams, filter: &mut HostInputFilter, raw: &[u8]) {
     }
     let _ = p.link.send(&ClientMsg::Input { pane, bytes });
     let _ = p.events.send(ClientEvent::Typed);
-}
-
-fn send_mouse(p: &InputParams, action: MouseAction) {
-    let Some(pane) = p.focus.pane() else {
-        return;
-    };
-    let msg = match action {
-        MouseAction::Forward(bytes) => ClientMsg::Input { pane, bytes },
-        MouseAction::Scroll(lines) => ClientMsg::Scroll { pane, lines },
-        MouseAction::Select(gesture) => {
-            let _ = p.events.send(ClientEvent::Select(gesture));
-            return;
-        }
-        MouseAction::Menu { col, row } => {
-            // Like a pop-up key: what follows goes to the menu.
-            p.focus.set_overlay(true);
-            let _ = p.events.send(ClientEvent::Menu { col, row });
-            return;
-        }
-        MouseAction::Ignore => return,
-    };
-    let _ = p.link.send(&msg);
 }
 
 #[cfg(test)]
@@ -357,6 +289,43 @@ mod tests {
                 }
             ),
             "the next click goes to the focused pane as usual"
+        );
+    }
+
+    #[test]
+    fn a_press_on_a_divider_drags_it_and_nothing_reaches_the_pane() {
+        let focus = FocusView {
+            pane: Some(PaneId(1)),
+            cols: 10,
+            rows: 5,
+            modes: ModeFlags::MOUSE_CLICK | ModeFlags::SGR_MOUSE,
+            ..FocusView::default()
+        };
+        let panes = [
+            (PaneId(1), Rect::new(0, 0, 10, 5)),
+            (PaneId(2), Rect::new(11, 0, 10, 5)),
+        ];
+        // Press on the divider (column 11, 1-based), drag to 15 and 17, release.
+        let drag =
+            b"\x1b[?62;22c\x1b[<0;11;3M\x1b[<32;15;3M\x1b[<32;17;4M\x1b[<0;17;4m\x1b[<0;2;2M";
+        let msgs = sent_with_panes(focus, &panes, drag);
+        let moved = |to| ClientMsg::DragDivider {
+            pane: PaneId(1),
+            dir: monarch_core::Direction::Right,
+            to,
+        };
+        assert_eq!(msgs[0], moved(14), "host column 15 is cell 14");
+        assert_eq!(msgs[1], moved(16));
+        assert_eq!(msgs.len(), 3, "press and release send nothing: {msgs:?}");
+        assert!(
+            matches!(
+                &msgs[2],
+                ClientMsg::Input {
+                    pane: PaneId(1),
+                    ..
+                }
+            ),
+            "the next click reaches the pane again"
         );
     }
 

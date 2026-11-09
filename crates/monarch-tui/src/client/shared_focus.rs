@@ -8,7 +8,7 @@ use std::time::{Duration, Instant};
 use monarch_core::{PaneId, Rect};
 use monarch_proto::ModeFlags;
 
-use super::FocusView;
+use super::{DividerGrab, FocusView};
 
 /// Lock-free hand-off from the main loop (which decodes frames) to the input
 /// thread (which must know where keys go and how to filter them).
@@ -110,6 +110,20 @@ impl SharedFocus {
     #[must_use]
     pub fn in_sidebar(&self, col: u16) -> bool {
         col < self.sidebar.load(Ordering::Acquire)
+    }
+
+    /// The divider under host cell (`col`, `row`), if a press there
+    /// should start a resize.
+    #[must_use]
+    pub fn divider_at(&self, col: u16, row: u16) -> Option<DividerGrab> {
+        let left = self.sidebar.load(Ordering::Acquire);
+        DividerGrab::at(&self.lock_panes(), left, col, row)
+    }
+
+    /// Columns the sidebar takes.
+    #[must_use]
+    pub fn sidebar(&self) -> u16 {
+        self.sidebar.load(Ordering::Acquire)
     }
 
     /// The pane under host cell (`col`, `row`).
