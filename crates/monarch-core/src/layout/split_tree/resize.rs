@@ -21,27 +21,35 @@ impl SplitTree {
             return false;
         };
         let total = length(split_area, dir.axis());
-        let avail = total.saturating_sub(1);
-        if avail < 2 {
-            return false;
-        }
         let current = first_length(total, *ratio);
         let moved = if dir.is_forward() {
             current.saturating_add(cells)
         } else {
             current.saturating_sub(cells)
-        }
-        .clamp(1, avail - 1);
-        if moved == current {
-            return false;
-        }
-        // Round up so `first_length` gives back exactly `moved`.
-        let scaled = (u32::from(moved) * u32::from(WHOLE)).div_ceil(u32::from(avail));
-        *ratio = u16::try_from(scaled)
-            .unwrap_or(WHOLE - 1)
-            .clamp(1, WHOLE - 1);
-        true
+        };
+        set_first_length(ratio, total, moved)
     }
+}
+
+/// Sets `ratio` so the first child of a split `total` cells long is
+/// `wanted` cells (clamped so both sides keep one). Returns whether the
+/// ratio changed.
+pub(super) fn set_first_length(ratio: &mut u16, total: u16, wanted: u16) -> bool {
+    let avail = total.saturating_sub(1);
+    if avail < 2 {
+        return false;
+    }
+    let current = first_length(total, *ratio);
+    let moved = wanted.clamp(1, avail - 1);
+    if moved == current {
+        return false;
+    }
+    // Round up so `first_length` gives back exactly `moved`.
+    let scaled = (u32::from(moved) * u32::from(WHOLE)).div_ceil(u32::from(avail));
+    *ratio = u16::try_from(scaled)
+        .unwrap_or(WHOLE - 1)
+        .clamp(1, WHOLE - 1);
+    true
 }
 
 impl Node {
@@ -71,13 +79,13 @@ impl Node {
         best
     }
 
-    fn panes_contain(&self, pane: PaneId) -> bool {
+    pub(super) fn panes_contain(&self, pane: PaneId) -> bool {
         let mut out = Vec::new();
         self.collect(&mut out);
         out.contains(&pane)
     }
 
-    fn at_path_mut(&mut self, path: &[bool]) -> Option<&mut Self> {
+    pub(super) fn at_path_mut(&mut self, path: &[bool]) -> Option<&mut Self> {
         let mut node = self;
         for &second in path {
             let Self::Split {

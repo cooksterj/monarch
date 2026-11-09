@@ -185,6 +185,8 @@ a time with `Ctrl-e` and `Ctrl-y`.
 
 **Mouse.** Click focuses a pane. Drag selects text and copies it when you let go;
 double-click selects a word and triple-click a line. The wheel scrolls the pane's history.
+Drag a divider between panes to resize them, and the sidebar's right edge to make it wider or
+narrower (until the config is read again, which restores `ui.sidebar_width`).
 Right-click opens a pane and tab menu. When the program in the pane uses the mouse itself (vim,
 htop), clicks go to it; hold Shift to select anyway. `prefix m` turns Monarch's mouse handling off
 and on, leaving selection to your terminal. With `ui.mouse = "pane"`, Monarch only takes the mouse

@@ -209,6 +209,7 @@ impl AttachApp {
             ClientEvent::Menu { col, row } => self.open_menu(col, row),
             ClientEvent::Typed => self.on_typed(),
             ClientEvent::SidebarScroll(lines) => self.scroll_sidebar(lines),
+            ClientEvent::SidebarWidth(cols) => self.resize_sidebar(cols),
             ClientEvent::Sessions(list) => self.loaded_sessions(list),
             ClientEvent::Host(_) => {}
         }

@@ -32,6 +32,8 @@ pub enum ClientEvent {
     /// The wheel turned over the sidebar: scroll it by this many lines
     /// (negative is up).
     SidebarScroll(i32),
+    /// A drag on the sidebar's edge asks for this many columns.
+    SidebarWidth(u16),
     /// Keys were sent to the focused pane (a selection ends).
     Typed,
     /// The running sessions, listed for the session picker.

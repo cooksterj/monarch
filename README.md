@@ -259,6 +259,7 @@ Everything starts with the prefix, `Ctrl-b`. Press it and wait to see every key.
 | `prefix h j k l` | move focus |
 | `prefix c`, `prefix 1`–`9` | new tab, go to a tab |
 | `prefix !` / `prefix &` | break the pane out into its own tab / close the tab |
+| drag a divider | resize panes; the sidebar's edge resizes the sidebar |
 | `prefix ,` / `prefix .` | rename the tab / the focused pane (e.g. two `claude` tabs → `api`, `web`) |
 | `prefix a` | attention inbox: every agent waiting on you |
 | `prefix Tab` | jump to the next agent waiting on a decision |

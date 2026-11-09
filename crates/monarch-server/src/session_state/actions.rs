@@ -1,7 +1,7 @@
 //! Session commands from clients: splits, focus, zoom, tabs and their
 //! names.
 
-use monarch_core::{Action, PaneId, RESIZE_STEP, Tab};
+use monarch_core::{Action, Direction, PaneId, RESIZE_STEP, Tab};
 use monarch_proto::{TabRename, TabRenamed};
 
 use super::SessionState;
@@ -110,6 +110,22 @@ impl SessionState {
         changed
     }
 
+    /// Puts the divider on `pane`'s `dir` side at `to` (a mouse drag);
+    /// clients get the new layout. Nothing moves in a zoomed tab or when
+    /// no divider bounds that side. Returns whether anything changed.
+    pub fn drag_divider(&mut self, pane: PaneId, dir: Direction, to: u16) -> bool {
+        let area = self.area();
+        let before = self.visible_panes();
+        let Some(tab) = self.tabs.iter_mut().find(|t| t.contains(pane)) else {
+            return false;
+        };
+        let changed = !tab.zoomed && tab.tree.set_divider(area, pane, dir, to);
+        if changed {
+            self.arrange(&before);
+        }
+        changed
+    }
+
     /// Ends the focused pane's program; the pane goes when it exits, like
     /// any other.
     fn close_focused(&self) {
@@ -205,6 +221,27 @@ mod tests {
         assert_eq!(s.active_tab(), 2, "shown");
         assert_eq!(s.focus(), Some(b));
         assert!(s.layout().generation > before, "clients get the layout");
+    }
+
+    #[test]
+    fn dragging_a_divider_moves_it_and_tells_clients_unless_zoomed() {
+        let (mut s, [a, b, _]) = split_and_tab();
+        let width = s.size().cols;
+        let before = s.layout().generation;
+        assert!(s.drag_divider(a, Direction::Right, 10));
+        let layout = s.layout();
+        let rect = |id| layout.panes.iter().find(|p| p.pane == id).expect("pane");
+        assert_eq!(rect(a).size.cols, 10);
+        assert_eq!(rect(b).x, 11);
+        assert_eq!(rect(b).size.cols, width - 11);
+        assert!(layout.generation > before);
+        assert!(!s.drag_divider(a, Direction::Left, 5), "no divider there");
+        s.apply_action(Action::ToggleZoom);
+        assert!(!s.drag_divider(a, Direction::Right, 20), "zoomed");
+        assert!(
+            !s.drag_divider(PaneId(99), Direction::Right, 20),
+            "no such pane"
+        );
     }
 
     #[test]

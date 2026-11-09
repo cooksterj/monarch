@@ -5,6 +5,7 @@
 //! pure data: geometry (`layout`, `neighbour`, `pane_at`) and `resize` live
 //! in the child modules and take the area to fill as an argument.
 
+mod divider;
 mod geometry;
 mod resize;
 
