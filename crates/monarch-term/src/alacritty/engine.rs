@@ -18,6 +18,7 @@ use super::cell_convert::CellConverter;
 use super::event_translator::{EventTranslator, TranslateContext};
 use super::listener::PaneListener;
 use super::mode_convert::ModeConverter;
+use super::presentation_handler::PresentationHandler;
 use crate::{Damage, Engine, EngineEvent, HostProfile, ScrollRequest};
 
 /// The default engine.
@@ -89,7 +90,8 @@ fn grid_size<T>(term: &Term<T>) -> ScreenSize {
 
 impl Engine for AlacrittyEngine {
     fn feed(&mut self, bytes: &[u8], events: &mut Vec<EngineEvent>) {
-        self.processor.advance(&mut self.term, bytes);
+        self.processor
+            .advance(&mut PresentationHandler::new(&mut self.term), bytes);
         self.drain_events(events);
     }
 
@@ -196,7 +198,8 @@ impl Engine for AlacrittyEngine {
     }
 
     fn end_sync(&mut self, events: &mut Vec<EngineEvent>) {
-        self.processor.stop_sync(&mut self.term);
+        self.processor
+            .stop_sync(&mut PresentationHandler::new(&mut self.term));
         self.drain_events(events);
     }
 

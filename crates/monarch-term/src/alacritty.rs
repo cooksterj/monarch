@@ -5,5 +5,6 @@ mod engine;
 mod event_translator;
 mod listener;
 mod mode_convert;
+mod presentation_handler;
 
 pub use engine::AlacrittyEngine;
