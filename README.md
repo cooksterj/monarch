@@ -94,7 +94,7 @@ CI checks this with PTY harnesses that play the host terminal. [One](scripts/spi
 
 It's quick, too. In a [20-pane benchmark](docs/bench/m6-twenty-panes.md) on an Apple M2 Max, with ten panes printing a line every 20 ms in other tabs, a keystroke reached the program in 87 µs at the median and 266 µs at p99. With all 20 idle, client and server together used 0.7 % CPU.
 
-A few things don't pass through yet. Kitty graphics and sixel images aren't supported, undercurl and dotted underlines draw as plain underlines, and while Monarch has the mouse you hold Shift to use your terminal's own selection.
+A few things don't pass through yet. Kitty graphics and sixel images aren't supported, and while Monarch has the mouse you hold Shift to use your terminal's own selection.
 
 ### 11:30 One of them says it's done
 

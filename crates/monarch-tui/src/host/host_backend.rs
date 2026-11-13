@@ -307,6 +307,24 @@ mod tests {
     }
 
     #[test]
+    fn a_curly_underline_reaches_the_host_with_its_colour() {
+        use monarch_proto::{CellAttrs, CellStyle, TermColor};
+        let style = CellStyle {
+            attrs: CellAttrs::UNDERCURL,
+            underline: Some(TermColor::Indexed(1)),
+            ..CellStyle::default()
+        };
+        let mut a = Cell::new("a");
+        a.set_style(crate::StyleConverter::style(&style));
+        let mut b = Cell::new("b");
+        b.set_style(crate::StyleConverter::style(&CellStyle::default()));
+        let out = draw_cells(&[(0, a), (1, b)]);
+        assert!(at(&out, "\x1b[4:3m") < at(&out, "a"), "{out:?}");
+        assert!(at(&out, "\x1b[58;5;1m") < at(&out, "a"), "{out:?}");
+        assert!(at(&out, "\x1b[24m") < at(&out, "b"), "{out:?}");
+    }
+
+    #[test]
     fn styles_are_sent_once_per_change_and_reset_at_the_end() {
         let bold = Style::default().add_modifier(Modifier::BOLD);
         let mut a = Cell::new("a");

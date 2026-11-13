@@ -3,16 +3,14 @@
 use monarch_proto::{CellAttrs, CellStyle, TermColor};
 use ratatui::style::{Color, Modifier, Style};
 
-/// Screen attribute → ratatui modifier, declared once.
-///
-/// ratatui has a single underline modifier, so curly/dotted/dashed/double
-/// underlines render as plain underlines for now (tracked in Progress as a
-/// fidelity gap to close with a custom backend writer).
-const MODIFIERS: [(CellAttrs, Modifier); 7] = [
+use super::UnderlineStyle;
+
+/// Screen attribute → ratatui modifier, declared once. Underlines go
+/// through [`UnderlineStyle`], which keeps their kind.
+const MODIFIERS: [(CellAttrs, Modifier); 6] = [
     (CellAttrs::BOLD, Modifier::BOLD),
     (CellAttrs::DIM, Modifier::DIM),
     (CellAttrs::ITALIC, Modifier::ITALIC),
-    (CellAttrs::ANY_UNDERLINE, Modifier::UNDERLINED),
     (CellAttrs::INVERSE, Modifier::REVERSED),
     (CellAttrs::HIDDEN, Modifier::HIDDEN),
     (CellAttrs::STRIKEOUT, Modifier::CROSSED_OUT),
@@ -39,7 +37,8 @@ impl StyleConverter {
         let modifiers = MODIFIERS
             .iter()
             .filter(|(attr, _)| style.attrs.intersects(*attr))
-            .fold(Modifier::empty(), |acc, (_, m)| acc | *m);
+            .fold(Modifier::empty(), |acc, (_, m)| acc | *m)
+            | UnderlineStyle::from_attrs(style.attrs).map_or(Modifier::empty(), |u| u.modifier());
         let mut out = Style::new()
             .fg(Self::color(style.fg))
             .bg(Self::color(style.bg))
@@ -79,6 +78,10 @@ mod tests {
                 .contains(Modifier::UNDERLINED | Modifier::BOLD)
         );
         assert!(!out.add_modifier.contains(Modifier::ITALIC));
+        assert_eq!(
+            UnderlineStyle::of(out.add_modifier),
+            Some(UnderlineStyle::Curly)
+        );
     }
 
     #[test]
