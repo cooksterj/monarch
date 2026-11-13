@@ -2,14 +2,14 @@
 //! every glyph whose width the host might measure differently.
 //!
 //! Crossterm's backend prints consecutive changed cells without moving the
-//! cursor between them, trusting the host to advance exactly one column
-//! per single-width symbol. Hosts disagree with the emulator about some
-//! glyphs: iTerm2 draws every `U+FE0F` emoji two cells wide where
-//! alacritty advanced one, so from there on the run lands one cell to the
-//! right, and the misplaced characters survive every later frame because
-//! the diff believes those cells are already right. This backend moves the
-//! cursor explicitly after each non-ASCII symbol, so a disagreement can
-//! touch only the glyph's own cells (Terminal Fidelity Contract G1).
+//! cursor between them, trusting the host to advance exactly as far as the
+//! buffer did. Hosts disagree about some glyphs (emoji sequences, symbols
+//! whose width changed between Unicode versions), and from such a glyph on
+//! the run would land shifted, the misplaced characters surviving every
+//! later frame because the diff believes those cells are already right.
+//! This backend moves the cursor explicitly after each non-ASCII symbol, so
+//! a disagreement can touch only the glyph's own cells (Terminal Fidelity
+//! Contract G1).
 
 use std::io::{self, Stdout, Write};
 
@@ -24,33 +24,6 @@ use ratatui::layout::{Position, Size};
 
 mod pen;
 use pen::Pen;
-
-/// Emoji presentation selector. Emulators that follow `unicode-width` per
-/// character advance one cell for `X U+FE0F`; most hosts draw two.
-const VS16: char = '\u{FE0F}';
-
-/// How far a symbol may reach on the host beyond what the buffer believes.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Reach {
-    /// One cell everywhere; still followed by an explicit move if non-ASCII.
-    Narrow,
-    /// Two cells in the buffer (and the diff skipped the spacer after it).
-    Wide,
-    /// One cell in the pane's emulator, likely two on the host.
-    Emoji,
-}
-
-impl Reach {
-    fn of(symbol: &str) -> Self {
-        if symbol.contains(VS16) {
-            Self::Emoji
-        } else if symbol.cell_width() > 1 {
-            Self::Wide
-        } else {
-            Self::Narrow
-        }
-    }
-}
 
 /// Crossterm's backend with a cursor that is re-homed after every glyph
 /// the host could size differently.
@@ -124,30 +97,15 @@ impl<W: Write> Backend for HostBackend<W> {
     {
         let mut pen = Pen::default();
         let mut last = None;
-        let mut content = content.peekable();
-        while let Some((x, y, cell)) = content.next() {
+        for (x, y, cell) in content {
             let right = Position::new(x.saturating_add(1), y);
-            match Reach::of(cell.symbol()) {
-                Reach::Narrow => {}
-                // The spacer the diff skipped: blank it before the glyph, so
-                // a host drawing the glyph narrow shows nothing stale there
-                // and one drawing it wide covers the blank.
-                Reach::Wide if right.x > x => {
-                    let mut spacer = Cell::new(" ");
-                    spacer.set_style(cell.style());
-                    self.put(right, &spacer, &mut pen, &mut last)?;
-                }
-                // The neighbour changed too: draw it first for the same
-                // reason, leaving its content where the emulator put it.
-                Reach::Emoji
-                    if content
-                        .peek()
-                        .is_some_and(|&(nx, ny, _)| (nx, ny) == (right.x, right.y)) =>
-                {
-                    let (_, _, neighbour) = content.next().expect("invariant: peeked");
-                    self.put(right, neighbour, &mut pen, &mut last)?;
-                }
-                Reach::Wide | Reach::Emoji => {}
+            // The spacer the diff skipped after a wide glyph: blank it
+            // first, so a host drawing the glyph narrow shows nothing stale
+            // there and one drawing it wide covers the blank.
+            if cell.symbol().cell_width() > 1 && right.x > x {
+                let mut spacer = Cell::new(" ");
+                spacer.set_style(cell.style());
+                self.put(right, &spacer, &mut pen, &mut last)?;
             }
             self.put(Position::new(x, y), cell, &mut pen, &mut last)?;
         }
@@ -265,24 +223,13 @@ mod tests {
     }
 
     #[test]
-    fn an_emoji_with_vs16_has_its_neighbour_drawn_first() {
-        let out = draw(&[("⚠\u{FE0F}", 0), ("x", 1), ("y", 2)]);
+    fn an_emoji_with_vs16_is_wide_and_blanks_its_spacer_first() {
+        let out = draw(&[("⚠\u{FE0F}", 0), ("y", 2)]);
         assert!(
-            at(&out, "x") < at(&out, "⚠"),
-            "neighbour before the glyph: {out:?}"
-        );
-        assert!(
-            at(&out, "\x1b[1;1H") > at(&out, "x"),
-            "then home to the glyph: {out:?}"
+            at(&out, "\x1b[1;2H ") < at(&out, "⚠"),
+            "spacer before the glyph: {out:?}"
         );
         assert!(at(&out, "⚠") < at(&out, "\x1b[1;3H") && at(&out, "\x1b[1;3H") < at(&out, "y"));
-    }
-
-    #[test]
-    fn an_emoji_whose_neighbour_did_not_change_is_just_drawn() {
-        let out = draw(&[("⚠\u{FE0F}", 0), ("y", 2)]);
-        assert!(!out.contains("\x1b[1;2H"), "{out:?}");
-        assert!(at(&out, "⚠") < at(&out, "\x1b[1;3H"));
     }
 
     #[test]
