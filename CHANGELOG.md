@@ -10,6 +10,21 @@ they need polishing.
 
 ## [Unreleased]
 
+## [0.1.4](https://github.com/cooksterj/monarch/compare/v0.1.3...v0.1.4) - 2026-11-13
+
+### Added
+
+- *(tui)* curly, dotted, dashed and double underlines reach the host ([#125](https://github.com/cooksterj/monarch/pull/125))
+
+### Fixed
+
+- *(term)* an emoji with the presentation selector takes two cells, as on the host ([#127](https://github.com/cooksterj/monarch/pull/127))
+- *(tui)* switching sessions with prefix S stays on the alternate screen ([#126](https://github.com/cooksterj/monarch/pull/126))
+
+### Other
+
+- *(readme)* point the latest release at v0.1.3 ([#123](https://github.com/cooksterj/monarch/pull/123))
+
 ## [0.1.3](https://github.com/cooksterj/monarch/compare/v0.1.2...v0.1.3) - 2026-11-09
 
 ### Added
