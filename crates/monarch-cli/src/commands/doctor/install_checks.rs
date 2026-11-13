@@ -158,7 +158,7 @@ mod tests {
         assert_eq!(found[0].status, Status::Fail, "{found:?}");
         assert_eq!(found[1].status, Status::Note, "codex isn't installed");
         let args = crate::SetupArgs::default();
-        crate::commands::setup::run(args, &env.setup, &mut Vec::new()).expect("setup");
+        let _ = crate::commands::setup::run(args, &env.setup, &mut Vec::new()).expect("setup");
         let found = hooks(&env);
         assert_eq!(found[0].status, Status::Ok, "{found:?}");
         assert!(found[0].text.starts_with("hooks installed"));
@@ -176,7 +176,7 @@ mod tests {
             (Status::Warn, "Codex skill")
         );
         let args = crate::SetupArgs::default();
-        crate::commands::setup::run(args, &env.setup, &mut Vec::new()).expect("setup");
+        let _ = crate::commands::setup::run(args, &env.setup, &mut Vec::new()).expect("setup");
         let installed = env.setup.agents.join("skills/monarch/SKILL.md");
         assert_eq!(skills(&env)[0].status, Status::Ok, "{:?}", skills(&env));
         std::fs::write(&installed, "an older skill").expect("write");

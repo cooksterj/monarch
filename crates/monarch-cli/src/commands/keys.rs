@@ -28,7 +28,7 @@ mod tests {
 
     fn keys(config: &Config) -> String {
         let mut out = Vec::new();
-        run(config, &mut out).expect("runs");
+        let _ = run(config, &mut out).expect("runs");
         String::from_utf8(out).expect("utf8")
     }
 

@@ -17,7 +17,6 @@ pub use cli::{
 };
 
 /// Parses `std::env::args` and runs the selected command.
-#[must_use]
 pub fn run() -> ExitCode {
     let cli = Cli::parse();
     let mut stdout = std::io::stdout().lock();
