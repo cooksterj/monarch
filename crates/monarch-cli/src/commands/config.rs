@@ -54,7 +54,7 @@ mod tests {
 
     fn run_to_string(cmd: &ConfigCommand, loader: &ConfigLoader) -> String {
         let mut out = Vec::new();
-        run(cmd, loader, &mut out).expect("command succeeds");
+        let _ = run(cmd, loader, &mut out).expect("command succeeds");
         String::from_utf8(out).expect("utf8")
     }
 

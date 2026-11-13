@@ -31,5 +31,6 @@ pub use platform::{LocalClipboard, SystemClipboard};
 pub use widgets::{
     AgentInfoView, Chrome, ContextMenuView, GlyphLook, HelpLine, HelpView, MouseOwner, PageView,
     PaneBorders, PaneView, PickerView, ReviewView, SelectionSpan, Sidebar, SidebarGroup,
-    SidebarRow, StatusLine, StyleConverter, WelcomeView, WhichKey, WhichKeyEntry, WorktreeFormView,
+    SidebarRow, StatusLine, StyleConverter, UnderlineStyle, WelcomeView, WhichKey, WhichKeyEntry,
+    WorktreeFormView,
 };

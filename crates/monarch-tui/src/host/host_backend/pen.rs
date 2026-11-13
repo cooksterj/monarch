@@ -11,6 +11,8 @@ use ratatui::crossterm::style::{
 };
 use ratatui::style::{Color, Modifier};
 
+use crate::widgets::UnderlineStyle;
+
 /// Colours and attributes as last sent, starting from the host's defaults.
 #[derive(Debug)]
 pub(super) struct Pen {
@@ -74,10 +76,10 @@ fn modifier_change<W: Write>(from: Modifier, to: Modifier, out: &mut W) -> io::R
     Ok(())
 }
 
-/// What switches a modifier off; the blink pair shares one.
-const OFF: [(Modifier, Attribute); 5] = [
+/// What switches a modifier off; the blink pair shares one. Underlines
+/// are handled by [`underline_change`].
+const OFF: [(Modifier, Attribute); 4] = [
     (Modifier::ITALIC, Attribute::NoItalic),
-    (Modifier::UNDERLINED, Attribute::NoUnderline),
     (Modifier::CROSSED_OUT, Attribute::NotCrossedOut),
     (Modifier::HIDDEN, Attribute::NoHidden),
     (
@@ -87,10 +89,9 @@ const OFF: [(Modifier, Attribute); 5] = [
 ];
 
 /// What switches a modifier on; bold and dim are handled apart.
-const ON: [(Modifier, Attribute); 7] = [
+const ON: [(Modifier, Attribute); 6] = [
     (Modifier::REVERSED, Attribute::Reverse),
     (Modifier::ITALIC, Attribute::Italic),
-    (Modifier::UNDERLINED, Attribute::Underlined),
     (Modifier::CROSSED_OUT, Attribute::CrossedOut),
     (Modifier::HIDDEN, Attribute::Hidden),
     (Modifier::SLOW_BLINK, Attribute::SlowBlink),
@@ -101,8 +102,10 @@ const ON: [(Modifier, Attribute); 7] = [
 /// backend orders them: there is no single "off" for bold or dim that
 /// keeps the other, so both are re-sent after `NormalIntensity`.
 fn attribute_changes(from: Modifier, to: Modifier) -> Vec<Attribute> {
-    let removed = from - to;
-    let added = to - from;
+    let underline = underline_change(from, to);
+    let (from, to) = (UnderlineStyle::strip(from), UnderlineStyle::strip(to));
+    let removed = from - to - Modifier::UNDERLINED;
+    let added = to - from - Modifier::UNDERLINED;
     let intensity_reset = removed.intersects(Modifier::BOLD | Modifier::DIM);
     let mut seq = Vec::new();
     if removed.contains(Modifier::REVERSED) {
@@ -125,7 +128,21 @@ fn attribute_changes(from: Modifier, to: Modifier) -> Vec<Attribute> {
     if !intensity_reset {
         seq.extend(intensity(added));
     }
+    seq.extend(underline);
     seq
+}
+
+/// What takes the host's underline from `from`'s kind to `to`'s. A styled
+/// kind is preceded by a plain `SGR 4`, so a host that ignores the
+/// colon form still underlines, as it would outside Monarch.
+fn underline_change(from: Modifier, to: Modifier) -> Vec<Attribute> {
+    let (was, now) = (UnderlineStyle::of(from), UnderlineStyle::of(to));
+    match now {
+        _ if was == now => Vec::new(),
+        None => vec![Attribute::NoUnderline],
+        Some(UnderlineStyle::Single) => vec![Attribute::Underlined],
+        Some(styled) => vec![Attribute::Underlined, styled.attribute()],
+    }
 }
 
 /// Dim and bold, whichever `modifier` has.
@@ -170,6 +187,39 @@ mod tests {
                 Attribute::Underlined
             ]
         );
+    }
+
+    #[test]
+    fn a_styled_underline_falls_back_to_plain_first() {
+        let curly = UnderlineStyle::Curly.modifier();
+        assert_eq!(
+            attribute_changes(Modifier::empty(), curly),
+            vec![Attribute::Underlined, Attribute::Undercurled]
+        );
+    }
+
+    #[test]
+    fn changing_the_kind_alone_rewrites_the_underline() {
+        let curly = UnderlineStyle::Curly.modifier();
+        let dotted = UnderlineStyle::Dotted.modifier();
+        assert_eq!(
+            attribute_changes(curly, dotted),
+            vec![Attribute::Underlined, Attribute::Underdotted]
+        );
+        assert_eq!(
+            attribute_changes(curly, Modifier::UNDERLINED),
+            vec![Attribute::Underlined]
+        );
+        assert_eq!(
+            attribute_changes(curly | Modifier::BOLD, Modifier::BOLD),
+            vec![Attribute::NoUnderline]
+        );
+    }
+
+    #[test]
+    fn stale_kind_bits_write_nothing() {
+        let stale = UnderlineStyle::Curly.modifier() - Modifier::UNDERLINED;
+        assert!(attribute_changes(Modifier::empty(), stale).is_empty());
     }
 
     #[test]
