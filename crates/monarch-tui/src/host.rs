@@ -6,9 +6,11 @@ mod host_clipboard;
 mod host_mode_mirror;
 mod host_probe;
 mod host_reply;
+mod host_terminal;
 
 pub use host_backend::HostBackend;
 pub use host_clipboard::HostClipboard;
 pub use host_mode_mirror::HostModeMirror;
 pub use host_probe::HostProbe;
 pub use host_reply::HostReply;
+pub use host_terminal::HostTerminal;

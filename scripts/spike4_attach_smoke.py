@@ -208,6 +208,7 @@ def run_all(binary):
         os.write(first.fd, b"\x021")
         first.wait_for(b"left-5", "first tab shown again")
         print("  pickers: the palette ran split down, the go-to picker jumped to tab 2")
+        switch_without_leaving(first, binary, env)
         os.write(first.fd, b"\x02")
         first.wait_for(b"PREFIX", "prefix indicator")
         os.write(first.fd, b"d")
@@ -319,6 +320,26 @@ def sidebar_scrolls(binary, env):
     while not os.waitpid(many.pid, os.WNOHANG)[0]:
         assert time.time() < deadline, "client did not exit"
         many.pump(0.05)
+
+
+def switch_without_leaving(client, binary, env):
+    """prefix S to another session and back never leaves the alternate
+    screen, so the shell underneath never flashes."""
+    other = f"other-{os.getpid()}"  # not a prefix match of SESSION in the picker
+    for name, shown in ((other, b"other-6"), (SESSION, b"left-5")):
+        mark = len(client.seen)
+        os.write(client.fd, b"\x02S")
+        client.idle(0.5)
+        os.write(client.fd, name.encode() + b"\r")
+        client.wait_since(mark, b"\x1b[c", f"the probe of the attach to {name}")
+        os.write(client.fd, HOST_REPLIES)
+        if name == other:
+            client.idle(1)
+            os.write(client.fd, b"echo other-$((2*3))\r")
+        client.wait_since(mark, shown, f"{name}'s pane")
+        assert b"\x1b[?1049l" not in client.seen[mark:], f"left the alternate screen switching to {name}"
+    subprocess.run([binary, "kill", other], env=env, check=True, capture_output=True)
+    print("  switch: prefix S to a new session and back stayed on the alternate screen")
 
 
 def config_reloads(wide, path):

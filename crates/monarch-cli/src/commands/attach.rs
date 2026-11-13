@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use monarch_core::{Action, Config, Keymap, LoadedConfig};
 use monarch_server::{SocketPath, StateFile};
-use monarch_tui::{AttachApp, AttachOptions, AttachOutcome, SessionLister};
+use monarch_tui::{AttachApp, AttachOptions, AttachOutcome, HostTerminal, SessionLister};
 
 mod near_command;
 
@@ -35,6 +35,8 @@ pub(crate) fn run(
     )?;
     let lister: Arc<dyn SessionLister> = Arc::new(SocketSessions);
     let mut first = true;
+    // Held across a switch, so the host stays on Monarch's screen.
+    let mut host = HostTerminal::default();
     loop {
         let socket = SocketPath::for_session(&session)?;
         // Checked before a server is started for nothing.
@@ -44,7 +46,7 @@ pub(crate) fn run(
             .and_then(|root| unwelcomed(&root.ok()?));
         opts.welcome = unwelcomed.is_some();
         ensure_server(&session, &socket, &args.agents)?;
-        let outcome = AttachApp::attach(&opts, Arc::clone(&lister))?;
+        let outcome = AttachApp::attach(&opts, Arc::clone(&lister), &mut host)?;
         if let Some(marker) = unwelcomed {
             remember(&marker);
         }

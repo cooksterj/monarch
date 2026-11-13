@@ -7,6 +7,8 @@ use monarch_proto::{
 
 use super::*;
 
+mod complete;
+
 fn pane(id: u32, title: Option<&str>) -> PaneSummary {
     PaneSummary {
         given_name: None,

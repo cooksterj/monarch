@@ -129,6 +129,15 @@ impl AttachState {
         self.panes.get(&pane).map(|r| &r.screen)
     }
 
+    /// Whether there is a layout and a screen for every pane in it, so a
+    /// frame drawn now shows no pane blank for want of its snapshot.
+    #[must_use]
+    pub fn complete(&self) -> bool {
+        self.layout
+            .as_ref()
+            .is_some_and(|l| l.panes.iter().all(|p| self.panes.contains_key(&p.pane)))
+    }
+
     /// The focused pane's title, preferring the latest `Title` message.
     #[must_use]
     pub fn focused_title(&self) -> Option<&str> {
