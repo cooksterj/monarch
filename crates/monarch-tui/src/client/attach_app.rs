@@ -22,6 +22,7 @@ mod ages;
 mod animate;
 mod copy;
 mod draw;
+mod entry;
 mod help;
 mod inbox;
 mod launch;
@@ -45,6 +46,9 @@ use startup::{Started, warnings_notice, write_host};
 
 /// Minimum time between frames drawn to the host.
 const FRAME: Duration = Duration::from_millis(16);
+/// How long the first frame waits for every pane's snapshot, so a session
+/// switch never shows the panes blank.
+const FIRST_FRAME_WAIT: Duration = Duration::from_millis(300);
 /// How long config warnings stay in the status line.
 const WARNING: Duration = Duration::from_secs(8);
 
@@ -96,28 +100,11 @@ pub struct AttachApp {
     size: ScreenSize,
     dirty: bool,
     last_draw: Instant,
+    /// Until the first frame: how long it may wait for the panes' screens.
+    first_frame: Option<Instant>,
 }
 
 impl AttachApp {
-    /// Connects, takes over the terminal and runs until detach or exit.
-    ///
-    /// # Errors
-    /// The server is unreachable or the terminal cannot be driven.
-    pub fn attach(
-        opts: &AttachOptions,
-        lister: Arc<dyn SessionLister>,
-    ) -> Result<AttachOutcome, TuiError> {
-        let (link, reader) = ServerLink::connect(&opts.socket)?;
-        let ui = HostBackend::init().map_err(|e| TuiError::io("taking over the terminal", e))?;
-        let result = Self::start(ui, link, reader, opts, lister).and_then(|mut app| {
-            let outcome = app.run();
-            app.finish()?;
-            outcome
-        });
-        ratatui::restore();
-        result
-    }
-
     fn start(
         ui: Terminal<HostBackend>,
         link: ServerLink,
@@ -159,6 +146,7 @@ impl AttachApp {
             size: s.size,
             dirty: true,
             last_draw: Instant::now() - FRAME,
+            first_frame: Some(Instant::now() + FIRST_FRAME_WAIT),
         };
         if opts.welcome {
             app.open_welcome();

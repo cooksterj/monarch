@@ -20,6 +20,14 @@ impl AttachApp {
     /// Mirrors the focused pane onto the host, then draws every visible
     /// pane, inside one synchronized update when the host supports it.
     pub(super) fn draw(&mut self) -> Result<(), TuiError> {
+        if let Some(deadline) = self.first_frame {
+            // The host still shows the session switched from (or nothing
+            // yet): keep it until this one's panes can be drawn.
+            if !self.state.complete() && Instant::now() < deadline {
+                return Ok(());
+            }
+            self.first_frame = None;
+        }
         let focus = self.state.focus();
         if let Some(screen) = focus.and_then(|p| self.state.screen(p)) {
             self.mirror
