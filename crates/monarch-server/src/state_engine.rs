@@ -74,7 +74,6 @@ impl StateEngine {
         self.note_said(pane, report);
         let current = self.panes.entry(pane).or_default();
         let mut next = current.clone();
-        let prior = next.state;
         if let Some(state) = report.state {
             next.state = state;
         }
@@ -88,7 +87,7 @@ impl StateEngine {
         if let Some(text) = &report.activity {
             next.activity = AgentStatus::activity_line(text);
         }
-        self.fuse_subagents(pane, report, prior, &mut next);
+        self.fuse_subagents(pane, report, &mut next);
         let current = self.panes.entry(pane).or_default();
         if next == *current {
             return None;
