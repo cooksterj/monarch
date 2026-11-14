@@ -10,7 +10,9 @@ use ratatui::style::{Modifier, Style};
 use ratatui::text::Span;
 use ratatui::widgets::Widget;
 
-use super::{Chrome, SidebarGroup, SidebarRow};
+use monarch_core::AgentState;
+
+use super::{Chrome, GlyphLook, SidebarGroup, SidebarRow, SubagentRow};
 
 /// Columns pane rows sit in from their heading.
 const INDENT: u16 = 2;
@@ -19,6 +21,8 @@ const INDENT: u16 = 2;
 enum Line<'a> {
     Heading(&'a SidebarGroup),
     Pane(&'a SidebarRow),
+    /// A sub-agent under its parent's row; `bool` marks the last one.
+    Subagent(&'a SidebarRow, &'a SubagentRow, bool),
     Gap,
 }
 
@@ -40,7 +44,9 @@ impl<'a> Sidebar<'a> {
         let width = area.width.saturating_sub(1);
         self.lines(area)
             .filter_map(|(y, line)| match line {
-                Line::Pane(row) => Some((row.pane, Rect::new(area.x, y, width, 1))),
+                Line::Pane(row) | Line::Subagent(row, ..) => {
+                    Some((row.pane, Rect::new(area.x, y, width, 1)))
+                }
                 Line::Heading(_) | Line::Gap => None,
             })
             .collect()
@@ -67,7 +73,7 @@ impl<'a> Sidebar<'a> {
             let gap = (i > 0).then_some(Line::Gap);
             gap.into_iter()
                 .chain(std::iter::once(Line::Heading(group)))
-                .chain(group.rows.iter().map(Line::Pane))
+                .chain(group.rows.iter().flat_map(row_lines))
         })
     }
 
@@ -121,11 +127,25 @@ impl Widget for Sidebar<'_> {
                     let indented = Rect::new(row.x + INDENT, y, width - INDENT, 1);
                     pane_line(pane, indented, (icons, self.chrome), buf);
                 }
-                Line::Pane(_) => {}
-                Line::Gap => {}
+                Line::Subagent(parent, child, last) if width > INDENT => {
+                    let indented = Rect::new(row.x + INDENT, y, width - INDENT, 1);
+                    child.draw(last, parent.shown, indented, buf);
+                }
+                Line::Pane(_) | Line::Subagent(..) | Line::Gap => {}
             }
         }
     }
+}
+
+/// A pane's row, then one line per sub-agent of its agent.
+fn row_lines(row: &SidebarRow) -> impl Iterator<Item = Line<'_>> {
+    let last = row.subagents.len().saturating_sub(1);
+    std::iter::once(Line::Pane(row)).chain(
+        row.subagents
+            .iter()
+            .enumerate()
+            .map(move |(i, child)| Line::Subagent(row, child, i == last)),
+    )
 }
 
 /// `▾ project  branch +3 ↑2`: the branch dim, then the checkout's badge
@@ -193,7 +213,7 @@ fn pane_line(pane: &SidebarRow, row: Rect, (icons, chrome): (bool, Chrome<'_>), 
     let width = usize::from(row.width);
     let (x, _) = buf.set_stringn(row.x, row.y, &text, width, row_style(pane));
     if row.width > 2 {
-        paint_glyph(pane, &mut buf[(row.x + 2, row.y)]);
+        paint_glyph(pane.look, pane.state, &mut buf[(row.x + 2, row.y)]);
     }
     if let Some(color) = pane
         .agent
@@ -219,17 +239,17 @@ fn pane_line(pane: &SidebarRow, row: Rect, (icons, chrome): (bool, Chrome<'_>), 
     }
 }
 
-/// Colours the glyph cell from its look; without a colour, states that
+/// Colours a glyph cell from its look; without a colour, states that
 /// need attention stand out in bold reverse video instead.
-fn paint_glyph(row: &SidebarRow, cell: &mut Cell) {
-    match row.look.and_then(|l| Some((l.color?, l.bold))) {
+pub(super) fn paint_glyph(look: Option<GlyphLook>, state: AgentState, cell: &mut Cell) {
+    match look.and_then(|l| Some((l.color?, l.bold))) {
         Some((c, bold)) => {
             cell.set_fg(Chrome::color(c));
             if bold {
                 cell.modifier.insert(Modifier::BOLD);
             }
         }
-        None if row.state.needs_attention() => {
+        None if state.needs_attention() => {
             cell.modifier.insert(Modifier::BOLD | Modifier::REVERSED);
         }
         None => {}
@@ -266,6 +286,7 @@ mod tests {
             age: None,
             focused: pane == 1,
             shown: pane < 3,
+            subagents: Vec::new(),
         }
     }
 
@@ -523,6 +544,38 @@ mod tests {
         );
         let (text, _) = draw(&groups, 1, 2);
         assert_eq!(text.trim(), "", "too narrow to draw");
+    }
+
+    #[test]
+    fn subagents_hang_under_their_parent_and_click_through_to_it() {
+        let child = |id: &str, state, detail: Option<&str>| SubagentRow {
+            id: id.into(),
+            label: id.into(),
+            state,
+            look: None,
+            detail: detail.map(Into::into),
+        };
+        let mut groups = groups();
+        groups[0].rows[0].subagents = vec![
+            child("Explore", AgentState::Working, Some("Grep TODO")),
+            child("Plan", AgentState::Blocked, None),
+        ];
+        let (text, _) = draw(&groups, 28, 8);
+        let lines: Vec<&str> = text.lines().collect();
+        assert_eq!(lines[1], "  ▸ $ 1 claude             │");
+        assert_eq!(lines[2], "    ├ ● Explore  Grep TODO │");
+        assert_eq!(lines[3], "    └ ◆ Plan               │");
+        assert_eq!(lines[4], "    $ 1 zsh  src           │");
+        let sidebar = Sidebar {
+            groups: &groups,
+            chrome: Chrome::default(),
+            offset: 0,
+        };
+        let targets = sidebar.targets(Rect::new(0, 0, 28, 5));
+        let panes: Vec<PaneId> = targets.iter().map(|t| t.0).collect();
+        assert_eq!(panes, [PaneId(1), PaneId(1), PaneId(1), PaneId(2)]);
+        assert_eq!(sidebar.line_of(PaneId(2)), Some(4), "rows below move down");
+        assert_eq!(sidebar.total_lines(), 8);
     }
 
     #[test]

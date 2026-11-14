@@ -8,7 +8,7 @@ use monarch_core::{AgentState, PaneId, UnixMillis};
 use monarch_proto::{AgentStatus, PanePlace, PaneSummary};
 
 use super::AttachState;
-use crate::{SidebarGroup, SidebarRow};
+use crate::{SidebarGroup, SidebarRow, SubagentRow};
 
 impl AttachState {
     /// Every pane in every tab grouped by checkout, the groups sorted by
@@ -37,6 +37,7 @@ impl AttachState {
                     age: self.age(pane, now),
                     focused: Some(pane.pane) == layout.focus,
                     shown: tab == layout.active_tab,
+                    subagents: agent.subagents.iter().map(SubagentRow::from).collect(),
                 };
                 match place.filter(|p| p.worktree.is_some()) {
                     Some(place) => group_for(&mut groups, place).rows.push(row),
@@ -383,6 +384,7 @@ mod tests {
             state,
             activity: activity.map(Into::into),
             agent: Some(monarch_core::AgentKind::Claude),
+            subagents: Vec::new(),
         };
         let blocked = status(AgentState::Blocked, Some("Allow Bash: rm -rf target?"));
         let msgs = [
@@ -431,12 +433,53 @@ mod tests {
     }
 
     #[test]
+    fn an_agents_subagents_are_listed_under_its_row() {
+        let mut state = state();
+        let child = monarch_proto::SubagentStatus {
+            id: "a1".into(),
+            kind: "Explore".into(),
+            state: AgentState::Blocked,
+            activity: Some("Allow Bash ls?".into()),
+        };
+        let status = AgentStatus {
+            state: AgentState::Blocked,
+            activity: Some("Explore: Allow Bash ls?".into()),
+            agent: Some(monarch_core::AgentKind::Claude),
+            subagents: vec![child],
+        };
+        let msg = ServerMsg::Agent {
+            pane: PaneId(1),
+            status,
+            timing: None,
+        };
+        state.apply(msg, &mut Applied::default());
+        let rows: Vec<SidebarRow> = state
+            .sidebar_groups(NOW)
+            .into_iter()
+            .flat_map(|g| g.rows)
+            .collect();
+        let claude = rows.iter().find(|r| r.pane == PaneId(1)).expect("row");
+        let listed: Vec<_> = claude
+            .subagents
+            .iter()
+            .map(|c| (c.label.as_str(), c.state, c.detail.as_deref()))
+            .collect();
+        assert_eq!(
+            listed,
+            [("Explore", AgentState::Blocked, Some("Allow Bash ls?"))]
+        );
+        let shell = rows.iter().find(|r| r.pane == PaneId(2)).expect("row");
+        assert!(shell.subagents.is_empty(), "a shell has none");
+    }
+
+    #[test]
     fn rows_age_their_agents_state() {
         let mut state = state();
         let status = AgentStatus {
             state: AgentState::Working,
             activity: Some("Edit a.rs".into()),
             agent: Some(monarch_core::AgentKind::Claude),
+            subagents: Vec::new(),
         };
         let msg = ServerMsg::Agent {
             pane: PaneId(1),

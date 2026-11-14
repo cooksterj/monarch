@@ -73,6 +73,7 @@ mod tests {
             state,
             activity: activity.map(Into::into),
             agent: Some(AgentKind::Claude),
+            subagents: Vec::new(),
         }
     }
 

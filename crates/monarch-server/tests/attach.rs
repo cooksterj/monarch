@@ -217,6 +217,7 @@ async fn agent_reports_reach_attached_clients() {
         state: AgentState::Blocked,
         activity: Some("Allow Bash?".into()),
         agent: Some(monarch_core::AgentKind::Claude),
+        subagents: Vec::new(),
     };
     until(&mut rx, |m| {
         matches!(m, ServerMsg::Agent { pane: PaneId(1), status: got, timing: Some(_) } if *got == status)

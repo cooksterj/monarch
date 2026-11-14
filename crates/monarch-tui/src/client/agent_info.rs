@@ -249,6 +249,7 @@ mod tests {
                 state: AgentState::Blocked,
                 activity: Some("Allow Bash?".into()),
                 agent: Some(monarch_core::AgentKind::Claude),
+                subagents: Vec::new(),
             },
             source: StatusSource::Hooks,
             manifest: Some("claude 2026.1".into()),
@@ -262,7 +263,6 @@ mod tests {
                 entered(AgentState::Working, Some("Bash ls"), 20_000),
                 entered(AgentState::Blocked, None, 140_000),
             ],
-            subagents: Vec::new(),
         }
     }
 
@@ -325,7 +325,6 @@ mod tests {
             winner: None,
             rules: Vec::new(),
             transitions: Vec::new(),
-            subagents: Vec::new(),
         })));
         assert_eq!(
             texts(&info.lines(NOW)),

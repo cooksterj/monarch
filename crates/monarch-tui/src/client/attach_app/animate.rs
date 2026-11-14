@@ -6,8 +6,8 @@ use std::time::Instant;
 use monarch_core::{Rgb, Theme, ThemeConfig};
 
 use super::AttachApp;
-use crate::SidebarGroup;
-use crate::client::{ANIMATION_STEP, GlyphAnimator};
+use crate::client::{ANIMATION_STEP, GlyphAnimator, GlyphKey};
+use crate::{SidebarGroup, SidebarRow, SubagentRow};
 
 /// The app's animation state: what is animating, in which colours, and
 /// when the next frame is due.
@@ -61,22 +61,33 @@ impl AttachApp {
         }
     }
 
-    /// Sets every row's glyph look for this frame.
+    /// Sets every row's glyph look for this frame, and each sub-agent's
+    /// under it, animated the same way.
     pub(super) fn dress(&mut self, groups: &mut [SidebarGroup]) {
         let now = Instant::now();
         let glyphs = &mut self.glyphs;
         let rows = groups.iter().flat_map(|g| &g.rows);
-        glyphs
-            .animator
-            .observe(rows.map(|r| (r.pane, r.state)), now);
+        let keyed = rows.flat_map(|r| {
+            let children = r.subagents.iter().map(|c| (child_key(r, c), c.state));
+            std::iter::once((GlyphKey::Pane(r.pane), r.state)).chain(children)
+        });
+        glyphs.animator.observe(keyed, now);
         let animate = self.opts.animations && !self.passthrough;
+        let theme = glyphs.theme.as_ref();
         for row in groups.iter_mut().flat_map(|g| &mut g.rows) {
-            let look = glyphs
-                .animator
-                .look(row.pane, now, glyphs.theme.as_ref(), animate);
-            row.look = Some(look);
+            let look = |key: &GlyphKey| glyphs.animator.look(key, now, theme, animate);
+            row.look = Some(look(&GlyphKey::Pane(row.pane)));
+            for i in 0..row.subagents.len() {
+                let key = child_key(row, &row.subagents[i]);
+                row.subagents[i].look = Some(look(&key));
+            }
         }
     }
+}
+
+/// The key `child`'s glyph animates under, in `row`'s pane.
+fn child_key(row: &SidebarRow, child: &SubagentRow) -> GlyphKey {
+    GlyphKey::Subagent(row.pane, child.id.clone())
 }
 
 /// The theme `config` picks for a host with `background`, or none under

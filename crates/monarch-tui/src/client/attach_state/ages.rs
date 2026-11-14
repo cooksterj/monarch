@@ -93,6 +93,7 @@ mod tests {
             state: agent,
             activity: None,
             agent: Some(AgentKind::Claude),
+            subagents: Vec::new(),
         };
         let msg = ServerMsg::Agent {
             pane: PaneId(1),

@@ -67,7 +67,7 @@ pub(super) fn detail(pane: &PaneExplanation, now: UnixMillis) -> String {
         let _ = writeln!(text, "activity  {activity}");
     }
     text.push_str(&history(&pane.transitions, now));
-    text.push_str(&subagents(&pane.subagents));
+    text.push_str(&subagents(&pane.status.subagents));
     let Some(manifest) = &pane.manifest else {
         let _ = writeln!(
             text,
@@ -234,7 +234,6 @@ mod tests {
                     at: UnixMillis(61_000),
                 },
             ],
-            subagents: Vec::new(),
         }
     }
 
@@ -250,7 +249,6 @@ mod tests {
             source: StatusSource::None,
             status: AgentStatus::default(),
             transitions: Vec::new(),
-            subagents: Vec::new(),
         }
     }
 
@@ -312,12 +310,16 @@ mod tests {
             state,
             activity: activity.map(Into::into),
         };
+        let plain = shell();
         let pane = PaneExplanation {
-            subagents: vec![
-                child("Explore", AgentState::Working, Some("Grep TODO")),
-                child("", AgentState::Blocked, None),
-            ],
-            ..shell()
+            status: AgentStatus {
+                subagents: vec![
+                    child("Explore", AgentState::Working, Some("Grep TODO")),
+                    child("", AgentState::Blocked, None),
+                ],
+                ..plain.status.clone()
+            },
+            ..plain
         };
         let text = detail(&pane, UnixMillis(0));
         assert!(
