@@ -3,6 +3,8 @@
 use monarch_core::{AgentKind, AgentState, PaneId};
 use serde::{Deserialize, Serialize};
 
+use crate::SubagentReport;
+
 /// Sent by `monarch hook <agent>`. Hooks are the authoritative signal: a
 /// reported state replaces whatever was guessed.
 ///
@@ -31,6 +33,14 @@ pub struct AgentReport {
     /// The agent's working directory.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cwd: Option<String>,
+    /// The sub-agent the event came from; `state` and `activity` are
+    /// still the parent's.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subagent: Option<SubagentReport>,
+    /// At the end of a turn, how many sub-agents still run in the
+    /// background; `None` when the hook doesn't say.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subagents_running: Option<u32>,
 }
 
 impl AgentReport {
@@ -56,6 +66,8 @@ impl AgentReport {
             activity: None,
             session_id: None,
             cwd: None,
+            subagent: None,
+            subagents_running: None,
         }
     }
 }

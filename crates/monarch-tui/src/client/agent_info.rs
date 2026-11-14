@@ -262,6 +262,7 @@ mod tests {
                 entered(AgentState::Working, Some("Bash ls"), 20_000),
                 entered(AgentState::Blocked, None, 140_000),
             ],
+            subagents: Vec::new(),
         }
     }
 
@@ -324,6 +325,7 @@ mod tests {
             winner: None,
             rules: Vec::new(),
             transitions: Vec::new(),
+            subagents: Vec::new(),
         })));
         assert_eq!(
             texts(&info.lines(NOW)),

@@ -9,12 +9,13 @@ mod guesses;
 mod history;
 mod said;
 mod screen;
+mod subagents;
 mod transitions;
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use monarch_core::{AgentKind, AgentState, PaneId};
-use monarch_proto::{AgentReport, AgentStatus, AgentTiming, StatusSource};
+use monarch_proto::{AgentReport, AgentStatus, AgentTiming, StatusSource, SubagentStatus};
 
 /// Agent status per pane (panes never reported on are plain shells),
 /// which pane each agent session id was seen in, and where each status
@@ -39,6 +40,10 @@ pub struct StateEngine {
     said: BTreeMap<PaneId, String>,
     /// The last few states each pane entered (see `transitions`).
     transitions: BTreeMap<PaneId, transitions::TransitionLog>,
+    /// The sub-agents inside each pane's agent (see `subagents`).
+    subagents: BTreeMap<PaneId, Vec<SubagentStatus>>,
+    /// Each pane's own line from before a sub-agent's question took it.
+    line_before_asking: BTreeMap<PaneId, Option<String>>,
 }
 
 impl StateEngine {
@@ -69,6 +74,7 @@ impl StateEngine {
         }
         self.guessed.remove(&pane);
         self.note_said(pane, report);
+        self.note_subagents(pane, report);
         let current = self.panes.entry(pane).or_default();
         let mut next = current.clone();
         if let Some(state) = report.state {
@@ -84,6 +90,8 @@ impl StateEngine {
         if let Some(text) = &report.activity {
             next.activity = AgentStatus::activity_line(text);
         }
+        self.fuse_subagents(pane, report, &mut next);
+        let current = self.panes.entry(pane).or_default();
         if next == *current {
             return None;
         }
@@ -146,6 +154,8 @@ impl StateEngine {
         self.entered.remove(&pane);
         self.timing.remove(&pane);
         self.said.remove(&pane);
+        self.subagents.remove(&pane);
+        self.line_before_asking.remove(&pane);
         self.forget_transitions(pane);
     }
 }

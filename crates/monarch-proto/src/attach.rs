@@ -28,6 +28,7 @@ mod style_cache;
 mod style_def;
 mod style_id;
 mod style_table;
+mod subagent_status;
 mod tab_summary;
 
 pub use agent_status::AgentStatus;
@@ -51,4 +52,5 @@ pub use style_cache::StyleCache;
 pub use style_def::StyleDef;
 pub use style_id::StyleId;
 pub use style_table::StyleTable;
+pub use subagent_status::SubagentStatus;
 pub use tab_summary::TabSummary;

@@ -19,13 +19,13 @@ mod worktree_entry;
 pub use api::{
     AgentRead, AgentReadReply, AgentReport, AgentTransition, AgentWait, AgentWaitReply,
     ExplainPanes, KillSession, NewWorktree, PaneExplanation, PaneSend, ReadSource, Request,
-    Response, RpcError, RuleOutcome, SessionInfo, StatusSource, TabRename, TabRenamed,
-    WorktreeCreated,
+    Response, RpcError, RuleOutcome, SessionInfo, StatusSource, SubagentReport, TabRename,
+    TabRenamed, WorktreeCreated,
 };
 pub use attach::{
     AgentStatus, AgentTiming, ClientMsg, Delta, FrameCodec, HostInfo, LayoutMsg, PaneLayout,
     PanePlace, PaneState, PaneSummary, RowCodec, RowDelta, Run, SelectShape, ServerMsg, Snapshot,
-    StyleCache, StyleDef, StyleId, StyleTable, TabSummary,
+    StyleCache, StyleDef, StyleId, StyleTable, SubagentStatus, TabSummary,
 };
 pub use badge_part::BadgePart;
 pub use checkout_status::CheckoutStatus;
