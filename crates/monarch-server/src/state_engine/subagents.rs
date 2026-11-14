@@ -3,10 +3,13 @@
 //! A sub-agent has no pane: its hooks fire in its parent's, naming it by
 //! `agent_id`. While one waits on the user the pane is Blocked and its
 //! line says which (`Explore: Allow Bash ls?`), even as its siblings keep
-//! working; once nobody waits, the parent's own line comes back. Rows
-//! end with their parent's turn: finished ones then, and
-//! every one when the agent says none still runs in the background, so a
-//! missed `SubagentStop` (an interrupted turn) heals at the next.
+//! working; once nobody waits, the parent's own line comes back.
+//!
+//! Finished rows stay after the parent's turn ends, so the user can see
+//! what was done, and go when the next turn starts (the parent working
+//! again after a rest: the next prompt). At a turn's end, when the agent
+//! says no sub-agent still runs in the background, rows still shown as
+//! running go too: their `SubagentStop` was missed (an interrupted turn).
 
 use monarch_core::{AgentState, PaneId};
 use monarch_proto::{AgentReport, AgentStatus, SubagentReport, SubagentStatus};
@@ -26,7 +29,8 @@ impl StateEngine {
     }
 
     /// Applies `report` to the sub-agents in `next` (the pane's coming
-    /// status): one of them reported, or the parent did for itself. A
+    /// status, which was `prior`): one of them reported, or the parent did
+    /// for itself. A
     /// pane whose agent is working while a sub-agent waits on the user is
     /// then still Blocked, on that sub-agent's question; when the wait
     /// ends the parent's line from before it is back, unless the report
@@ -35,6 +39,7 @@ impl StateEngine {
         &mut self,
         pane: PaneId,
         report: &AgentReport,
+        prior: AgentState,
         next: &mut AgentStatus,
     ) {
         let asking = match &report.subagent {
@@ -52,7 +57,7 @@ impl StateEngine {
                 return;
             }
             None => {
-                parent_moved(&mut next.subagents, report);
+                parent_moved(&mut next.subagents, report, prior);
                 None
             }
         };
@@ -100,10 +105,12 @@ fn apply(children: &mut Vec<SubagentStatus>, sub: &SubagentReport) {
     children.push(child);
 }
 
-/// The parent reported for itself: no sub-agent is still waiting on the
-/// user (the parent can't move while one is), and a turn's end or the
-/// agent's drop rows.
-fn parent_moved(children: &mut Vec<SubagentStatus>, report: &AgentReport) {
+/// The parent, which was `prior`, reported for itself: no sub-agent is
+/// still waiting on the user (the parent can't move while one is). A new
+/// turn drops the last one's finished rows; a turn's end with nothing in
+/// the background drops rows that never finished; the agent's end, or a
+/// fresh session, drops all.
+fn parent_moved(children: &mut Vec<SubagentStatus>, report: &AgentReport, prior: AgentState) {
     if report.state == Some(AgentState::Blocked) {
         return;
     }
@@ -113,10 +120,15 @@ fn parent_moved(children: &mut Vec<SubagentStatus>, report: &AgentReport) {
     {
         child.state = AgentState::Working;
     }
+    let finished = |c: &SubagentStatus| c.state == AgentState::Done;
     match report.state {
-        Some(AgentState::Done) if report.subagents_running == Some(0) => children.clear(),
-        Some(AgentState::Done) => children.retain(|c| c.state != AgentState::Done),
-        Some(AgentState::Idle | AgentState::Error | AgentState::Unknown) => children.clear(),
+        Some(AgentState::Done) if report.subagents_running == Some(0) => children.retain(finished),
+        Some(AgentState::Working)
+            if !matches!(prior, AgentState::Working | AgentState::Blocked) =>
+        {
+            children.retain(|c| !finished(c));
+        }
+        Some(AgentState::Idle | AgentState::Unknown) => children.clear(),
         _ => {}
     }
 }
@@ -256,24 +268,45 @@ mod tests {
     }
 
     #[test]
-    fn a_turns_end_drops_finished_rows_and_all_once_none_run() {
+    fn finished_rows_stay_until_the_next_prompt() {
         let mut engine = StateEngine::default();
+        engine.report(P, &parent(AgentState::Working, Some("audit")));
         engine.report(P, &child("a", AgentState::Working, None));
         engine.report(P, &child("b", AgentState::Working, None));
         engine.report(P, &child("a", AgentState::Done, Some("done")));
+        engine.report(P, &parent(AgentState::Working, Some("Read a.rs")));
+        assert_eq!(rows(&engine).len(), 2, "mid-turn, nothing goes");
         engine.report(P, &parent(AgentState::Done, Some("Summary")));
+        let kept = [
+            ("a", AgentState::Done, Some("done")),
+            ("b", AgentState::Working, None),
+        ];
+        assert_eq!(rows(&engine), kept, "a stays to be seen, b runs on");
+        engine.seen(P);
+        assert_eq!(rows(&engine), kept, "looking at it keeps them");
+        engine.report(P, &parent(AgentState::Working, Some("next prompt")));
         assert_eq!(
             rows(&engine),
             [("b", AgentState::Working, None)],
-            "b runs on"
+            "the next turn starts clean"
         );
+    }
+
+    #[test]
+    fn a_turns_end_with_nothing_running_drops_rows_that_never_finished() {
+        let mut engine = StateEngine::default();
+        engine.report(P, &child("a", AgentState::Working, None));
+        engine.report(P, &child("c", AgentState::Working, None));
+        engine.report(P, &child("c", AgentState::Done, Some("ok")));
         let stop = AgentReport {
             subagents_running: Some(0),
             ..parent(AgentState::Done, Some("Summary"))
         };
         engine.report(P, &stop);
-        assert!(engine.subagents(P).is_empty(), "a missed stop heals");
-        engine.report(P, &child("c", AgentState::Working, None));
+        let ids: Vec<&str> = rows(&engine).iter().map(|r| r.0).collect();
+        assert_eq!(ids, ["c"], "a missed its stop, c finished");
+        engine.report(P, &parent(AgentState::Error, Some("rate limited")));
+        assert_eq!(rows(&engine).len(), 1, "a failed turn keeps them too");
         engine.report(P, &parent(AgentState::Unknown, None));
         assert!(engine.subagents(P).is_empty(), "the agent ended");
     }
