@@ -41,6 +41,10 @@ pub struct AgentReport {
     /// background; `None` when the hook doesn't say.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub subagents_running: Option<u32>,
+    /// The user sent a new prompt (not the agent waking itself with a
+    /// background task's result): the last turn's finished sub-agents go.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub user_prompt: bool,
 }
 
 impl AgentReport {
@@ -68,6 +72,7 @@ impl AgentReport {
             cwd: None,
             subagent: None,
             subagents_running: None,
+            user_prompt: false,
         }
     }
 }

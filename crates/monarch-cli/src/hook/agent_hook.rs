@@ -48,8 +48,25 @@ impl<'a> AgentHook<'a> {
             state: Some(state),
             activity,
             subagents_running: self.subagents_running(),
+            user_prompt: self.field("hook_event_name") == Some("UserPromptSubmit")
+                && self.injected().is_none(),
             ..base
         })
+    }
+
+    /// A prompt the agent sent itself, with what to show for it: Claude
+    /// wakes its own turn with a background sub-agent's or task's result
+    /// (`<agent-message from="…">`, `<task-notification>`) through the
+    /// same hook as the user's prompts.
+    fn injected(&self) -> Option<&'static str> {
+        let prompt = self.field("prompt")?.trim_start();
+        if prompt.starts_with("<agent-message") {
+            Some("Reading a sub-agent's report")
+        } else if prompt.starts_with("<task-notification>") {
+            Some("Reading a background task's result")
+        } else {
+            None
+        }
     }
 
     /// An event inside sub-agent `id`: its own state and line, and the
@@ -110,7 +127,10 @@ impl<'a> AgentHook<'a> {
         let text = |key: &str| self.field(key).map(str::to_owned);
         Some(match self.field("hook_event_name")? {
             "SessionStart" => (AgentState::Idle, Some(String::new())),
-            "UserPromptSubmit" => (AgentState::Working, text("prompt")),
+            "UserPromptSubmit" => match self.injected() {
+                Some(line) => (AgentState::Working, Some(line.into())),
+                None => (AgentState::Working, text("prompt")),
+            },
             "PreToolUse" => (AgentState::Working, Some(self.tool().line())),
             "PostToolUse" | "PostToolUseFailure" => (AgentState::Working, None),
             "PreCompact" => (AgentState::Working, Some("Compacting".into())),
@@ -334,5 +354,24 @@ mod tests {
                 .report(None)
                 .is_none()
         );
+    }
+
+    #[test]
+    fn prompts_the_agent_sends_itself_are_not_the_users() {
+        let prompt =
+            |text: &str| child(&json!({"hook_event_name": "UserPromptSubmit", "prompt": text}));
+        let typed = prompt("fix the bug");
+        assert!(typed.user_prompt);
+        let report = prompt("<agent-message from=\"aefd56\">\nFound 3 TODOs");
+        assert!(!report.user_prompt, "a sub-agent reporting back");
+        assert_eq!(
+            report.activity.as_deref(),
+            Some("Reading a sub-agent's report")
+        );
+        assert_eq!(report.state, Some(AgentState::Working));
+        let task = prompt("\n<task-notification>\n<task-id>a1</task-id>");
+        assert!(!task.user_prompt, "a background task finishing");
+        let tool = child(&json!({"hook_event_name": "PreToolUse", "tool_name": "Read"}));
+        assert!(!tool.user_prompt, "only prompts count");
     }
 }
