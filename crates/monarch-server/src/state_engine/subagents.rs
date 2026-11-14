@@ -5,11 +5,12 @@
 //! line says which (`Explore: Allow Bash ls?`), even as its siblings keep
 //! working; once nobody waits, the parent's own line comes back.
 //!
-//! Finished rows stay after the parent's turn ends, so the user can see
-//! what was done, and go when the user sends the next prompt (not when
-//! the agent wakes itself with a background sub-agent's result). At a turn's end, when the agent
-//! says no sub-agent still runs in the background, rows still shown as
-//! running go too: their `SubagentStop` was missed (an interrupted turn).
+//! Rows stay after the parent's turn ends, so the user can see what was
+//! done, and go when the user sends the next prompt (not when the agent
+//! wakes itself with a background sub-agent's result). At a turn's end a
+//! row still shown as running whose id is not among the agent's
+//! background tasks has finished, its `SubagentStop` missed or never
+//! matched: it is marked done, never dropped.
 
 use monarch_core::{AgentState, PaneId};
 use monarch_proto::{AgentReport, AgentStatus, SubagentReport, SubagentStatus};
@@ -105,9 +106,9 @@ fn apply(children: &mut Vec<SubagentStatus>, sub: &SubagentReport) {
 
 /// The parent reported for itself: no sub-agent is still waiting on the
 /// user (the parent can't move while one is). The user's next prompt
-/// drops the last turn's finished rows; a turn's end with nothing in
-/// the background drops rows that never finished; the agent's end, or a
-/// fresh session, drops all.
+/// drops the last turn's finished rows; a turn's end marks done the rows
+/// no longer in the background; the agent's end, or a fresh session,
+/// drops all.
 fn parent_moved(children: &mut Vec<SubagentStatus>, report: &AgentReport) {
     if report.state == Some(AgentState::Blocked) {
         return;
@@ -122,9 +123,16 @@ fn parent_moved(children: &mut Vec<SubagentStatus>, report: &AgentReport) {
     if report.user_prompt {
         children.retain(|c| !finished(c));
     }
-    match report.state {
-        Some(AgentState::Done) if report.subagents_running == Some(0) => children.retain(finished),
-        Some(AgentState::Idle | AgentState::Unknown) => children.clear(),
+    match (report.state, &report.background) {
+        (Some(AgentState::Done), Some(running)) => {
+            for child in children
+                .iter_mut()
+                .filter(|c| !finished(c) && !running.contains(&c.id))
+            {
+                child.state = AgentState::Done;
+            }
+        }
+        (Some(AgentState::Idle | AgentState::Unknown), _) => children.clear(),
         _ => {}
     }
 }
@@ -298,7 +306,7 @@ mod tests {
         engine.report(P, &child("a", AgentState::Working, None));
         engine.report(P, &child("b", AgentState::Working, None));
         let started = AgentReport {
-            subagents_running: Some(2),
+            background: Some(vec!["a".into(), "b".into()]),
             ..parent(AgentState::Done, Some("Started two agents"))
         };
         engine.report(P, &started);
@@ -308,7 +316,7 @@ mod tests {
         engine.report(P, &child("b", AgentState::Done, Some("Found 0")));
         engine.report(P, &woken);
         let end = AgentReport {
-            subagents_running: Some(0),
+            background: Some(Vec::new()),
             ..parent(AgentState::Done, Some("Clean on both counts"))
         };
         engine.report(P, &end);
@@ -323,20 +331,31 @@ mod tests {
     }
 
     #[test]
-    fn a_turns_end_with_nothing_running_drops_rows_that_never_finished() {
+    fn a_turns_end_marks_done_what_no_longer_runs() {
         let mut engine = StateEngine::default();
-        engine.report(P, &child("a", AgentState::Working, None));
+        engine.report(P, &child("a", AgentState::Working, Some("Grep TODO")));
+        engine.report(P, &child("b", AgentState::Working, None));
         engine.report(P, &child("c", AgentState::Working, None));
         engine.report(P, &child("c", AgentState::Done, Some("ok")));
         let stop = AgentReport {
-            subagents_running: Some(0),
+            background: Some(vec!["b".into(), "shell-1".into()]),
             ..parent(AgentState::Done, Some("Summary"))
         };
         engine.report(P, &stop);
-        let ids: Vec<&str> = rows(&engine).iter().map(|r| r.0).collect();
-        assert_eq!(ids, ["c"], "a missed its stop, c finished");
+        assert_eq!(
+            rows(&engine),
+            [
+                ("a", AgentState::Done, Some("Grep TODO")),
+                ("b", AgentState::Working, None),
+                ("c", AgentState::Done, Some("ok"))
+            ],
+            "a's stop went missing: done, kept; b still runs"
+        );
+        let unlisted = parent(AgentState::Done, Some("Again"));
+        engine.report(P, &unlisted);
+        assert_eq!(rows(&engine)[1].1, AgentState::Working, "no list, no guess");
         engine.report(P, &parent(AgentState::Error, Some("rate limited")));
-        assert_eq!(rows(&engine).len(), 1, "a failed turn keeps them too");
+        assert_eq!(rows(&engine).len(), 3, "a failed turn keeps them too");
         engine.report(P, &parent(AgentState::Unknown, None));
         assert!(engine.subagents(P).is_empty(), "the agent ended");
     }

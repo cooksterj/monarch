@@ -47,7 +47,7 @@ impl<'a> AgentHook<'a> {
         Some(AgentReport {
             state: Some(state),
             activity,
-            subagents_running: self.subagents_running(),
+            background: self.background(),
             user_prompt: self.field("hook_event_name") == Some("UserPromptSubmit")
                 && self.injected().is_none(),
             ..base
@@ -111,15 +111,15 @@ impl<'a> AgentHook<'a> {
         })
     }
 
-    /// How many sub-agents still run in the background, from a `Stop`'s
-    /// `background_tasks` (`None` when the event carries no list).
-    fn subagents_running(&self) -> Option<u32> {
+    /// The ids of a `Stop`'s `background_tasks`, whatever their `type`
+    /// label (`None` when the event carries no list).
+    fn background(&self) -> Option<Vec<String>> {
         let tasks = self.input.get("background_tasks")?.as_array()?;
-        let running = tasks
+        let ids = tasks
             .iter()
-            .filter(|t| t.get("type").and_then(Value::as_str) == Some("subagent"))
-            .count();
-        Some(u32::try_from(running).unwrap_or(u32::MAX))
+            .filter_map(|t| t.get("id").and_then(Value::as_str))
+            .map(str::to_owned);
+        Some(ids.collect())
     }
 
     /// The event's state and new activity line (`""` clears it).
@@ -329,22 +329,27 @@ mod tests {
             "last_assistant_message": "Found 3 issues", "background_tasks": []
         }));
         assert_eq!(sub(&stop).2, Some(AgentState::Done));
-        assert_eq!((stop.state, stop.subagents_running), (None, None));
+        assert_eq!((stop.state, stop.background), (None, None));
     }
 
     #[test]
-    fn a_turns_end_counts_the_subagents_still_running() {
+    fn a_turns_end_lists_what_still_runs_in_the_background() {
         let stop = |tasks: Value| {
-            child(&json!({"hook_event_name": "Stop", "background_tasks": tasks})).subagents_running
+            child(&json!({"hook_event_name": "Stop", "background_tasks": tasks})).background
         };
-        assert_eq!(stop(json!([])), Some(0));
+        assert_eq!(stop(json!([])), Some(Vec::new()));
         let mixed = json!([
             {"id": "t1", "type": "shell", "command": "tail -f log"},
-            {"id": "t2", "type": "subagent", "agent_type": "Explore"},
+            {"id": "a2", "type": "local_agent", "agent_type": "Explore"},
+            {"type": "monitor"},
         ]);
-        assert_eq!(stop(mixed), Some(1));
+        assert_eq!(
+            stop(mixed),
+            Some(vec!["t1".to_owned(), "a2".to_owned()]),
+            "every task with an id, whatever its label"
+        );
         let old = child(&json!({"hook_event_name": "Stop"}));
-        assert_eq!(old.subagents_running, None, "older agents don't say");
+        assert_eq!(old.background, None, "older agents don't say");
         let main =
             child(&json!({"hook_event_name": "UserPromptSubmit", "agent_id": "", "prompt": "hi"}));
         assert_eq!(main.subagent, None, "an empty id is the main agent");
