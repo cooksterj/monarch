@@ -37,10 +37,11 @@ pub struct AgentReport {
     /// still the parent's.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub subagent: Option<SubagentReport>,
-    /// At the end of a turn, how many sub-agents still run in the
-    /// background; `None` when the hook doesn't say.
+    /// At the end of a turn, the ids of the agent's background tasks
+    /// still in flight, whatever their kind (a background sub-agent's
+    /// task id is its `agent_id`); `None` when the hook doesn't say.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub subagents_running: Option<u32>,
+    pub background: Option<Vec<String>>,
     /// The user sent a new prompt (not the agent waking itself with a
     /// background task's result): the last turn's finished sub-agents go.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
@@ -71,7 +72,7 @@ impl AgentReport {
             session_id: None,
             cwd: None,
             subagent: None,
-            subagents_running: None,
+            background: None,
             user_prompt: false,
         }
     }
