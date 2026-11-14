@@ -13,7 +13,7 @@
 //! it.
 
 use monarch_core::{AgentKind, AgentState, PaneId};
-use monarch_proto::{AgentReport, SubagentReport};
+use monarch_proto::{AgentReport, BackgroundTask, SubagentReport};
 use serde_json::Value;
 
 use super::tool_activity::ToolActivity;
@@ -111,15 +111,18 @@ impl<'a> AgentHook<'a> {
         })
     }
 
-    /// The ids of a `Stop`'s `background_tasks`, whatever their `type`
-    /// label (`None` when the event carries no list).
-    fn background(&self) -> Option<Vec<String>> {
+    /// A `Stop`'s `background_tasks`, each with an id (`None` when the
+    /// event carries no list).
+    fn background(&self) -> Option<Vec<BackgroundTask>> {
         let tasks = self.input.get("background_tasks")?.as_array()?;
-        let ids = tasks
-            .iter()
-            .filter_map(|t| t.get("id").and_then(Value::as_str))
-            .map(str::to_owned);
-        Some(ids.collect())
+        let text = |t: &Value, key: &str| t.get(key).and_then(Value::as_str).map(str::to_owned);
+        let listed = tasks.iter().filter_map(|t| {
+            Some(BackgroundTask {
+                id: text(t, "id")?,
+                kind: text(t, "type").unwrap_or_default(),
+            })
+        });
+        Some(listed.collect())
     }
 
     /// The event's state and new activity line (`""` clears it).
@@ -343,10 +346,14 @@ mod tests {
             {"id": "a2", "type": "local_agent", "agent_type": "Explore"},
             {"type": "monitor"},
         ]);
+        let task = |id: &str, kind: &str| BackgroundTask {
+            id: id.into(),
+            kind: kind.into(),
+        };
         assert_eq!(
             stop(mixed),
-            Some(vec!["t1".to_owned(), "a2".to_owned()]),
-            "every task with an id, whatever its label"
+            Some(vec![task("t1", "shell"), task("a2", "local_agent")]),
+            "every task with an id, with its label"
         );
         let old = child(&json!({"hook_event_name": "Stop"}));
         assert_eq!(old.background, None, "older agents don't say");

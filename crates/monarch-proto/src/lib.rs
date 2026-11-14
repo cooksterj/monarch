@@ -18,8 +18,8 @@ mod worktree_entry;
 
 pub use api::{
     AgentRead, AgentReadReply, AgentReport, AgentTransition, AgentWait, AgentWaitReply,
-    ExplainPanes, KillSession, NewWorktree, PaneExplanation, PaneSend, ReadSource, Request,
-    Response, RpcError, RuleOutcome, SessionInfo, StatusSource, SubagentReport, TabRename,
+    BackgroundTask, ExplainPanes, KillSession, NewWorktree, PaneExplanation, PaneSend, ReadSource,
+    Request, Response, RpcError, RuleOutcome, SessionInfo, StatusSource, SubagentReport, TabRename,
     TabRenamed, WorktreeCreated,
 };
 pub use attach::{
