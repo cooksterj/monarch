@@ -6,7 +6,7 @@ use std::path::Path;
 
 use monarch_core::{AgentKind, AgentState, PaneId};
 use monarch_detect::OscSignal;
-use monarch_proto::{AgentReport, AgentStatus, AgentTransition, StatusSource};
+use monarch_proto::{AgentReport, AgentStatus, AgentTransition, StatusSource, SubagentStatus};
 
 use super::SessionState;
 
@@ -61,6 +61,12 @@ impl SessionState {
     #[must_use]
     pub fn agent_transitions(&self, pane: PaneId) -> Vec<AgentTransition> {
         self.agents.transitions(pane)
+    }
+
+    /// The sub-agents of `pane`'s agent, oldest first.
+    #[must_use]
+    pub fn agent_subagents(&self, pane: PaneId) -> Vec<SubagentStatus> {
+        self.agents.subagents(pane).to_vec()
     }
 
     /// The full text of `pane`'s last answer, if its hooks sent one.

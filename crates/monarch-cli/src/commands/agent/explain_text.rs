@@ -4,7 +4,7 @@
 use std::fmt::Write;
 
 use monarch_core::{AgentState, UnixMillis, age_label};
-use monarch_proto::{AgentTransition, PaneExplanation, RuleOutcome, StatusSource};
+use monarch_proto::{AgentTransition, PaneExplanation, RuleOutcome, StatusSource, SubagentStatus};
 
 /// Longest rule preview printed, in characters.
 const PREVIEW: usize = 100;
@@ -67,6 +67,7 @@ pub(super) fn detail(pane: &PaneExplanation, now: UnixMillis) -> String {
         let _ = writeln!(text, "activity  {activity}");
     }
     text.push_str(&history(&pane.transitions, now));
+    text.push_str(&subagents(&pane.subagents));
     let Some(manifest) = &pane.manifest else {
         let _ = writeln!(
             text,
@@ -113,6 +114,25 @@ fn history(transitions: &[AgentTransition], now: UnixMillis) -> String {
             t.source.describe()
         );
         if let Some(activity) = &t.activity {
+            let _ = write!(text, "  {activity}");
+        }
+        text.push('\n');
+    }
+    text
+}
+
+/// `subagent ● Working   Explore  Grep TODO`, one line per sub-agent.
+fn subagents(children: &[SubagentStatus]) -> String {
+    let mut text = String::new();
+    for (i, child) in children.iter().enumerate() {
+        let head = if i == 0 { "subagent" } else { "" };
+        let _ = write!(
+            text,
+            "{head:<9} {:<11} {}",
+            state(child.state),
+            child.label()
+        );
+        if let Some(activity) = &child.activity {
             let _ = write!(text, "  {activity}");
         }
         text.push('\n');
@@ -214,6 +234,7 @@ mod tests {
                     at: UnixMillis(61_000),
                 },
             ],
+            subagents: Vec::new(),
         }
     }
 
@@ -229,6 +250,7 @@ mod tests {
             source: StatusSource::None,
             status: AgentStatus::default(),
             transitions: Vec::new(),
+            subagents: Vec::new(),
         }
     }
 
@@ -280,6 +302,31 @@ mod tests {
         let plain = detail(&shell(), UnixMillis(0));
         assert!(plain.ends_with("screen    no detection manifest for zsh\n"));
         assert!(!plain.contains("history"), "{plain}");
+    }
+
+    #[test]
+    fn the_detail_lists_subagents_under_the_history() {
+        let child = |kind: &str, state, activity: Option<&str>| SubagentStatus {
+            id: kind.into(),
+            kind: kind.into(),
+            state,
+            activity: activity.map(Into::into),
+        };
+        let pane = PaneExplanation {
+            subagents: vec![
+                child("Explore", AgentState::Working, Some("Grep TODO")),
+                child("", AgentState::Blocked, None),
+            ],
+            ..shell()
+        };
+        let text = detail(&pane, UnixMillis(0));
+        assert!(
+            text.contains(
+                "subagent  ● Working   Explore  Grep TODO\n          ◆ Blocked   subagent\n"
+            ),
+            "{text}"
+        );
+        assert!(!detail(&shell(), UnixMillis(0)).contains("subagent"));
     }
 
     #[test]

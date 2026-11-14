@@ -41,6 +41,7 @@ impl ServerContext {
                 let text = state.pane(pane.pane).map(|io| io.shared().lock().text());
                 let mut explained = blank(pane, tab, state.agent_source(pane.pane));
                 explained.transitions = state.agent_transitions(pane.pane);
+                explained.subagents = state.agent_subagents(pane.pane);
                 snapshots.push(Snapshot {
                     explained,
                     title: pane.title.clone().unwrap_or_default(),
@@ -65,6 +66,7 @@ fn blank(pane: &PaneSummary, tab: u32, source: monarch_proto::StatusSource) -> P
         winner: None,
         rules: Vec::new(),
         transitions: Vec::new(),
+        subagents: Vec::new(),
     }
 }
 
