@@ -10,6 +10,24 @@ they need polishing.
 
 ## [Unreleased]
 
+## [0.1.5](https://github.com/cooksterj/monarch/compare/v0.1.4...v0.1.5) - 2026-11-14
+
+### Added
+
+- *(hooks)* keep finished sub-agent rows until the next prompt ([#134](https://github.com/cooksterj/monarch/pull/134))
+- *(tui)* list each agent's sub-agents under its sidebar row ([#133](https://github.com/cooksterj/monarch/pull/133))
+- *(hooks)* track Claude Code sub-agents and block the pane on their questions ([#132](https://github.com/cooksterj/monarch/pull/132))
+
+### Fixed
+
+- *(hooks)* teammates still running aren't marked done at a turn's end ([#137](https://github.com/cooksterj/monarch/pull/137))
+- *(hooks)* a turn's end marks sub-agents done instead of dropping them ([#136](https://github.com/cooksterj/monarch/pull/136))
+- *(hooks)* a background sub-agent's result is not the user's next prompt ([#135](https://github.com/cooksterj/monarch/pull/135))
+
+### Other
+
+- *(readme)* point the latest release at v0.1.4 ([#128](https://github.com/cooksterj/monarch/pull/128))
+
 ## [0.1.4](https://github.com/cooksterj/monarch/compare/v0.1.3...v0.1.4) - 2026-11-13
 
 ### Added
