@@ -10,10 +10,13 @@
 //! wakes itself with a background sub-agent's result). At a turn's end a
 //! row still shown as running whose id is not among the agent's
 //! background tasks has finished, its `SubagentStop` missed or never
-//! matched: it is marked done, never dropped.
+//! matched: it is marked done, never dropped. That holds only while every
+//! background agent is accounted for: a teammate's task id is not its
+//! `agent_id`, so an agent task matching no row means rows can't be told
+//! apart and stay as they are, to finish by their own `SubagentStop`.
 
 use monarch_core::{AgentState, PaneId};
-use monarch_proto::{AgentReport, AgentStatus, SubagentReport, SubagentStatus};
+use monarch_proto::{AgentReport, AgentStatus, BackgroundTask, SubagentReport, SubagentStatus};
 
 use super::StateEngine;
 
@@ -124,16 +127,29 @@ fn parent_moved(children: &mut Vec<SubagentStatus>, report: &AgentReport) {
         children.retain(|c| !finished(c));
     }
     match (report.state, &report.background) {
-        (Some(AgentState::Done), Some(running)) => {
-            for child in children
-                .iter_mut()
-                .filter(|c| !finished(c) && !running.contains(&c.id))
-            {
-                child.state = AgentState::Done;
-            }
-        }
+        (Some(AgentState::Done), Some(running)) => finish_unlisted(children, running),
         (Some(AgentState::Idle | AgentState::Unknown), _) => children.clear(),
         _ => {}
+    }
+}
+
+/// At a turn's end, marks done the rows still running that `running`
+/// doesn't list, unless an agent there matches no row (a teammate, whose
+/// task id differs from its `agent_id`): then which rows still run can't
+/// be told, and none is touched.
+fn finish_unlisted(children: &mut [SubagentStatus], running: &[BackgroundTask]) {
+    let listed = |id: &str| running.iter().any(|t| t.id == id);
+    let unmatched = running
+        .iter()
+        .any(|t| t.is_agent() && !children.iter().any(|c| c.id == t.id));
+    if unmatched {
+        return;
+    }
+    for child in children
+        .iter_mut()
+        .filter(|c| c.state != AgentState::Done && !listed(&c.id))
+    {
+        child.state = AgentState::Done;
     }
 }
 
@@ -181,6 +197,13 @@ mod tests {
                 activity: activity.map(Into::into),
             }),
             ..AgentReport::new(P, AgentKind::Claude)
+        }
+    }
+
+    fn task(id: &str, kind: &str) -> BackgroundTask {
+        BackgroundTask {
+            id: id.into(),
+            kind: kind.into(),
         }
     }
 
@@ -306,7 +329,7 @@ mod tests {
         engine.report(P, &child("a", AgentState::Working, None));
         engine.report(P, &child("b", AgentState::Working, None));
         let started = AgentReport {
-            background: Some(vec!["a".into(), "b".into()]),
+            background: Some(vec![task("a", "subagent"), task("b", "subagent")]),
             ..parent(AgentState::Done, Some("Started two agents"))
         };
         engine.report(P, &started);
@@ -338,7 +361,7 @@ mod tests {
         engine.report(P, &child("c", AgentState::Working, None));
         engine.report(P, &child("c", AgentState::Done, Some("ok")));
         let stop = AgentReport {
-            background: Some(vec!["b".into(), "shell-1".into()]),
+            background: Some(vec![task("b", "subagent"), task("shell-1", "shell")]),
             ..parent(AgentState::Done, Some("Summary"))
         };
         engine.report(P, &stop);
@@ -358,6 +381,40 @@ mod tests {
         assert_eq!(rows(&engine).len(), 3, "a failed turn keeps them too");
         engine.report(P, &parent(AgentState::Unknown, None));
         assert!(engine.subagents(P).is_empty(), "the agent ended");
+    }
+
+    #[test]
+    fn teammates_listed_under_other_ids_are_not_done_early() {
+        let mut engine = StateEngine::default();
+        for id in ["atimer-1", "atimer-2", "atimer-3"] {
+            engine.report(P, &child(id, AgentState::Working, Some("Bash sleep 10")));
+        }
+        let teammates = vec![
+            task("tj1z2y49j", "teammate"),
+            task("tkmaw2byu", "teammate"),
+            task("t2vc88d6r", "teammate"),
+        ];
+        let stop = AgentReport {
+            background: Some(teammates),
+            ..parent(AgentState::Done, Some("All three are running"))
+        };
+        engine.report(P, &stop);
+        assert!(
+            rows(&engine).iter().all(|r| r.1 == AgentState::Working),
+            "still running: {:?}",
+            rows(&engine)
+        );
+        engine.report(
+            P,
+            &child("atimer-1", AgentState::Done, Some("timer-1 done")),
+        );
+        engine.report(P, &stop);
+        let states: Vec<AgentState> = rows(&engine).iter().map(|r| r.1).collect();
+        assert_eq!(
+            states,
+            [AgentState::Done, AgentState::Working, AgentState::Working],
+            "each finishes by its own stop"
+        );
     }
 
     #[test]

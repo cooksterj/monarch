@@ -3,7 +3,7 @@
 use monarch_core::{AgentKind, AgentState, PaneId};
 use serde::{Deserialize, Serialize};
 
-use crate::SubagentReport;
+use crate::{BackgroundTask, SubagentReport};
 
 /// Sent by `monarch hook <agent>`. Hooks are the authoritative signal: a
 /// reported state replaces whatever was guessed.
@@ -37,11 +37,10 @@ pub struct AgentReport {
     /// still the parent's.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub subagent: Option<SubagentReport>,
-    /// At the end of a turn, the ids of the agent's background tasks
-    /// still in flight, whatever their kind (a background sub-agent's
-    /// task id is its `agent_id`); `None` when the hook doesn't say.
+    /// At the end of a turn, the agent's background tasks still in
+    /// flight; `None` when the hook doesn't say.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub background: Option<Vec<String>>,
+    pub background: Option<Vec<BackgroundTask>>,
     /// The user sent a new prompt (not the agent waking itself with a
     /// background task's result): the last turn's finished sub-agents go.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
