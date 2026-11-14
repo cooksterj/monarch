@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use monarch_core::{AgentKind, AgentState, PaneId};
 
-use super::GlyphLook;
+use super::{GlyphLook, SubagentRow};
 
 /// A pane under its project heading.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -31,6 +31,8 @@ pub struct SidebarRow {
     pub focused: bool,
     /// It is in the shown tab; others are drawn dim.
     pub shown: bool,
+    /// The sub-agents inside its agent, listed under it.
+    pub subagents: Vec<SubagentRow>,
 }
 
 #[cfg(test)]
@@ -49,6 +51,7 @@ mod tests {
             age: None,
             focused: true,
             shown: true,
+            subagents: Vec::new(),
         };
         let mut other = row.clone();
         assert_eq!(row, other);

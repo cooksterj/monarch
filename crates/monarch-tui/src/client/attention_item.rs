@@ -35,6 +35,7 @@ mod tests {
             state: AgentState::Blocked,
             activity: None,
             agent: None,
+            subagents: Vec::new(),
         };
         let item = AttentionItem {
             tab: 0,

@@ -106,6 +106,7 @@ mod tests {
                 state: AgentState::Working,
                 activity: Some("Edit a.rs".into()),
                 agent: None,
+                subagents: Vec::new(),
             },
             source: StatusSource::Notification,
             manifest: None,
@@ -113,7 +114,6 @@ mod tests {
             winner: None,
             rules: Vec::new(),
             transitions: Vec::new(),
-            subagents: Vec::new(),
         })));
         insta::assert_snapshot!(draw(&info, 60, 8).join("\n"));
         assert_eq!(AgentInfoView::body_rows(Rect::new(0, 0, 60, 8), 20), 6);

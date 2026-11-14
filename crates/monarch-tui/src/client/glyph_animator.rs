@@ -10,8 +10,9 @@
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
-use monarch_core::{AgentState, PaneId, Theme};
+use monarch_core::{AgentState, Theme};
 
+use super::GlyphKey;
 use crate::GlyphLook;
 
 /// Time between animation frames.
@@ -25,11 +26,12 @@ const SETTLE: Duration = Duration::from_millis(1200);
 /// The working dot, smallest to largest.
 const DOTS: [char; 4] = ['·', '•', '●', '•'];
 
-/// What each shown pane's agent is doing and since when.
+/// What each shown glyph's agent (a pane's, or a sub-agent inside it)
+/// is doing and since when.
 #[derive(Debug, Clone)]
 pub struct GlyphAnimator {
     epoch: Instant,
-    seen: BTreeMap<PaneId, (AgentState, Instant)>,
+    seen: BTreeMap<GlyphKey, (AgentState, Instant)>,
 }
 
 impl GlyphAnimator {
@@ -42,16 +44,20 @@ impl GlyphAnimator {
         }
     }
 
-    /// Records the shown panes' states; a changed state restarts its
-    /// one-off animation, and panes not listed are forgotten.
-    pub fn observe(&mut self, panes: impl IntoIterator<Item = (PaneId, AgentState)>, now: Instant) {
+    /// Records the shown glyphs' states; a changed state restarts its
+    /// one-off animation, and glyphs not listed are forgotten.
+    pub fn observe(
+        &mut self,
+        glyphs: impl IntoIterator<Item = (GlyphKey, AgentState)>,
+        now: Instant,
+    ) {
         let mut seen = BTreeMap::new();
-        for (pane, state) in panes {
-            let since = match self.seen.get(&pane) {
+        for (key, state) in glyphs {
+            let since = match self.seen.get(&key) {
                 Some(&(old, since)) if old == state => since,
                 _ => now,
             };
-            seen.insert(pane, (state, since));
+            seen.insert(key, (state, since));
         }
         self.seen = seen;
     }
@@ -67,17 +73,17 @@ impl GlyphAnimator {
         })
     }
 
-    /// How `pane`'s glyph looks at `now`: in `theme`'s colours (none for
+    /// How `key`'s glyph looks at `now`: in `theme`'s colours (none for
     /// `NO_COLOR`), animated or at rest.
     #[must_use]
     pub fn look(
         &self,
-        pane: PaneId,
+        key: &GlyphKey,
         now: Instant,
         theme: Option<&Theme>,
         animate: bool,
     ) -> GlyphLook {
-        let Some(&(state, since)) = self.seen.get(&pane) else {
+        let Some(&(state, since)) = self.seen.get(key) else {
             return GlyphLook::plain(AgentState::Unknown.glyph());
         };
         let run = now.duration_since(self.epoch);
@@ -156,23 +162,58 @@ fn fraction(elapsed: Duration, total: Duration) -> f32 {
 
 #[cfg(test)]
 mod tests {
+    use monarch_core::PaneId;
+
     use super::*;
 
     fn animator(state: AgentState) -> (GlyphAnimator, Instant) {
         let start = Instant::now();
         let mut animator = GlyphAnimator::new(start);
-        animator.observe([(PaneId(1), state)], start);
+        animator.observe([(PaneId(1).into(), state)], start);
         (animator, start)
     }
 
     fn at(animator: &GlyphAnimator, start: Instant, ms: u64) -> GlyphLook {
         let theme = Theme::dark();
         animator.look(
-            PaneId(1),
+            &PaneId(1).into(),
             start + Duration::from_millis(ms),
             Some(&theme),
             true,
         )
+    }
+
+    #[test]
+    fn a_subagent_keeps_its_own_animation_beside_its_pane() {
+        let start = Instant::now();
+        let mut animator = GlyphAnimator::new(start);
+        let pane = GlyphKey::Pane(PaneId(1));
+        let child = GlyphKey::Subagent(PaneId(1), "a1".into());
+        animator.observe(
+            [
+                (pane.clone(), AgentState::Working),
+                (child.clone(), AgentState::Working),
+            ],
+            start,
+        );
+        let later = start + Duration::from_millis(600);
+        animator.observe(
+            [
+                (pane.clone(), AgentState::Working),
+                (child.clone(), AgentState::Done),
+            ],
+            later,
+        );
+        let theme = Theme::dark();
+        let done = animator.look(&child, later, Some(&theme), true);
+        assert_eq!(done.symbol, AgentState::Done.glyph());
+        assert_eq!(done.color, Some(theme.done_from), "its check starts dim");
+        assert!(animator.moving(later + SETTLE), "still settling");
+        let working = animator.look(&pane, later, Some(&theme), true);
+        assert!(DOTS.contains(&working.symbol), "the parent still pulses");
+        animator.observe([(pane, AgentState::Working)], later);
+        let gone = animator.look(&child, later, Some(&theme), true);
+        assert_eq!(gone.symbol, AgentState::Unknown.glyph(), "forgotten");
     }
 
     #[test]
@@ -217,7 +258,7 @@ mod tests {
             "stops redrawing"
         );
         animator.observe(
-            [(PaneId(1), AgentState::Done)],
+            [(PaneId(1).into(), AgentState::Done)],
             start + Duration::from_secs(5),
         );
         assert!(
@@ -235,21 +276,21 @@ mod tests {
             ('✓', Some(Theme::dark().done_from), false)
         );
         assert!(!animator.moving(start), "nothing to animate");
-        let plain = animator.look(PaneId(1), start, None, true);
+        let plain = animator.look(&PaneId(1).into(), start, None, true);
         assert_eq!(plain, GlyphLook::plain('✓'), "no reverse video");
     }
 
     #[test]
     fn still_and_colourless_modes() {
         let (animator, start) = animator(AgentState::Working);
-        let still = animator.look(PaneId(1), start, Some(&Theme::dark()), false);
+        let still = animator.look(&PaneId(1).into(), start, Some(&Theme::dark()), false);
         assert_eq!(
             (still.symbol, still.color),
             ('●', Some(Theme::dark().working))
         );
-        let plain = animator.look(PaneId(1), start, None, true);
+        let plain = animator.look(&PaneId(1).into(), start, None, true);
         assert_eq!((plain.symbol, plain.color), ('·', None));
-        let error = animator.look(PaneId(9), start, None, true);
+        let error = animator.look(&PaneId(9).into(), start, None, true);
         assert_eq!(error, GlyphLook::plain('$'), "unknown panes are shells");
         let (idle, _) = self::animator(AgentState::Idle);
         assert!(!idle.moving(start), "idle panes never redraw");

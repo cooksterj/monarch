@@ -3,6 +3,8 @@
 use monarch_core::{AgentKind, AgentState};
 use serde::{Deserialize, Serialize};
 
+use crate::SubagentStatus;
+
 /// A pane's agent state and its one-line activity (`Edit src/main.rs`,
 /// the first line of the last answer). Plain shells are `Unknown` with no
 /// activity.
@@ -15,6 +17,10 @@ pub struct AgentStatus {
     /// Which agent it is, once it has reported or Monarch launched it;
     /// panes are labelled by it.
     pub agent: Option<AgentKind>,
+    /// The sub-agents inside it, oldest first; the sidebar lists them
+    /// under its row.
+    #[serde(default)]
+    pub subagents: Vec<SubagentStatus>,
 }
 
 impl AgentStatus {

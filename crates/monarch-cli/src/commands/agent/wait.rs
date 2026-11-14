@@ -150,6 +150,7 @@ mod tests {
             state: AgentState::Blocked,
             activity: Some("Allow Bash: rm?".into()),
             agent: None,
+            subagents: Vec::new(),
         };
         assert_eq!(
             line(PaneId(3), AgentState::Blocked, &status),

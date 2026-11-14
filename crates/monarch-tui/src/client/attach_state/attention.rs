@@ -138,6 +138,7 @@ mod tests {
                 state: *s,
                 activity: None,
                 agent: Some(AgentKind::Codex),
+                subagents: Vec::new(),
             };
             let msg = ServerMsg::Agent {
                 pane: PaneId(*id),

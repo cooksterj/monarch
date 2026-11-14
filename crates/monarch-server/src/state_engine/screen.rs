@@ -39,6 +39,7 @@ impl StateEngine {
                 .then(|| current.activity.clone())
                 .flatten(),
             agent: agent.or(current.agent),
+            subagents: Vec::new(),
         };
         self.guessed.insert(pane);
         self.screened.insert(pane);

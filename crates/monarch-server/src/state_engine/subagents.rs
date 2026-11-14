@@ -20,25 +20,17 @@ impl StateEngine {
     /// The sub-agents of `pane`'s agent, oldest first.
     #[must_use]
     pub fn subagents(&self, pane: PaneId) -> &[SubagentStatus] {
-        self.subagents.get(&pane).map_or(&[], Vec::as_slice)
+        self.panes
+            .get(&pane)
+            .map_or(&[], |s| s.subagents.as_slice())
     }
 
-    /// Applies what `report` says about `pane`'s sub-agents, before the
-    /// parent's own state.
-    pub(super) fn note_subagents(&mut self, pane: PaneId, report: &AgentReport) {
-        match &report.subagent {
-            Some(sub) => self.apply_subagent(pane, sub),
-            None => self.parent_moved(pane, report),
-        }
-        if self.subagents.get(&pane).is_some_and(Vec::is_empty) {
-            self.subagents.remove(&pane);
-        }
-    }
-
-    /// A pane whose agent is working while a sub-agent waits on the user
-    /// is still Blocked, on that sub-agent's question; when the wait ends
-    /// the parent's line from before it is back, unless the report brings
-    /// a new one.
+    /// Applies `report` to the sub-agents in `next` (the pane's coming
+    /// status): one of them reported, or the parent did for itself. A
+    /// pane whose agent is working while a sub-agent waits on the user is
+    /// then still Blocked, on that sub-agent's question; when the wait
+    /// ends the parent's line from before it is back, unless the report
+    /// brings a new one.
     pub(super) fn fuse_subagents(
         &mut self,
         pane: PaneId,
@@ -46,13 +38,23 @@ impl StateEngine {
         next: &mut AgentStatus,
     ) {
         let asking = match &report.subagent {
-            Some(sub) if matches!(next.state, AgentState::Working | AgentState::Blocked) => self
-                .subagents(pane)
-                .iter()
-                .filter(|c| c.state == AgentState::Blocked)
-                .max_by_key(|c| c.id == sub.id)
-                .map(SubagentStatus::asking),
-            _ => None,
+            Some(sub) => {
+                apply(&mut next.subagents, sub);
+                next.subagents
+                    .iter()
+                    .filter(|c| c.state == AgentState::Blocked)
+                    .max_by_key(|c| c.id == sub.id)
+                    .filter(|_| matches!(next.state, AgentState::Working | AgentState::Blocked))
+                    .map(SubagentStatus::asking)
+            }
+            None if next.state == AgentState::Blocked => {
+                self.line_before_asking.remove(&pane);
+                return;
+            }
+            None => {
+                parent_moved(&mut next.subagents, report);
+                None
+            }
         };
         if let Some(line) = asking {
             self.line_before_asking
@@ -66,59 +68,56 @@ impl StateEngine {
             next.activity = line;
         }
     }
+}
 
-    fn apply_subagent(&mut self, pane: PaneId, sub: &SubagentReport) {
-        let children = self.subagents.entry(pane).or_default();
-        if let Some(child) = children.iter_mut().find(|c| c.id == sub.id) {
-            update(child, sub);
-            return;
-        }
-        // Claude runs agents of its own (prompt suggestions, `/btw`)
-        // that only ever report finishing: they are not the user's.
-        if sub
-            .state
-            .is_some_and(|s| s != AgentState::Working && s != AgentState::Blocked)
-        {
-            return;
-        }
-        if children.len() >= Self::MAX_SUBAGENTS {
-            match children.iter().position(|c| c.state == AgentState::Done) {
-                Some(i) => drop(children.remove(i)),
-                None => return,
-            }
-        }
-        let mut child = SubagentStatus {
-            id: sub.id.clone(),
-            kind: String::new(),
-            state: AgentState::Working,
-            activity: None,
-        };
-        update(&mut child, sub);
-        children.push(child);
+/// One sub-agent reported: update its row, or add one.
+fn apply(children: &mut Vec<SubagentStatus>, sub: &SubagentReport) {
+    if let Some(child) = children.iter_mut().find(|c| c.id == sub.id) {
+        update(child, sub);
+        return;
     }
+    // Claude runs agents of its own (prompt suggestions, `/btw`) that
+    // only ever report finishing: they are not the user's.
+    if sub
+        .state
+        .is_some_and(|s| s != AgentState::Working && s != AgentState::Blocked)
+    {
+        return;
+    }
+    if children.len() >= StateEngine::MAX_SUBAGENTS {
+        match children.iter().position(|c| c.state == AgentState::Done) {
+            Some(i) => drop(children.remove(i)),
+            None => return,
+        }
+    }
+    let mut child = SubagentStatus {
+        id: sub.id.clone(),
+        kind: String::new(),
+        state: AgentState::Working,
+        activity: None,
+    };
+    update(&mut child, sub);
+    children.push(child);
+}
 
-    /// The parent reported for itself: no sub-agent is still waiting on
-    /// the user (the parent can't move while one is), and a turn's end
-    /// or the agent's ends drop rows.
-    fn parent_moved(&mut self, pane: PaneId, report: &AgentReport) {
-        let Some(children) = self.subagents.get_mut(&pane) else {
-            return;
-        };
-        if report.state == Some(AgentState::Blocked) {
-            return;
-        }
-        for child in children
-            .iter_mut()
-            .filter(|c| c.state == AgentState::Blocked)
-        {
-            child.state = AgentState::Working;
-        }
-        match report.state {
-            Some(AgentState::Done) if report.subagents_running == Some(0) => children.clear(),
-            Some(AgentState::Done) => children.retain(|c| c.state != AgentState::Done),
-            Some(AgentState::Idle | AgentState::Error | AgentState::Unknown) => children.clear(),
-            _ => {}
-        }
+/// The parent reported for itself: no sub-agent is still waiting on the
+/// user (the parent can't move while one is), and a turn's end or the
+/// agent's drop rows.
+fn parent_moved(children: &mut Vec<SubagentStatus>, report: &AgentReport) {
+    if report.state == Some(AgentState::Blocked) {
+        return;
+    }
+    for child in children
+        .iter_mut()
+        .filter(|c| c.state == AgentState::Blocked)
+    {
+        child.state = AgentState::Working;
+    }
+    match report.state {
+        Some(AgentState::Done) if report.subagents_running == Some(0) => children.clear(),
+        Some(AgentState::Done) => children.retain(|c| c.state != AgentState::Done),
+        Some(AgentState::Idle | AgentState::Error | AgentState::Unknown) => children.clear(),
+        _ => {}
     }
 }
 
@@ -209,7 +208,11 @@ mod tests {
             (AgentState::Blocked, Some("kind-b: Allow Bash ls?"))
         );
         let sibling = engine.report(P, &child("a", AgentState::Working, Some("Read a.rs")));
-        assert_eq!(sibling, None, "still blocked on b");
+        assert_eq!(
+            sibling.map(|s| (s.state, s.subagents[0].activity.clone())),
+            Some((AgentState::Blocked, Some("Read a.rs".into()))),
+            "the sibling's line is published, still blocked on b"
+        );
         engine.report(P, &child("b", AgentState::Working, None));
         assert_eq!(engine.status(P).state, AgentState::Working, "answered");
     }

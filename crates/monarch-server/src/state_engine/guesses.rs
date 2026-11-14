@@ -37,6 +37,7 @@ impl StateEngine {
                 None => current.activity.clone(),
             },
             agent,
+            subagents: Vec::new(),
         };
         self.guessed.insert(pane);
         self.replace(pane, &current, next)
@@ -61,6 +62,7 @@ impl StateEngine {
                 state: AgentState::Idle,
                 activity: None,
                 agent: current.agent,
+                subagents: Vec::new(),
             }
         } else {
             self.guessed.remove(&pane);
