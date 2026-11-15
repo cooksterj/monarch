@@ -13,6 +13,9 @@ pub struct SubagentStatus {
     pub id: String,
     /// What kind it is (`Explore`); empty when its hooks never said.
     pub kind: String,
+    /// What its task is called (`Audit the auth module`), when the
+    /// parent's Agent tool said.
+    pub label: Option<String>,
     /// Working, Blocked or Done.
     pub state: AgentState,
     /// What it is doing or last said, one line.
@@ -20,22 +23,24 @@ pub struct SubagentStatus {
 }
 
 impl SubagentStatus {
-    /// What it is called where it is shown: its kind, else `subagent`.
+    /// What it is called where it is shown: its task, else its kind,
+    /// else `subagent`.
     #[must_use]
     pub fn label(&self) -> &str {
-        if self.kind.is_empty() {
-            "subagent"
-        } else {
-            &self.kind
+        match self.label.as_deref().filter(|l| !l.is_empty()) {
+            Some(label) => label,
+            None if self.kind.is_empty() => "subagent",
+            None => &self.kind,
         }
     }
 
-    /// Its parent's activity line while it waits on the user:
-    /// `Explore: Allow Bash cargo test?`.
+    /// Its parent's activity line while it waits on the user: the
+    /// question first, since a narrow sidebar keeps only the start
+    /// (`Allow Bash cargo test? · Explore`).
     #[must_use]
     pub fn asking(&self) -> Option<String> {
         let line = match &self.activity {
-            Some(activity) => format!("{}: {activity}", self.label()),
+            Some(activity) => format!("{activity} · {}", self.label()),
             None => format!("{} needs you", self.label()),
         };
         AgentStatus::activity_line(&line)
@@ -50,22 +55,33 @@ mod tests {
         SubagentStatus {
             id: "a1".into(),
             kind: kind.into(),
+            label: None,
             state: AgentState::Blocked,
             activity: activity.map(Into::into),
         }
     }
 
     #[test]
-    fn it_is_named_by_its_kind_or_generically() {
+    fn it_is_named_by_its_task_its_kind_or_generically() {
         assert_eq!(sub("Explore", None).label(), "Explore");
         assert_eq!(sub("", None).label(), "subagent");
+        let named = SubagentStatus {
+            label: Some("Audit auth".into()),
+            ..sub("Explore", None)
+        };
+        assert_eq!(named.label(), "Audit auth");
+        let blank = SubagentStatus {
+            label: Some(String::new()),
+            ..sub("Explore", None)
+        };
+        assert_eq!(blank.label(), "Explore", "an empty task name is no name");
     }
 
     #[test]
     fn its_question_names_it_and_is_one_short_line() {
         assert_eq!(
             sub("Plan", Some("Allow Bash ls?")).asking().as_deref(),
-            Some("Plan: Allow Bash ls?")
+            Some("Allow Bash ls? · Plan")
         );
         assert_eq!(
             sub("", None).asking().as_deref(),

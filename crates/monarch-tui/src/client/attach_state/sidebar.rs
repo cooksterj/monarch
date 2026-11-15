@@ -438,12 +438,13 @@ mod tests {
         let child = monarch_proto::SubagentStatus {
             id: "a1".into(),
             kind: "Explore".into(),
+            label: None,
             state: AgentState::Blocked,
             activity: Some("Allow Bash ls?".into()),
         };
         let status = AgentStatus {
             state: AgentState::Blocked,
-            activity: Some("Explore: Allow Bash ls?".into()),
+            activity: Some("Allow Bash ls? · Explore".into()),
             agent: Some(monarch_core::AgentKind::Claude),
             subagents: vec![child],
         };

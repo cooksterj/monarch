@@ -13,6 +13,11 @@ pub struct SubagentReport {
     /// What kind it is (`Explore`, `general-purpose`, `my-plugin:reviewer`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub kind: Option<String>,
+    /// What its task is called (the Agent tool's `description`): names
+    /// its row, and is the only thing a report carrying it changes on a
+    /// row that already exists.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
     /// Its new state; `None` leaves it as it was.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub state: Option<AgentState>,
@@ -30,6 +35,7 @@ mod tests {
         let report = SubagentReport {
             id: "a1".into(),
             kind: Some("Explore".into()),
+            label: None,
             state: Some(AgentState::Working),
             activity: None,
         };

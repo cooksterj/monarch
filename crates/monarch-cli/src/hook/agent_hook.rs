@@ -47,6 +47,7 @@ impl<'a> AgentHook<'a> {
         Some(AgentReport {
             state: Some(state),
             activity,
+            subagent: self.launched(),
             background: self.background(),
             user_prompt: self.field("hook_event_name") == Some("UserPromptSubmit")
                 && self.injected().is_none(),
@@ -112,10 +113,38 @@ impl<'a> AgentHook<'a> {
             subagent: Some(SubagentReport {
                 id: id.to_owned(),
                 kind: text("agent_type"),
+                label: None,
                 state: Some(state),
                 activity,
             }),
             ..base
+        })
+    }
+
+    /// The sub-agent the parent's Agent tool just started or ran, named
+    /// by its task: `PostToolUse` returns its `agentId` and the
+    /// `description` it was given. A background launch is running; a
+    /// foreground one has finished by then, so its report only names it.
+    fn launched(&self) -> Option<SubagentReport> {
+        if self.field("hook_event_name") != Some("PostToolUse")
+            || self.field("tool_name") != Some("Agent")
+        {
+            return None;
+        }
+        let text = |v: Option<&Value>, key: &str| {
+            let found = v?.get(key)?.as_str()?.trim();
+            (!found.is_empty()).then(|| found.to_owned())
+        };
+        let response = self.input.get("tool_response");
+        let label = text(response, "description")
+            .or_else(|| text(self.input.get("tool_input"), "description"))?;
+        let running = text(response, "status").as_deref() == Some("async_launched");
+        Some(SubagentReport {
+            id: text(response, "agentId")?,
+            kind: None,
+            label: Some(label),
+            state: running.then_some(AgentState::Working),
+            activity: None,
         })
     }
 
@@ -406,6 +435,40 @@ mod tests {
         assert!(quoted.user_prompt, "only a prompt that starts with it");
         let tool = child(&json!({"hook_event_name": "PreToolUse", "tool_name": "Read"}));
         assert!(!tool.user_prompt, "only prompts count");
+    }
+
+    #[test]
+    fn the_agent_tool_names_the_sub_agent_it_started() {
+        let launched = |status: &str| {
+            json!({
+                "hook_event_name": "PostToolUse", "tool_name": "Agent",
+                "tool_input": {"description": "Timer agent 1", "name": "timer-1"},
+                "tool_response": {"status": status, "agentId": "a024", "description": "Timer agent 1"}
+            })
+        };
+        let report = child(&launched("async_launched"));
+        assert_eq!(
+            report.state,
+            Some(AgentState::Working),
+            "the parent's own state"
+        );
+        assert_eq!(report.activity, None);
+        let sub = report.subagent.expect("names the sub-agent");
+        assert_eq!(
+            (sub.id.as_str(), sub.label.as_deref(), sub.state),
+            ("a024", Some("Timer agent 1"), Some(AgentState::Working))
+        );
+        let ran = child(&launched("completed")).subagent.expect("names it");
+        assert_eq!(ran.state, None, "a foreground agent has already finished");
+        let other = json!({"hook_event_name": "PostToolUse", "tool_name": "Bash",
+            "tool_response": {"agentId": "x", "description": "y"}});
+        assert_eq!(child(&other).subagent, None, "only the Agent tool");
+        let nameless = json!({"hook_event_name": "PostToolUse", "tool_name": "Agent",
+            "tool_response": {"status": "async_launched", "agentId": "a1"}});
+        assert_eq!(child(&nameless).subagent, None, "nothing to name it by");
+        let started = json!({"hook_event_name": "PreToolUse", "tool_name": "Agent",
+            "tool_input": {"description": "Timer agent 1"}});
+        assert_eq!(child(&started).subagent, None, "no id until it returns");
     }
 
     /// Every hook event Claude Code has (its settings schema, 2026-11).
