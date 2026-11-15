@@ -13,13 +13,17 @@ pub enum HookCommand {
     Codex,
 }
 
-/// The Claude Code events whose hooks report state.
+/// The Claude Code events whose hooks report state. `SubagentStart` and
+/// `SubagentStop` are the only events that say when a sub-agent starts and
+/// finishes; without them its row never leaves Working.
 const CLAUDE_EVENTS: &[&str] = &[
     "SessionStart",
     "UserPromptSubmit",
     "PreToolUse",
     "PostToolUse",
     "Notification",
+    "SubagentStart",
+    "SubagentStop",
     "Stop",
     "StopFailure",
     "SessionEnd",
@@ -129,6 +133,7 @@ mod tests {
         assert_eq!(HookCommand::Codex.timeout("SessionEnd"), 3);
         assert_eq!(HookCommand::Claude.timeout("SessionEnd"), 5);
         assert!(HookCommand::Claude.events().contains(&"StopFailure"));
+        assert!(HookCommand::Claude.events().contains(&"SubagentStop"));
         assert!(!HookCommand::Codex.events().contains(&"StopFailure"));
     }
 }
