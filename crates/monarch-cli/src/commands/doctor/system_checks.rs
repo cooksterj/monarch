@@ -121,8 +121,21 @@ pub(super) fn colour(env: &DoctorEnv) -> Vec<Finding> {
     found
 }
 
-/// Running sessions.
+/// Running sessions, and any still on the build before this one: their
+/// panes' hooks run this binary, which may report what they can't read.
 pub(super) fn sessions(env: &DoctorEnv) -> Finding {
+    if !env.outdated.is_empty() {
+        let names = env.outdated.join(", ");
+        return Finding::new(
+            Status::Warn,
+            "sessions",
+            format!("{names} started before this monarch was installed and run the old build"),
+        )
+        .fix(format!(
+            "to use the new build, end and restart them (their panes close): monarch kill {}",
+            env.outdated[0]
+        ));
+    }
     match env.sessions.len() {
         0 => Finding::new(
             Status::Note,
@@ -160,6 +173,7 @@ mod tests {
             path: Vec::new(),
             git: None,
             sessions: Vec::new(),
+            outdated: Vec::new(),
         }
     }
 
@@ -200,9 +214,17 @@ mod tests {
         };
         assert_eq!(binary(&on_path, Path::new("/x/monarch")).status, Status::Ok);
         let running = DoctorEnv {
-            sessions: vec!["main".into()],
+            sessions: vec!["main".into(), "work".into()],
             ..e
         };
-        assert_eq!(sessions(&running).text, "1 running: main");
+        assert_eq!(sessions(&running).text, "2 running: main, work");
+        let old = DoctorEnv {
+            outdated: vec!["work".into()],
+            ..running
+        };
+        let warned = sessions(&old);
+        assert_eq!(warned.status, Status::Warn);
+        assert!(warned.text.starts_with("work started before"));
+        assert!(warned.fix.is_some_and(|f| f.ends_with("monarch kill work")));
     }
 }

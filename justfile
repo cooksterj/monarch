@@ -23,9 +23,16 @@ lint-size:
 deny:
     cargo deny check
 
-# Install the local build onto PATH.
+# Install the local build onto PATH, then point the agents' hooks at it
+# (`monarch setup`, which also adds any hook events this build reads) and
+# say which running sessions still run the old build (`monarch doctor`).
 install:
+    #!/usr/bin/env bash
+    set -euo pipefail
     cargo install --path . --locked
+    bin="${CARGO_INSTALL_ROOT:-${CARGO_HOME:-$HOME/.cargo}}/bin/monarch"
+    "$bin" setup
+    "$bin" doctor || true
 
 # Headless PTY harnesses for the M1 spike prototype (fidelity checks).
 smoke:

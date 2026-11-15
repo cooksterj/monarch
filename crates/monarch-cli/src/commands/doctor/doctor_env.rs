@@ -4,7 +4,9 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::process::Command;
+use std::time::SystemTime;
 
+use monarch_server::SocketPath;
 use monarch_tui::SessionLister;
 
 use super::super::ls::SocketSessions;
@@ -32,6 +34,9 @@ pub(crate) struct DoctorEnv {
     pub git: Option<String>,
     /// Running sessions' names.
     pub sessions: Vec<String>,
+    /// The running sessions whose server started before this binary was
+    /// installed, so they still run the build before it.
+    pub outdated: Vec<String>,
 }
 
 impl DoctorEnv {
@@ -51,12 +56,16 @@ impl DoctorEnv {
             .ok()
             .filter(|o| o.status.success())
             .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_owned());
+        let sessions: Vec<String> = SocketSessions.list().into_iter().map(|s| s.name).collect();
+        let installed = std::env::current_exe().and_then(|p| p.metadata()?.modified());
+        let outdated = installed.map_or_else(|_| Vec::new(), |at| older(&sessions, at));
         Self {
             setup: SetupEnv::from_env(),
             vars,
             path,
             git,
-            sessions: SocketSessions.list().into_iter().map(|s| s.name).collect(),
+            sessions,
+            outdated,
         }
     }
 
@@ -75,6 +84,18 @@ impl DoctorEnv {
             .map(|d| d.join(program))
             .find(|p| p.is_file())
     }
+}
+
+/// Which of `sessions` had their socket made before `installed`: a server
+/// makes its socket when it starts, and never touches it again.
+fn older(sessions: &[String], installed: SystemTime) -> Vec<String> {
+    let started = |socket: &std::path::Path| socket.metadata().and_then(|m| m.modified()).ok();
+    SocketPath::all()
+        .iter()
+        .filter(|socket| started(socket).is_some_and(|at| at < installed))
+        .filter_map(|socket| Some(socket.file_stem()?.to_string_lossy().into_owned()))
+        .filter(|name| sessions.contains(name))
+        .collect()
 }
 
 #[cfg(test)]
@@ -98,6 +119,7 @@ mod tests {
             path: vec![a.path().into(), b.path().into()],
             git: None,
             sessions: Vec::new(),
+            outdated: Vec::new(),
         };
         assert_eq!(env.which("claude"), Some(b.path().join("claude")));
         assert_eq!(env.which("codex"), None);

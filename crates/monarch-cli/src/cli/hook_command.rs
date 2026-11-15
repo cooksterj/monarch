@@ -13,14 +13,19 @@ pub enum HookCommand {
     Codex,
 }
 
-/// The Claude Code events whose hooks report state. `SubagentStart` and
-/// `SubagentStop` are the only events that say when a sub-agent starts and
-/// finishes; without them its row never leaves Working.
+/// The Claude Code events whose hooks report state: every event
+/// `monarch hook claude` reads (a test holds the two lists together).
+/// `SubagentStart` and `SubagentStop` are the only events that say when a
+/// sub-agent starts and finishes; without them its row never leaves
+/// Working.
 const CLAUDE_EVENTS: &[&str] = &[
     "SessionStart",
     "UserPromptSubmit",
     "PreToolUse",
     "PostToolUse",
+    "PostToolUseFailure",
+    "PermissionRequest",
+    "PreCompact",
     "Notification",
     "SubagentStart",
     "SubagentStop",
