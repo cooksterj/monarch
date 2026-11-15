@@ -12,6 +12,7 @@ use ratatui::widgets::Widget;
 
 use monarch_core::AgentState;
 
+use super::fit_text::fit_text;
 use super::{Chrome, GlyphLook, SidebarGroup, SidebarRow, SubagentRow};
 
 /// Columns pane rows sit in from their heading.
@@ -165,7 +166,7 @@ fn heading(group: &SidebarGroup, chrome: Chrome<'_>, row: Rect, buf: &mut Buffer
     let mut gap = 2;
     if let Some(detail) = group.detail.as_deref().filter(|_| detail_room > 2) {
         let dim = Style::new().add_modifier(Modifier::DIM);
-        let detail = shorten(detail, usize::from(detail_room - 2));
+        let detail = fit_text(detail, usize::from(detail_room - 2));
         (x, _) = buf.set_stringn(x + 2, row.y, &detail, usize::MAX, dim);
         gap = 1;
     }
@@ -185,15 +186,6 @@ fn draw_badge(status: &CheckoutStatus, chrome: Chrome<'_>, area: Rect, buf: &mut
         let left = usize::from(area.right().saturating_sub(x));
         (x, _) = buf.set_stringn(x, area.y, &text, left, chrome.badge(part));
     }
-}
-
-/// `text` cut to `max` characters, ending in `…` when cut.
-fn shorten(text: &str, max: usize) -> String {
-    if text.chars().count() <= max {
-        return text.to_owned();
-    }
-    let kept: String = text.chars().take(max.saturating_sub(1)).collect();
-    format!("{kept}…")
 }
 
 /// `▸ ● ✻ label  detail  3m`: the focus marker, the state's glyph, the
@@ -235,7 +227,8 @@ fn pane_line(pane: &SidebarRow, row: Rect, (icons, chrome): (bool, Chrome<'_>), 
     }
     let left = usize::from(end.saturating_sub(x));
     if let Some(detail) = pane.detail.as_deref().filter(|_| left > gap) {
-        buf.set_stringn(x + 2, row.y, detail, left - gap, dim);
+        let detail = fit_text(detail, left - gap);
+        buf.set_stringn(x + 2, row.y, &detail, left - gap, dim);
     }
 }
 
@@ -302,8 +295,8 @@ mod tests {
         let (text, _) = draw(&groups, 16, 6);
         assert!(!text.contains("3m"), "no room for the age: {text}");
         assert!(
-            text.contains("    $ 2 htop  t"),
-            "the detail as before: {text}"
+            text.contains("    $ 2 htop   │"),
+            "no room for any of the detail: {text}"
         );
     }
 

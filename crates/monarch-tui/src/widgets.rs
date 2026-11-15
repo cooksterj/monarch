@@ -3,6 +3,7 @@
 mod agent_info_view;
 mod chrome;
 mod context_menu_view;
+mod fit_text;
 mod glyph_look;
 mod help_line;
 mod help_view;

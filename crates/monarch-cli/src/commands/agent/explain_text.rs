@@ -307,6 +307,7 @@ mod tests {
         let child = |kind: &str, state, activity: Option<&str>| SubagentStatus {
             id: kind.into(),
             kind: kind.into(),
+            label: None,
             state,
             activity: activity.map(Into::into),
         };

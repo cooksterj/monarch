@@ -2,8 +2,9 @@
 //!
 //! A sub-agent has no pane: its hooks fire in its parent's, naming it by
 //! `agent_id`. While one waits on the user the pane is Blocked and its
-//! line says which (`Explore: Allow Bash ls?`), even as its siblings keep
-//! working; once nobody waits, the parent's own line comes back.
+//! line says what it asks, then who (`Allow Bash ls? · Explore`), even as
+//! its siblings keep working; once nobody waits, the parent's own line
+//! comes back.
 //!
 //! Rows stay after the parent's turn ends, so the user can see what was
 //! done, and go when the user sends the next prompt (not when the agent
@@ -77,17 +78,24 @@ impl StateEngine {
     }
 }
 
-/// One sub-agent reported: update its row, or add one.
+/// One sub-agent reported: update its row, or add one. A report naming
+/// its task (the parent's Agent tool returning) only names a row that
+/// exists: it can come after the sub-agent's own events, even after it
+/// finished, and must not set it running again.
 fn apply(children: &mut Vec<SubagentStatus>, sub: &SubagentReport) {
     if let Some(child) = children.iter_mut().find(|c| c.id == sub.id) {
-        update(child, sub);
+        match &sub.label {
+            Some(label) => child.label = Some(label.clone()),
+            None => update(child, sub),
+        }
         return;
     }
     // Claude runs agents of its own (prompt suggestions, `/btw`) that
-    // only ever report finishing: they are not the user's.
-    if sub
+    // only ever report finishing: they are not the user's. Only a
+    // sub-agent seen running or waiting gets a row.
+    if !sub
         .state
-        .is_some_and(|s| s != AgentState::Working && s != AgentState::Blocked)
+        .is_some_and(|s| matches!(s, AgentState::Working | AgentState::Blocked))
     {
         return;
     }
@@ -100,6 +108,7 @@ fn apply(children: &mut Vec<SubagentStatus>, sub: &SubagentReport) {
     let mut child = SubagentStatus {
         id: sub.id.clone(),
         kind: String::new(),
+        label: sub.label.clone(),
         state: AgentState::Working,
         activity: None,
     };
@@ -193,8 +202,26 @@ mod tests {
             subagent: Some(SubagentReport {
                 id: id.into(),
                 kind: Some(format!("kind-{id}")),
+                label: None,
                 state: Some(state),
                 activity: activity.map(Into::into),
+            }),
+            ..AgentReport::new(P, AgentKind::Claude)
+        }
+    }
+
+    /// What the hook sends when the parent's Agent tool returns: the
+    /// sub-agent's id and task, running when it was launched in the
+    /// background.
+    fn named(id: &str, label: &str, running: bool) -> AgentReport {
+        AgentReport {
+            state: Some(AgentState::Working),
+            subagent: Some(SubagentReport {
+                id: id.into(),
+                kind: None,
+                label: Some(label.into()),
+                state: running.then_some(AgentState::Working),
+                activity: None,
             }),
             ..AgentReport::new(P, AgentKind::Claude)
         }
@@ -244,7 +271,7 @@ mod tests {
         let blocked = engine.status(P);
         assert_eq!(
             (blocked.state, blocked.activity.as_deref()),
-            (AgentState::Blocked, Some("kind-b: Allow Bash ls?"))
+            (AgentState::Blocked, Some("Allow Bash ls? · kind-b"))
         );
         let sibling = engine.report(P, &child("a", AgentState::Working, Some("Read a.rs")));
         assert_eq!(
@@ -264,7 +291,7 @@ mod tests {
         engine.report(P, &child("b", AgentState::Blocked, Some("Allow Edit?")));
         engine.report(P, &child("b", AgentState::Working, Some("Edit a.rs")));
         let still = engine.status(P);
-        assert_eq!(still.activity.as_deref(), Some("kind-a: Allow Bash ls?"));
+        assert_eq!(still.activity.as_deref(), Some("Allow Bash ls? · kind-a"));
         engine.report(P, &child("a", AgentState::Working, Some("Bash ls")));
         let back = engine.status(P);
         assert_eq!(
@@ -437,5 +464,45 @@ mod tests {
         );
         engine.forget(P);
         assert!(engine.subagents(P).is_empty());
+    }
+
+    #[test]
+    fn rows_are_named_by_their_task_whatever_order_events_come_in() {
+        let mut engine = StateEngine::default();
+        engine.report(P, &child("a", AgentState::Working, Some("")));
+        engine.report(P, &named("a", "Audit auth", true));
+        engine.report(P, &named("b", "Fix flaky test", true));
+        engine.report(P, &child("b", AgentState::Working, Some("Bash cargo test")));
+        let labels: Vec<_> = engine
+            .subagents(P)
+            .iter()
+            .map(SubagentStatus::label)
+            .collect();
+        assert_eq!(
+            labels,
+            ["Audit auth", "Fix flaky test"],
+            "before or after its start"
+        );
+        engine.report(P, &child("c", AgentState::Working, None));
+        engine.report(P, &child("c", AgentState::Done, Some("Found 3")));
+        engine.report(P, &named("c", "Find TODOs", false));
+        let c = &engine.subagents(P)[2];
+        assert_eq!(
+            (c.label(), c.state),
+            ("Find TODOs", AgentState::Done),
+            "not revived"
+        );
+        engine.report(P, &named("c", "Find TODOs", true));
+        assert_eq!(
+            engine.subagents(P)[2].state,
+            AgentState::Done,
+            "a late launch neither"
+        );
+        engine.report(P, &named("z", "Gone already", false));
+        assert_eq!(
+            engine.subagents(P).len(),
+            3,
+            "a finished unknown gets no row"
+        );
     }
 }

@@ -7,6 +7,7 @@ use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 
 use super::GlyphLook;
+use super::fit_text::fit_text;
 use super::sidebar::paint_glyph;
 
 /// A sub-agent inside a pane's agent: `├ ● Explore  Grep TODO`, its
@@ -45,7 +46,8 @@ impl SubagentRow {
     pub(crate) fn draw(&self, last: bool, shown: bool, row: Rect, buf: &mut Buffer) {
         let branch = if last { '└' } else { '├' };
         let glyph = self.look.map_or(self.state.glyph(), |l| l.symbol);
-        let text = format!("  {branch} {glyph} {}", self.label);
+        let room = usize::from(row.width.saturating_sub(6));
+        let text = format!("  {branch} {glyph} {}", fit_text(&self.label, room));
         let base = if shown {
             Style::new()
         } else {
@@ -60,7 +62,8 @@ impl SubagentRow {
         }
         let left = usize::from(row.right().saturating_sub(x));
         if let Some(detail) = self.detail.as_deref().filter(|_| left > 2) {
-            buf.set_stringn(x + 2, row.y, detail, left - 2, dim);
+            let detail = fit_text(detail, left - 2);
+            buf.set_stringn(x + 2, row.y, &detail, left - 2, dim);
         }
     }
 }
@@ -106,6 +109,7 @@ mod tests {
         let status = SubagentStatus {
             id: "a9".into(),
             kind: String::new(),
+            label: None,
             state: AgentState::Working,
             activity: Some("Read a.rs".into()),
         };
@@ -120,7 +124,27 @@ mod tests {
     #[test]
     fn a_narrow_sidebar_cuts_it_short() {
         let (text, _) = drawn(&child(AgentState::Done, Some("Found 3")), true, 9);
-        assert_eq!(text, "  └ ✓ Exp");
+        assert_eq!(text, "  └ ✓ Ex…", "cut, and says so");
+        let (wide, _) = drawn(
+            &child(AgentState::Done, Some("Found 4 call sites")),
+            true,
+            34,
+        );
+        assert_eq!(
+            wide.trim_end(),
+            "  └ ✓ Explore  Found 4 call sites",
+            "no … once it fits"
+        );
+        let (mid, _) = drawn(
+            &child(AgentState::Done, Some("Found 4 call sites")),
+            true,
+            24,
+        );
+        assert_eq!(
+            mid.trim_end(),
+            "  └ ✓ Explore  Found 4…",
+            "cut between words"
+        );
         let (tiny, _) = drawn(&child(AgentState::Done, None), true, 3);
         assert_eq!(tiny, "  └", "the glyph needs more room");
     }

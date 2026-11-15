@@ -16,6 +16,7 @@ name = "monarch_tui"
 monarch-core.workspace = true
 monarch-proto.workspace = true
 ratatui.workspace = true
+unicode-width.workspace = true
 crossterm.workspace = true
 memchr.workspace = true
 base64.workspace = true
