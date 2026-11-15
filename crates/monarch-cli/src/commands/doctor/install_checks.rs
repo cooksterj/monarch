@@ -146,6 +146,7 @@ mod tests {
             path: Vec::new(),
             git: None,
             sessions: Vec::new(),
+            outdated: Vec::new(),
         }
     }
 

@@ -407,4 +407,66 @@ mod tests {
         let tool = child(&json!({"hook_event_name": "PreToolUse", "tool_name": "Read"}));
         assert!(!tool.user_prompt, "only prompts count");
     }
+
+    /// Every hook event Claude Code has (its settings schema, 2026-11).
+    const CLAUDE_HOOK_EVENTS: &[&str] = &[
+        "PreToolUse",
+        "PostToolUse",
+        "PostToolUseFailure",
+        "PostToolBatch",
+        "Notification",
+        "UserPromptSubmit",
+        "UserPromptExpansion",
+        "SessionStart",
+        "SessionEnd",
+        "Stop",
+        "StopFailure",
+        "SubagentStart",
+        "SubagentStop",
+        "PreCompact",
+        "PostCompact",
+        "PreModelSwitch",
+        "PostModelSwitch",
+        "PermissionRequest",
+        "PermissionDenied",
+        "Setup",
+        "TeammateIdle",
+        "TaskCreated",
+        "TaskCompleted",
+        "Elicitation",
+        "ElicitationResult",
+        "ConfigChange",
+        "WorktreeCreate",
+        "WorktreeRemove",
+        "InstructionsLoaded",
+        "CwdChanged",
+        "FileChanged",
+        "DirectoryAdded",
+        "MessageDisplay",
+    ];
+
+    #[test]
+    fn every_event_that_reports_is_one_setup_installs() {
+        let installed = crate::HookCommand::Claude.events();
+        for event in CLAUDE_HOOK_EVENTS {
+            let main = json!({"hook_event_name": event, "notification_type": "permission_prompt"});
+            let child = json!({"hook_event_name": event, "agent_id": "a1",
+                "notification_type": "permission_prompt"});
+            let reports = [main, child].iter().any(|input| {
+                AgentHook::new(AgentKind::Claude, input)
+                    .report(None)
+                    .is_some()
+            });
+            assert!(
+                !reports || installed.contains(event),
+                "`monarch hook claude` reads {event}, but `monarch setup` doesn't install it"
+            );
+        }
+        for event in installed {
+            assert!(
+                CLAUDE_HOOK_EVENTS.contains(event),
+                "{event} isn't a Claude event"
+            );
+        }
+    }
 }
