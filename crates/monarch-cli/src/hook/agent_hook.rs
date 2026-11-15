@@ -56,14 +56,22 @@ impl<'a> AgentHook<'a> {
 
     /// A prompt the agent sent itself, with what to show for it: Claude
     /// wakes its own turn with a background sub-agent's or task's result
-    /// (`<agent-message from="…">`, `<task-notification>`) through the
-    /// same hook as the user's prompts.
+    /// (`<agent-message from="…">`, `<task-notification>`) or a teammate's
+    /// message (`Another Claude session sent a message: <teammate-message …>`)
+    /// through the same hook as the user's prompts.
     fn injected(&self) -> Option<&'static str> {
+        const PEER: &str = "Another Claude session sent a message:";
         let prompt = self.field("prompt")?.trim_start();
+        let from_peer = prompt.strip_prefix(PEER).map(str::trim_start);
+        let message = from_peer.unwrap_or(prompt);
         if prompt.starts_with("<agent-message") {
             Some("Reading a sub-agent's report")
         } else if prompt.starts_with("<task-notification>") {
             Some("Reading a background task's result")
+        } else if message.starts_with("<teammate-message") {
+            Some("Reading a teammate's message")
+        } else if from_peer.is_some() {
+            Some("Reading another session's message")
         } else {
             None
         }
@@ -383,6 +391,19 @@ mod tests {
         assert_eq!(report.state, Some(AgentState::Working));
         let task = prompt("\n<task-notification>\n<task-id>a1</task-id>");
         assert!(!task.user_prompt, "a background task finishing");
+        let teammate = prompt(
+            "Another Claude session sent a message:\n\
+             <teammate-message teammate_id=\"timer-1\">\nagent 1 done\n</teammate-message>",
+        );
+        assert!(!teammate.user_prompt, "a teammate reporting back");
+        assert_eq!(
+            teammate.activity.as_deref(),
+            Some("Reading a teammate's message")
+        );
+        let peer = prompt("Another Claude session sent a message:\nhello");
+        assert!(!peer.user_prompt, "another session, not the user");
+        let quoted = prompt("why does it say Another Claude session sent a message:?");
+        assert!(quoted.user_prompt, "only a prompt that starts with it");
         let tool = child(&json!({"hook_event_name": "PreToolUse", "tool_name": "Read"}));
         assert!(!tool.user_prompt, "only prompts count");
     }
