@@ -64,6 +64,8 @@ You're working in `a11y`. In another tab, `retry` wants to run a command, and an
 
 <img src="docs/assets/inbox.png" width="640" alt="The inbox. It lists retry, blocked on 'Allow Bash cargo clean and cargo test', and header, done with its last message. A hint line reads: move, enter jump, y/n/1-9 answer, esc close.">
 
+When Claude Code hands work to sub-agents or teammates, each gets its own row under the agent that started it, named by its task and marked with the same glyphs. A sub-agent's question blocks its parent's row, so it reaches the inbox like any other. Finished rows stay until your next prompt, so you can see what was done.
+
 Monarch knew because the agent told it. `monarch setup` adds hooks to Claude Code and Codex, backing up each file it edits. Other agents are recognised from terminal notifications and from their screen.
 
 <img src="docs/assets/signals.svg" width="560" alt="A diagram. Monarch learns an agent's state from three sources, most trusted first: the agent's own hooks, terminal notifications, and detection rules for 22 agents reading the screen. They resolve to one state per pane: working, blocked, idle, done, error or exited.">
@@ -169,7 +171,7 @@ Monarch is about two weeks old and the smallest project here. Several of these t
 | **Plugins** | — | ✓ | ✓ | custom sidebars | ✓ | via TPM | — |
 | **Platforms** | macOS, Linux | macOS, Linux, Windows | macOS, Linux, Windows, BSD | macOS | macOS, Linux, Windows | macOS, Linux, BSD | macOS, Linux |
 | **License** | MIT or Apache-2.0 | Apache-2.0 | MIT | GPL-3.0+, some parts BUSL-1.1 | MIT | ISC | AGPL-3.0 |
-| **Latest release** | v0.1.4 | v0.9.5 | v0.12.1 | v0.65.2.2 | v0.45.1 | 3.8 | v1.0.20 |
+| **Latest release** | v0.1.5 | v0.9.5 | v0.12.1 | v0.65.2.2 | v0.45.1 | 3.8 | v1.0.20 |
 
 <sub>Checked against each project's docs on 2026-11-05. The cmux column describes its macOS app; cmux also has a separate terminal multiplexer, cmux TUI. These tools move quickly: Zellij's unreleased changes already add an inbox and agent status.</sub>
 
@@ -223,7 +225,7 @@ Every release also attaches the tarballs and their checksums on the [releases pa
 With a stable Rust toolchain, 1.88 or newer:
 
 ```sh
-cargo install --git https://github.com/cooksterj/monarch --tag v0.1.4   # a release
+cargo install --git https://github.com/cooksterj/monarch --tag v0.1.5   # a release
 cargo install --git https://github.com/cooksterj/monarch                # latest main
 cargo install --path . --locked                                         # from a clone
 ```

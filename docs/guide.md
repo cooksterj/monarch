@@ -100,18 +100,28 @@ Each pane running an agent shows its state in the sidebar and the inbox:
 | `✓` | Done | finished a turn you haven't looked at yet: bright green, and listed in the inbox |
 | `✓` | Finished | a Done you've since focused: soft green, no longer asking for you |
 | `✗` | Error | the turn failed |
+| `■` | Exited | the agent's process ended |
+| `$` | (none) | a plain shell |
 
 At the right of each agent's row is a stopwatch of the turn's working time: `42s`, then `3m`,
 `2h`, `1d`. It runs while the agent works, holds while the agent waits on you for a permission
 or an answer, runs on once you reply, and stops when the turn ends, staying there while the
 agent rests. How long a prompt has been waiting on you is the inbox's job (below). A turn that
 ends in the pane you are looking at is Finished at once rather than Done.
-| `■` | Exited | the agent's process ended |
-| `$` | (none) | a plain shell |
 
 After the state, an agent's icon says which agent it is: `✻` Claude Code (terracotta, the
 `claude` token) and `⌬` Codex (the `codex` token, your theme's text colour). The tab bar shows the
 icon of each tab's focused pane, so `1 ✻ api` is a Claude tab even after you rename it.
+
+**Sub-agents.** When Claude Code starts a sub-agent (the Agent tool) or an in-process teammate,
+it gets a row under its parent, indented: `├ ● Explore  Grep TODO`, `└` for the last. The row is
+named by the task Claude gave it (its kind if there is none) and its glyph animates as the
+parent's does. Its tool calls go on its own row, not the parent's. A sub-agent waiting on you
+blocks the parent too, with the question first on the parent's line
+(`Allow Bash cargo test? · Explore`), so it appears in the inbox and `prefix Tab` finds it.
+Finished rows (`✓`) stay until you type the next prompt; ones still running in the background
+stay until they end. This needs the `SubagentStart` and `SubagentStop` hooks, which
+`monarch setup` installs (re-run it if you set Monarch up before v0.1.5).
 
 States come from, in order of trust: the agent's own **hooks** (installed by `monarch setup`),
 terminal **notifications** the agent sends, and its **screen**, read with detection rules for
