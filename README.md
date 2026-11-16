@@ -64,7 +64,7 @@ You're working in `a11y`. In another tab, `retry` wants to run a command, and an
 
 <img src="docs/assets/inbox.png" width="640" alt="The inbox. It lists retry, blocked on 'Allow Bash cargo clean and cargo test', and header, done with its last message. A hint line reads: move, enter jump, y/n/1-9 answer, esc close.">
 
-When Claude Code hands work to sub-agents or teammates, each gets its own row under the agent that started it, named by its task and marked with the same glyphs. A sub-agent's question blocks its parent's row, so it reaches the inbox like any other. Finished rows stay until your next prompt, so you can see what was done.
+When Claude Code hands work to sub-agents or teammates, or Codex spawns agents, each gets its own row under the agent that started it, named by its task and marked with the same glyphs. A sub-agent's question blocks its parent's row, so it reaches the inbox like any other. Finished rows stay until your next prompt, so you can see what was done.
 
 Monarch knew because the agent told it. `monarch setup` adds hooks to Claude Code and Codex, backing up each file it edits. Other agents are recognised from terminal notifications and from their screen.
 

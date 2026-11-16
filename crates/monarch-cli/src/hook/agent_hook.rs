@@ -82,8 +82,12 @@ impl<'a> AgentHook<'a> {
     /// parent's state (working for it, or blocked on its question).
     fn subagent_report(&self, id: &str, base: AgentReport) -> Option<AgentReport> {
         let text = |key: &str| self.field(key).map(str::to_owned);
-        let (parent, state, activity) = match self.field("hook_event_name")? {
-            "SubagentStart" => (None, AgentState::Working, Some(String::new())),
+        let event = self.field("hook_event_name")?;
+        let (parent, state, activity) = match event {
+            // Codex children get their task, and any follow-up, as a prompt.
+            "SubagentStart" | "UserPromptSubmit" => {
+                (None, AgentState::Working, Some(String::new()))
+            }
             "PreToolUse" => (
                 Some(AgentState::Working),
                 AgentState::Working,
@@ -113,12 +117,22 @@ impl<'a> AgentHook<'a> {
             subagent: Some(SubagentReport {
                 id: id.to_owned(),
                 kind: text("agent_type"),
-                label: None,
+                label: (event == "UserPromptSubmit").then(|| self.task()).flatten(),
                 state: Some(state),
                 activity,
             }),
             ..base
         })
+    }
+
+    /// A sub-agent's prompt as the name of its row: its first line.
+    fn task(&self) -> Option<String> {
+        let line = self
+            .field("prompt")?
+            .lines()
+            .map(str::trim)
+            .find(|l| !l.is_empty())?;
+        Some(line.to_owned())
     }
 
     /// The sub-agent the parent's Agent tool just started or ran, named
@@ -360,6 +374,42 @@ mod tests {
             )
         );
         assert_eq!(ask.state, Some(AgentState::Blocked));
+    }
+
+    #[test]
+    fn a_codex_childs_prompt_names_its_row_and_starts_it() {
+        // As Codex's `UserPromptSubmitCommandInput` serialises it inside a
+        // child `spawn_agent` started: `agent_id` is the child's thread.
+        let input = json!({
+            "hook_event_name": "UserPromptSubmit", "session_id": "s", "turn_id": "t",
+            "agent_id": "019a-child", "agent_type": "default", "cwd": "/w",
+            "prompt": "\n  Run wc -l a.txt and report the count.\nBe brief.",
+            "permission_mode": "default", "transcript_path": null, "model": "gpt"
+        });
+        let prompt = AgentHook::new(AgentKind::Codex, &input)
+            .report(Some(PaneId(4)))
+            .expect("report");
+        assert_eq!(
+            sub(&prompt),
+            (
+                "019a-child",
+                Some("default"),
+                Some(AgentState::Working),
+                Some("")
+            )
+        );
+        let label = prompt.subagent.as_ref().and_then(|s| s.label.as_deref());
+        assert_eq!(label, Some("Run wc -l a.txt and report the count."));
+        assert_eq!(
+            (prompt.state, prompt.user_prompt),
+            (None, false),
+            "not the user's"
+        );
+        let blank = child(&json!({
+            "hook_event_name": "UserPromptSubmit", "agent_id": "c", "prompt": "  \n"
+        }));
+        let unnamed = blank.subagent.as_ref().and_then(|s| s.label.as_deref());
+        assert_eq!(unnamed, None, "a blank prompt names nothing");
     }
 
     #[test]
