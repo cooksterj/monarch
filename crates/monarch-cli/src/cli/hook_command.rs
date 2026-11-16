@@ -34,7 +34,9 @@ const CLAUDE_EVENTS: &[&str] = &[
     "SessionEnd",
 ];
 
-/// The Codex events whose hooks report state.
+/// The Codex events whose hooks report state. Codex fires
+/// `SubagentStart` and `SubagentStop` for children `spawn_agent` starts,
+/// as Claude does for its sub-agents.
 const CODEX_EVENTS: &[&str] = &[
     "SessionStart",
     "SessionEnd",
@@ -43,6 +45,8 @@ const CODEX_EVENTS: &[&str] = &[
     "PermissionRequest",
     "PostToolUse",
     "PreCompact",
+    "SubagentStart",
+    "SubagentStop",
     "Stop",
     "Interrupt",
 ];
@@ -140,5 +144,6 @@ mod tests {
         assert!(HookCommand::Claude.events().contains(&"StopFailure"));
         assert!(HookCommand::Claude.events().contains(&"SubagentStop"));
         assert!(!HookCommand::Codex.events().contains(&"StopFailure"));
+        assert!(HookCommand::Codex.events().contains(&"SubagentStop"));
     }
 }

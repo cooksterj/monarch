@@ -79,14 +79,18 @@ impl StateEngine {
 }
 
 /// One sub-agent reported: update its row, or add one. A report naming
-/// its task (the parent's Agent tool returning) only names a row that
-/// exists: it can come after the sub-agent's own events, even after it
-/// finished, and must not set it running again.
+/// its task from the parent (Claude's Agent tool returning, no line of
+/// its own) only names a row that exists: it can come after the
+/// sub-agent's own events, even after it finished, and must not set it
+/// running again. A name with the sub-agent's own line is the sub-agent
+/// starting that task (a Codex child's prompt), so it updates the row.
 fn apply(children: &mut Vec<SubagentStatus>, sub: &SubagentReport) {
     if let Some(child) = children.iter_mut().find(|c| c.id == sub.id) {
-        match &sub.label {
-            Some(label) => child.label = Some(label.clone()),
-            None => update(child, sub),
+        if let Some(label) = &sub.label {
+            child.label = Some(label.clone());
+        }
+        if sub.label.is_none() || sub.activity.is_some() {
+            update(child, sub);
         }
         return;
     }
@@ -504,5 +508,32 @@ mod tests {
             3,
             "a finished unknown gets no row"
         );
+    }
+
+    /// What the hook sends when a Codex child starts a task: its prompt
+    /// names the row, with a line of its own.
+    fn prompted(id: &str, task: &str) -> AgentReport {
+        let mut report = child(id, AgentState::Working, Some(""));
+        if let Some(sub) = report.subagent.as_mut() {
+            sub.label = Some(task.into());
+        }
+        report.state = None;
+        report
+    }
+
+    #[test]
+    fn a_child_given_a_new_task_runs_again_under_its_name() {
+        let mut engine = StateEngine::default();
+        engine.report(P, &child("x", AgentState::Working, Some("")));
+        engine.report(P, &prompted("x", "Count lines in a.txt"));
+        engine.report(P, &child("x", AgentState::Done, Some("1 line")));
+        engine.report(P, &prompted("x", "Now count b.txt"));
+        let x = &engine.subagents(P)[0];
+        assert_eq!(
+            (x.label(), x.state, x.activity.as_deref()),
+            ("Now count b.txt", AgentState::Working, None)
+        );
+        engine.report(P, &prompted("new", "Never started"));
+        assert_eq!(engine.subagents(P).len(), 2, "a prompt alone starts a row");
     }
 }

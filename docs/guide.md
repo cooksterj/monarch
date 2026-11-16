@@ -114,14 +114,15 @@ After the state, an agent's icon says which agent it is: `✻` Claude Code (terr
 icon of each tab's focused pane, so `1 ✻ api` is a Claude tab even after you rename it.
 
 **Sub-agents.** When Claude Code starts a sub-agent (the Agent tool) or an in-process teammate,
-it gets a row under its parent, indented: `├ ● Explore  Grep TODO`, `└` for the last. The row is
-named by the task Claude gave it (its kind if there is none) and its glyph animates as the
+or Codex starts one with `spawn_agent`, it gets a row under its parent, indented: `├ ● Explore  Grep TODO`, `└` for the last. The row is
+named by the task it was given (its kind if there is none) and its glyph animates as the
 parent's does. Its tool calls go on its own row, not the parent's. A sub-agent waiting on you
 blocks the parent too, with the question first on the parent's line
 (`Allow Bash cargo test? · Explore`), so it appears in the inbox and `prefix Tab` finds it.
 Finished rows (`✓`) stay until you type the next prompt; ones still running in the background
 stay until they end. This needs the `SubagentStart` and `SubagentStop` hooks, which
-`monarch setup` installs (re-run it if you set Monarch up before v0.1.5).
+`monarch setup` installs. If your rows never leave Working, re-run it: older releases didn't
+install them (Codex then asks you to trust the new hooks in `/hooks`).
 
 States come from, in order of trust: the agent's own **hooks** (installed by `monarch setup`),
 terminal **notifications** the agent sends, and its **screen**, read with detection rules for
