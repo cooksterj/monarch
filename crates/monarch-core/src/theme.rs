@@ -11,8 +11,11 @@ use crate::{AgentKind, Rgb};
 pub struct Theme {
     /// The status bar's background.
     pub bar: Rgb,
-    /// Text on the status bar.
+    /// Text on the status bar, and in pop-ups.
     pub bar_text: Rgb,
+    /// Pop-ups' background, a raised surface that sets them apart from the
+    /// panes behind them.
+    pub popup: Rgb,
     /// The shown tab, the prefix indicator, the focused pane's border and
     /// sidebar headings.
     pub accent: Rgb,
@@ -49,9 +52,10 @@ pub struct Theme {
 }
 
 /// Every token's name, as `[theme.colors]` spells it.
-pub const THEME_TOKENS: [&str; 18] = [
+pub const THEME_TOKENS: [&str; 19] = [
     "bar",
     "bar_text",
+    "popup",
     "accent",
     "accent_text",
     "working",
@@ -121,6 +125,7 @@ impl Theme {
         Some(match name {
             "bar" => &mut self.bar,
             "bar_text" => &mut self.bar_text,
+            "popup" => &mut self.popup,
             "accent" => &mut self.accent,
             "accent_text" => &mut self.accent_text,
             "working" => &mut self.working,

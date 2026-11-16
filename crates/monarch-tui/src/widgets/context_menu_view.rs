@@ -4,8 +4,9 @@
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
-use ratatui::widgets::{Block, Borders, Clear, Widget};
+use ratatui::widgets::Widget;
 
+use super::{Chrome, PopupFrame};
 use crate::ContextMenu;
 
 /// Columns between a label and its key.
@@ -16,6 +17,8 @@ const GAP: u16 = 3;
 pub struct ContextMenuView<'a> {
     /// What to draw.
     pub menu: &'a ContextMenu,
+    /// Colours, or none (`NO_COLOR`).
+    pub chrome: Chrome<'a>,
 }
 
 impl ContextMenuView<'_> {
@@ -63,13 +66,7 @@ impl Widget for ContextMenuView<'_> {
         if popup.width < 6 || popup.height < 3 {
             return;
         }
-        Clear.render(popup, buf);
-        let dim = Style::new().add_modifier(Modifier::DIM);
-        Block::new()
-            .borders(Borders::ALL)
-            .border_style(dim)
-            .render(popup, buf);
-        let inner = popup.inner(ratatui::layout::Margin::new(1, 1));
+        let inner = PopupFrame::new(self.chrome).draw(popup, buf);
         let rows = self.menu.items().iter().enumerate();
         for (i, item) in rows.take(usize::from(inner.height)) {
             let y = inner.y + u16::try_from(i).unwrap_or(0);
@@ -104,8 +101,16 @@ mod tests {
 
     fn draw(menu: &ContextMenu, width: u16, height: u16) -> String {
         let mut term = Terminal::new(TestBackend::new(width, height)).expect("terminal");
-        term.draw(|f| f.render_widget(ContextMenuView { menu }, f.area()))
-            .expect("draw");
+        term.draw(|f| {
+            f.render_widget(
+                ContextMenuView {
+                    menu,
+                    chrome: Chrome::default(),
+                },
+                f.area(),
+            );
+        })
+        .expect("draw");
         let buf = term.backend().buffer();
         (0..height)
             .map(|y| {
@@ -121,23 +126,26 @@ mod tests {
         let menu = ContextMenu::new(&Keymap::default(), 1, 0);
         insta::assert_snapshot!(draw(&menu, 30, 11), @r#"
 
-          ┌─────────────────────┐
-          │ split right       % │
-          │ split down        " │
-          │ zoom              z │
-          │ close pane        x │
-          │ new tab           c │
-          │ copy mode         [ │
-          │ toggle sidebar    t │
-          │ command palette   : │
-          └─────────────────────┘
+        ╭─────────────────────╮
+        │ split right       % │
+        │ split down        " │
+        │ zoom              z │
+        │ close pane        x │
+        │ new tab           c │
+        │ copy mode         [ │
+        │ toggle sidebar    t │
+        │ command palette   : │
+        ╰─────────────────────╯
         "#);
     }
 
     #[test]
     fn stays_on_screen_and_maps_clicks_to_rows() {
         let menu = ContextMenu::new(&Keymap::default(), 38, 18);
-        let view = ContextMenuView { menu: &menu };
+        let view = ContextMenuView {
+            menu: &menu,
+            chrome: Chrome::default(),
+        };
         let area = Rect::new(0, 0, 40, 20);
         let placed = view.placement(area);
         assert_eq!(

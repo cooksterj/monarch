@@ -7,9 +7,9 @@ use monarch_core::Theme;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
-use ratatui::text::Line;
-use ratatui::widgets::{Block, Borders, Clear, Widget};
+use ratatui::widgets::Widget;
 
+use super::{Chrome, PopupFrame};
 use crate::ReviewState;
 
 const KEYS: &str = " j/k file · [/] hunk · c note · e edit · space/b page · esc close ";
@@ -90,15 +90,11 @@ impl Widget for ReviewView<'_> {
         if area.width < 20 || area.height < 4 {
             return;
         }
-        Clear.render(area, buf);
         let dim = Style::new().add_modifier(Modifier::DIM);
-        let block = Block::new()
-            .borders(Borders::ALL)
-            .border_style(dim)
+        let inner = PopupFrame::new(Chrome::new(self.theme))
             .title(self.title())
-            .title_bottom(Line::styled(KEYS, dim));
-        let inner = block.inner(area);
-        block.render(area, buf);
+            .footer(KEYS)
+            .draw(area, buf);
         if let Some(text) = self.empty() {
             buf.set_stringn(inner.x + 1, inner.y, text, usize::from(inner.width), dim);
             return;
@@ -173,7 +169,7 @@ mod tests {
     #[test]
     fn files_on_the_left_diff_on_the_right() {
         insta::assert_snapshot!(draw(&loaded(), 72, 9), @r#"
-        ┌ review · feat · 2 files +1 −1 ───────────────────────────────────────┐
+        ╭ review · feat · 2 files +1 −1 ───────────────────────────────────────╮
         │ M src/main.rs   +1 −1 │ src/main.rs                                  │
         │ ? notes.md      +0 −0 │ @@ -1,2 +1,2 @@                              │
         │                       │  fn main() {                                 │
@@ -181,7 +177,7 @@ mod tests {
         │                       │ +    println!("hello");                      │
         │                       │                                              │
         │                       │                                              │
-        └ j/k file · [/] hunk · c note · e edit · space/b page · esc close ────┘
+        ╰ j/k file · [/] hunk · c note · e edit · space/b page · esc close ────╯
         "#);
     }
 

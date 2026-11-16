@@ -92,11 +92,11 @@ mod tests {
         let drawn = draw(&info, 60, 12);
         assert_eq!(drawn[0], "", "a little below the top");
         assert!(
-            drawn[1].starts_with("┌ agent info · pane 2 codex "),
+            drawn[1].starts_with("╭ agent info · pane 2 codex "),
             "{drawn:?}"
         );
         assert!(drawn[2].contains("asking the server…"));
-        assert!(drawn[3].starts_with("└ ↑↓ scroll · r refresh · esc close "));
+        assert!(drawn[3].starts_with("╰ ↑↓ scroll · r refresh · esc close "));
         assert_eq!(drawn[4], "", "three rows: border, line, border");
         info.load(Some(Box::new(PaneExplanation {
             pane: PaneId(2),

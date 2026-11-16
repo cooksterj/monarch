@@ -5,8 +5,9 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::{Position, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::Line;
-use ratatui::widgets::{Block, Borders, Clear, Widget};
+use ratatui::widgets::Widget;
 
+use super::{Chrome, PopupFrame};
 use crate::{Picker, PickerItem};
 
 /// Widest the box gets.
@@ -24,6 +25,8 @@ const LIST_KEYS: &str = " ↑↓ move · enter jump · y/n/1-9 answer · esc clo
 pub struct PickerView<'a> {
     /// What to draw.
     pub picker: &'a Picker,
+    /// Colours, or none (`NO_COLOR`).
+    pub chrome: Chrome<'a>,
 }
 
 impl PickerView<'_> {
@@ -93,20 +96,15 @@ impl Widget for PickerView<'_> {
         if popup.width < 8 || popup.height < self.chrome() + 1 {
             return;
         }
-        Clear.render(popup, buf);
-        let dim = Style::new().add_modifier(Modifier::DIM);
         let keys = match (self.picker.text(), self.picker.is_list()) {
             (Some((keys, _)), _) => keys,
             (None, true) => LIST_KEYS,
             (None, false) => SEARCH_KEYS,
         };
-        Block::new()
-            .borders(Borders::ALL)
-            .border_style(dim)
+        let inner = PopupFrame::new(self.chrome)
             .title(format!(" {} ", self.picker.title()))
-            .title_bottom(Line::styled(keys, dim))
-            .render(popup, buf);
-        let inner = inner(popup);
+            .footer(keys)
+            .draw(popup, buf);
         if self.picker.is_list() {
             self.draw_rows(inner, buf);
             return;
@@ -122,7 +120,7 @@ impl Widget for PickerView<'_> {
 }
 
 fn inner(popup: Rect) -> Rect {
-    Block::new().borders(Borders::ALL).inner(popup)
+    PopupFrame::inner(popup)
 }
 
 /// The label with matched characters bold, the detail dim at the right;
@@ -184,8 +182,16 @@ mod tests {
 
     fn draw(p: &Picker, width: u16, height: u16) -> (String, Buffer) {
         let mut term = Terminal::new(TestBackend::new(width, height)).expect("terminal");
-        term.draw(|f| f.render_widget(PickerView { picker: p }, f.area()))
-            .expect("draw");
+        term.draw(|f| {
+            f.render_widget(
+                PickerView {
+                    picker: p,
+                    chrome: Chrome::default(),
+                },
+                f.area(),
+            );
+        })
+        .expect("draw");
         let buf = term.backend().buffer().clone();
         let text = (0..height)
             .map(|y| {
@@ -202,11 +208,11 @@ mod tests {
         let mut p = picker(1);
         p.key(OverlayKey::Char('s'));
         insta::assert_snapshot!(draw(&p, 40, 8).0, @r#"
-        ┌ command palette ─────────────────────┐
+        ╭ command palette ─────────────────────╮
         │ > s                                  │
         │ split right                        % │
         │ split down                         " │
-        └ ↑↓ move · enter run · esc close ─────┘
+        ╰ ↑↓ move · enter run · esc close ─────╯
         "#);
     }
 
@@ -216,9 +222,14 @@ mod tests {
         p.key(OverlayKey::Char('d'));
         let (_, buf) = draw(&p, 40, 8);
         let area = Rect::new(0, 0, 40, 8);
-        let top = PickerView { picker: &p }.placement(area).y + 2;
+        let top = PickerView {
+            picker: &p,
+            chrome: Chrome::default(),
+        }
+        .placement(area)
+        .y + 2;
         assert!(buf[(5, top)].modifier.contains(Modifier::REVERSED));
-        let bold: String = (0..40)
+        let bold: String = (1..39)
             .filter(|&x| buf[(x, top)].modifier.contains(Modifier::BOLD))
             .map(|x| buf[(x, top)].symbol().to_owned())
             .collect();
@@ -245,7 +256,10 @@ mod tests {
         let (text, _) = draw(&p, 40, 8);
         assert!(text.contains("no matches"));
         let area = Rect::new(0, 0, 40, 8);
-        let view = PickerView { picker: &p };
+        let view = PickerView {
+            picker: &p,
+            chrome: Chrome::default(),
+        };
         let inner = inner(view.placement(area));
         assert_eq!(view.cursor(area), Some(Position::new(inner.x + 6, inner.y)));
     }
@@ -264,13 +278,20 @@ mod tests {
             action: Action::FocusPane(monarch_core::PaneId(4)),
         }];
         let list = Picker::list("inbox", rows);
-        insta::assert_snapshot!(draw(&list, 60, 6).0, @r"
-        ┌ inbox ───────────────────────────────────────────────────┐
+        insta::assert_snapshot!(draw(&list, 60, 6).0, @"
+        ╭ inbox ───────────────────────────────────────────────────╮
         │ ◆ 2 codex · Approve cargo test?                  blocked │
-        └ ↑↓ move · enter jump · y/n/1-9 answer · esc close ───────┘
+        ╰ ↑↓ move · enter jump · y/n/1-9 answer · esc close ───────╯
         ");
         let area = Rect::new(0, 0, 60, 6);
-        assert_eq!(PickerView { picker: &list }.cursor(area), None);
+        assert_eq!(
+            PickerView {
+                picker: &list,
+                chrome: Chrome::default()
+            }
+            .cursor(area),
+            None
+        );
         let empty = Picker::list("inbox", Vec::new());
         assert!(draw(&empty, 60, 6).0.contains("nothing needs you"));
     }
