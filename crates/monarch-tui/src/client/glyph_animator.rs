@@ -1,5 +1,7 @@
-//! Animates the sidebar's agent-state glyphs: a slowly pulsing dot while
-//! working, a diamond fading between dark yellow and brown while waiting,
+//! Animates the sidebar's agent-state glyphs: a dot breathing in
+//! brightness while working (its size can't change smoothly in a cell, so
+//! it changes only when there is no colour to pulse), a diamond fading
+//! between dark yellow and brown while waiting,
 //! and a check that brightens once when an agent finishes, then rests
 //! soft and plain once the user has seen it.
 //!
@@ -23,7 +25,7 @@ const PULSE: Duration = Duration::from_millis(1600);
 const FADE: Duration = Duration::from_millis(2000);
 /// How long a finished check takes to reach full brightness.
 const SETTLE: Duration = Duration::from_millis(1200);
-/// The working dot, smallest to largest.
+/// The working dot, smallest to largest: its pulse without colour.
 const DOTS: [char; 4] = ['·', '•', '●', '•'];
 
 /// What each shown glyph's agent (a pane's, or a sub-agent inside it)
@@ -91,7 +93,7 @@ impl GlyphAnimator {
         let (color, bold) = match (state, theme) {
             (AgentState::Working, theme) => {
                 let wave = if animate { wave(run, PULSE) } else { 1.0 };
-                if animate {
+                if animate && theme.is_none() {
                     look.symbol = DOTS[phase(run, PULSE, DOTS.len())];
                 }
                 (
@@ -129,10 +131,11 @@ fn dim(c: monarch_core::Rgb) -> monarch_core::Rgb {
     c.lerp(monarch_core::Rgb::new(0, 0, 0), 0.5)
 }
 
-/// 0 → 1 → 0 over each `period`.
+/// 0 → 1 → 0 over each `period`, on a cosine: it slows into each end
+/// and turns gently, where a straight line would tick at the turns.
 fn wave(run: Duration, period: Duration) -> f32 {
     let x = fraction_of_cycle(run, period);
-    1.0 - (2.0 * x - 1.0).abs()
+    0.5 - 0.5 * (std::f32::consts::TAU * x).cos()
 }
 
 /// Which of `n` equal steps of `period` `run` falls in.
@@ -210,26 +213,54 @@ mod tests {
         assert_eq!(done.color, Some(theme.done_from), "its check starts dim");
         assert!(animator.moving(later + SETTLE), "still settling");
         let working = animator.look(&pane, later, Some(&theme), true);
-        assert!(DOTS.contains(&working.symbol), "the parent still pulses");
+        assert_ne!(working.color, done.color, "the parent still pulses");
         animator.observe([(pane, AgentState::Working)], later);
         let gone = animator.look(&child, later, Some(&theme), true);
         assert_eq!(gone.symbol, AgentState::Unknown.glyph(), "forgotten");
     }
 
     #[test]
-    fn working_pulses_small_to_large_and_back() {
+    fn working_breathes_in_brightness_at_one_size() {
         let (animator, start) = animator(AgentState::Working);
         let symbols: Vec<char> = [0, 400, 800, 1200, 1600]
             .map(|ms| at(&animator, start, ms).symbol)
             .into();
-        assert_eq!(symbols, ['·', '•', '●', '•', '·']);
+        assert_eq!(symbols, ['●'; 5], "a cell can't grow smoothly");
         let (dim, bright) = (
             at(&animator, start, 0).color,
             at(&animator, start, 800).color,
         );
         assert_eq!(bright, Some(Theme::dark().working));
         assert_ne!(dim, bright);
+        assert_eq!(at(&animator, start, 1600).color, dim, "and back");
         assert!(animator.moving(start));
+    }
+
+    #[test]
+    fn pulses_ease_into_their_turns() {
+        let red = |ms| wave(Duration::from_millis(ms), PULSE);
+        let at_turn = red(100) - red(0);
+        let mid_way = red(500) - red(400);
+        assert!(
+            at_turn < mid_way / 3.0,
+            "slow near the dim end: {at_turn} vs {mid_way}"
+        );
+        assert!((red(800) - 1.0).abs() < 1e-6, "full at the middle");
+        assert!(red(700) < 1.0 && red(900) < 1.0, "a turn, not a plateau");
+        let fade = |ms| wave(Duration::from_millis(ms), FADE);
+        assert!((fade(500) - 0.5).abs() < 1e-6, "halfway at a quarter");
+    }
+
+    #[test]
+    fn without_colour_the_dot_still_grows_and_shrinks() {
+        let (animator, start) = animator(AgentState::Working);
+        let symbols: Vec<char> = [0, 400, 800, 1200, 1600]
+            .map(|ms| {
+                let at = start + Duration::from_millis(ms);
+                animator.look(&PaneId(1).into(), at, None, true).symbol
+            })
+            .into();
+        assert_eq!(symbols, ['·', '•', '●', '•', '·']);
     }
 
     #[test]
