@@ -23,12 +23,12 @@ impl MouseOwner {
         }
     }
 
-    /// The status-line badge, e.g. ` MOUSE: MONARCH │`.
+    /// The status-line badge, e.g. ` mouse: monarch │`.
     #[must_use]
     pub fn badge(self) -> &'static str {
         match self {
-            Self::Monarch => " MOUSE: MONARCH │",
-            Self::Terminal => " MOUSE: TERMINAL │",
+            Self::Monarch => " mouse: monarch │",
+            Self::Terminal => " mouse: terminal │",
         }
     }
 }
@@ -46,6 +46,6 @@ mod tests {
     #[test]
     fn without_capture_the_terminal_owns_it() {
         assert_eq!(MouseOwner::new(false), MouseOwner::Terminal);
-        assert_eq!(MouseOwner::Terminal.badge(), " MOUSE: TERMINAL │");
+        assert_eq!(MouseOwner::Terminal.badge(), " mouse: terminal │");
     }
 }
