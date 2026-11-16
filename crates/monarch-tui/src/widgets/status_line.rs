@@ -155,7 +155,7 @@ mod tests {
     #[test]
     fn shows_session_tabs_and_hint() {
         let tabs = tabs();
-        insta::assert_snapshot!(draw(line(&tabs, false), 80), @" monarch │ main │  1 vim   2 zsh               MOUSE: MONARCH │ ctrl+b d detach ");
+        insta::assert_snapshot!(draw(line(&tabs, false), 80), @" monarch │ main │  1 vim   2 zsh               mouse: monarch │ ctrl+b d detach ");
     }
 
     #[test]
@@ -205,7 +205,7 @@ mod tests {
             message: Some("copied 5 characters"),
             ..line(&tabs, false)
         };
-        insta::assert_snapshot!(draw(with, 80), @" monarch │ main │  1 vim   2 zsh           MOUSE: MONARCH │ copied 5 characters ");
+        insta::assert_snapshot!(draw(with, 80), @" monarch │ main │  1 vim   2 zsh           mouse: monarch │ copied 5 characters ");
         let pending = StatusLine {
             pending: true,
             ..with
@@ -220,17 +220,17 @@ mod tests {
             mouse: MouseOwner::Terminal,
             ..line(&tabs, false)
         };
-        insta::assert_snapshot!(draw(mouse, 60), @" monarch │ main │  1 vim  MOUSE: TERMINAL │ ctrl+b d detach ");
+        insta::assert_snapshot!(draw(mouse, 60), @" monarch │ main │  1 vim  mouse: terminal │ ctrl+b d detach ");
         let noticed = StatusLine {
             message: Some("mouse: terminal"),
             ..mouse
         };
-        assert!(draw(noticed, 60).contains("MOUSE: TERMINAL │ mouse: terminal"));
+        assert!(draw(noticed, 60).contains("mouse: terminal │ mouse: terminal"));
         let pending = StatusLine {
             pending: true,
             ..mouse
         };
-        assert!(draw(pending, 60).contains("MOUSE: TERMINAL │ PREFIX │"));
+        assert!(draw(pending, 60).contains("mouse: terminal │ PREFIX │"));
     }
 
     #[test]
