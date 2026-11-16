@@ -93,7 +93,7 @@ mod tests {
             .expect("draw");
         assert_eq!(
             term.backend().buffer()[(10, 0)].symbol(),
-            "┌",
+            "╭",
             "inside the pane area"
         );
     }

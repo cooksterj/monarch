@@ -6,8 +6,9 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::{Position, Rect};
 use ratatui::style::{Modifier, Style};
 use ratatui::text::Line;
-use ratatui::widgets::{Block, Borders, Clear, Widget};
+use ratatui::widgets::Widget;
 
+use super::PopupFrame;
 use crate::{Chrome, WORKTREE_CHOICES, WorktreeForm};
 
 /// Widest the box gets.
@@ -116,15 +117,11 @@ impl Widget for WorktreeFormView<'_> {
         if popup.width < VALUE_X + 8 || popup.height < CHROME {
             return;
         }
-        Clear.render(popup, buf);
         let dim = Style::new().add_modifier(Modifier::DIM);
-        Block::new()
-            .borders(Borders::ALL)
-            .border_style(dim)
+        let inner = PopupFrame::new(Chrome::new(self.theme))
             .title(" new worktree ")
-            .title_bottom(Line::styled(KEYS, dim))
-            .render(popup, buf);
-        let inner = inner(popup);
+            .footer(KEYS)
+            .draw(popup, buf);
         let room = inner.width.saturating_sub(VALUE_X);
         let value_x = inner.x + VALUE_X;
         buf.set_string(inner.x + 1, inner.y, "branch", dim);
@@ -146,7 +143,7 @@ impl Widget for WorktreeFormView<'_> {
 }
 
 fn inner(popup: Rect) -> Rect {
-    Block::new().borders(Borders::ALL).inner(popup)
+    PopupFrame::inner(popup)
 }
 
 #[cfg(test)]
@@ -181,12 +178,12 @@ mod tests {
         form.key(OverlayKey::Enter);
         form.failed("/Users/someone/Projects/repos/app-worktrees/feat-x already exists");
         insta::assert_snapshot!(draw(&form, 64), @"
-        ┌ new worktree ────────────────────────────────────────────┐
+        ╭ new worktree ────────────────────────────────────────────╮
         │ branch  feat/x                                           │
         │ start   shell   claude   codex                           │
         │ /Users/someone/Projects/repos/app-worktrees/feat-x       │
         │ already exists                                           │
-        └ tab choose · enter create · esc cancel ──────────────────┘
+        ╰ tab choose · enter create · esc cancel ──────────────────╯
         ");
         let view = WorktreeFormView {
             form: &form,
