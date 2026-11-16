@@ -8,9 +8,9 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::Line;
-use ratatui::widgets::{Block, Borders, Clear, Widget};
+use ratatui::widgets::{Clear, Widget};
 
-use super::Chrome;
+use super::{Chrome, PopupFrame};
 use sprite::Pixel;
 use swarm::{Depth, Flyer};
 
@@ -155,12 +155,7 @@ impl WelcomeView<'_> {
 
     /// The card's frame and everything in it.
     fn draw_card(&self, outer: Rect, cols: usize, buf: &mut Buffer) {
-        let block = Block::default()
-            .borders(Borders::ALL)
-            .border_style(Style::new().add_modifier(Modifier::DIM));
-        let inner = block.inner(outer);
-        Clear.render(outer, buf);
-        block.render(outer, buf);
+        let inner = PopupFrame::new(self.chrome).draw(outer, buf);
         let mut row = inner.y + 1;
         self.draw_title(inner, row, buf);
         row += 3;

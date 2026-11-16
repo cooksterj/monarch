@@ -3,10 +3,10 @@
 use monarch_core::Action;
 use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
-use ratatui::style::{Modifier, Style};
-use ratatui::widgets::{Block, Borders, Clear, Widget};
+use ratatui::style::Style;
+use ratatui::widgets::Widget;
 
-use super::{Chrome, WhichKeyEntry};
+use super::{Chrome, PopupFrame, WhichKeyEntry};
 
 /// Space between columns: more than the two cells between a key and its
 /// label, so a label reads with its own key and not the next column's.
@@ -84,16 +84,11 @@ impl Widget for WhichKey<'_> {
         if popup.width < 4 || popup.height < 3 {
             return;
         }
-        Clear.render(popup, buf);
-        let mut block = Block::new()
-            .borders(Borders::ALL)
-            .border_style(Style::new().add_modifier(Modifier::DIM))
-            .title(format!(" {} ", self.title));
+        let mut frame = PopupFrame::new(self.chrome).title(format!(" {} ", self.title));
         if let Some(help) = self.help() {
-            block = block.title_bottom(help);
+            frame = frame.footer(help);
         }
-        let inner = block.inner(popup);
-        block.render(popup, buf);
+        let inner = frame.draw(popup, buf);
         let (cols, rows) = self.grid(area.width.saturating_sub(2));
         // A short host gets fewer rows; columns still fill top to bottom.
         let rows = rows.min(inner.height).max(1);
@@ -184,7 +179,7 @@ mod tests {
     #[test]
     fn wide_hosts_get_columns() {
         insta::assert_snapshot!(draw(80, 12), @r#"
-        ┌ ctrl+b ─────────────────────────────────────────────────────────────────────┐
+        ╭ ctrl+b ─────────────────────────────────────────────────────────────────────╮
         │       " -  split down             !  break pane             N  new worktree │
         │       % |  split right            &  close tab              R  reload       │
         │         x  close pane           1-9  go to tab              S  sessions     │
@@ -195,21 +190,21 @@ mod tests {
         │         }  swap next              .  rename pane            m  toggle mouse │
         │         =  equalize               :  palette                s  projects     │
         │      HJKL  resize                 A  launch agent           …  4 more       │
-        └ ? all keys and help ────────────────────────────────────────────────────────┘
+        ╰ ? all keys and help ────────────────────────────────────────────────────────╯
         "#);
     }
 
     #[test]
     fn narrow_hosts_get_one_column_and_a_count_of_the_rest() {
         insta::assert_snapshot!(draw(24, 8), @r#"
-        ┌ ctrl+b ──────────────┐
+        ╭ ctrl+b ──────────────╮
         │       " -  split down│
         │       % |  split righ│
         │         x  close pane│
         │         z  zoom      │
         │ hjkl ←↓↑→  focus     │
         │         …  28 more   │
-        └ ? all keys and help ─┘
+        ╰ ? all keys and help ─╯
         "#);
     }
 
@@ -228,7 +223,11 @@ mod tests {
         assert_eq!(buf[(10, 3)].symbol(), "x");
         assert_eq!(buf[(10, 3)].fg, Chrome::color(theme.accent));
         assert_eq!(buf[(13, 3)].symbol(), "c");
-        assert_eq!(buf[(13, 3)].fg, ratatui::style::Color::Reset);
+        assert_eq!(
+            buf[(13, 3)].fg,
+            Chrome::color(theme.bar_text),
+            "the pop-up's text"
+        );
     }
 
     #[test]

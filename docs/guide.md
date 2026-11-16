@@ -343,7 +343,7 @@ light = "catppuccin-latte"
 accent = "#ff8800"
 ```
 
-Tokens: `bar`, `bar_text`, `accent`, `accent_text`, `working`, `blocked_from`, `blocked_to`,
+Tokens: `bar`, `bar_text`, `popup` (pop-ups' background), `accent`, `accent_text`, `working`, `blocked_from`, `blocked_to`,
 `done_from`, `done_to`, `error`, `added`, `removed`, `hunk`, `claude`, `codex`, `wing`,
 `wing_edge`, `wing_spot`.
 With `NO_COLOR` set, Monarch draws with reverse video and bold instead.

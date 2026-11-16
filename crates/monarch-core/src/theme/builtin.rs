@@ -25,6 +25,7 @@ const CLAUDE: Rgb = c(0xd97757);
 pub(super) const MONARCH_DARK: Theme = Theme {
     bar: c(0x2b2d3a),
     bar_text: c(0xd0d3e0),
+    popup: c(0x2b2d3a),
     accent: c(0xe8a33d),
     accent_text: c(0x1a1a1a),
     working: c(0x5fafff),
@@ -47,6 +48,7 @@ pub(super) const MONARCH_DARK: Theme = Theme {
 pub(super) const MONARCH_LIGHT: Theme = Theme {
     bar: c(0xe4e2dc),
     bar_text: c(0x2b2b2b),
+    popup: c(0xeeece6),
     accent: c(0xc25e00),
     accent_text: c(0xffffff),
     working: c(0x1f6fd1),
@@ -80,12 +82,13 @@ struct Palette {
     cyan: u32,
 }
 
-/// A theme from a palette: the bar on its surface colour, the accent on
+/// A theme from a palette: the bar and pop-ups on its surface colour, the accent on
 /// its base, states and diffs in its hues.
 const fn from(p: &Palette) -> Theme {
     Theme {
         bar: c(p.surface),
         bar_text: c(p.text),
+        popup: c(p.surface),
         accent: c(p.accent),
         accent_text: c(p.base),
         working: c(p.blue),

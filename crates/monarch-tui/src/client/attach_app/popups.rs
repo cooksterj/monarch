@@ -81,12 +81,15 @@ impl Popups {
             .or(self.note.as_ref().map(NotePrompt::picker));
         let instant = Instant::now();
         PopupViews {
-            picker: picker.map(|picker| PickerView { picker }),
+            picker: picker.map(|picker| PickerView { picker, chrome }),
             info: self
                 .info
                 .as_ref()
                 .map(|info| AgentInfoView { info, now, chrome }),
-            menu: self.menu.as_ref().map(|menu| ContextMenuView { menu }),
+            menu: self
+                .menu
+                .as_ref()
+                .map(|menu| ContextMenuView { menu, chrome }),
             review: self
                 .review
                 .as_ref()

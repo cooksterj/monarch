@@ -5,9 +5,9 @@ use ratatui::buffer::Buffer;
 use ratatui::layout::Rect;
 use ratatui::style::{Modifier, Style};
 use ratatui::text::Line;
-use ratatui::widgets::{Block, Borders, Clear, Widget};
+use ratatui::widgets::Widget;
 
-use super::{Chrome, HelpLine};
+use super::{Chrome, HelpLine, PopupFrame};
 
 /// Widest the keys column gets; longer keys are cut.
 const KEYS: usize = 24;
@@ -78,13 +78,10 @@ impl Widget for PageView<'_> {
             return;
         }
         let rows = Self::body_rows(outer);
-        let block = Block::default()
-            .borders(Borders::ALL)
-            .title(Line::from(self.title.clone()).style(self.chrome.highlight()))
-            .title_bottom(self.footer.clone());
-        let inner = block.inner(outer);
-        Clear.render(outer, buf);
-        block.render(outer, buf);
+        let inner = PopupFrame::new(self.chrome)
+            .title(self.title.clone())
+            .footer(self.footer.clone())
+            .draw(outer, buf);
         let widths = keys_widths(&self.lines);
         let body = self.lines.iter().zip(widths).skip(self.scroll).take(rows);
         for (y, (line, width)) in (inner.y..inner.bottom()).zip(body) {
