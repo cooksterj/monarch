@@ -8,7 +8,7 @@ expression: "draw(view(&keys, 0, false), 80, 24).join(\"\\n\")"
           ███                                                       ▀ ▀
           ▀▀▀                                                       ███
                                                ▄▄█▄█▄▄              ▀▀▀
-  ┌──────────────────────────────────────────────────────────────────────────┐
+  ╭──────────────────────────────────────────────────────────────────────────╮
   │                                                                          │
   │                              M O N A R C H                               │
   │   every agent in its own pane, and you always see which one needs you    │
@@ -19,7 +19,7 @@ expression: "draw(view(&keys, 0, false), 80, 24).join(\"\\n\")"
   │ `monarch setup` lets it see your agents · `monarch doctor` checks it all │
   │                          press any key to start                          │
   │                                                                          │
-  └──────────────────────────────────────────────────────────────────────────┘
+  ╰──────────────────────────────────────────────────────────────────────────╯
                                                                ▀█▀█▀
                                                       ▀▄▀
                    ███▄█▄█▄███

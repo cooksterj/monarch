@@ -6,7 +6,9 @@ use ratatui::layout::Rect;
 
 use super::AttachApp;
 use crate::client::{AttachOutcome, ContextMenu, PickerStep};
-use crate::{ContextMenuView, HostInput, MouseButton, MouseExtractor, MouseKind, OverlayKey};
+use crate::{
+    Chrome, ContextMenuView, HostInput, MouseButton, MouseExtractor, MouseKind, OverlayKey,
+};
 
 impl AttachApp {
     /// A right-click: the menu opens at the pointer.
@@ -34,7 +36,11 @@ impl AttachApp {
                 HostInput::Mouse(event) => match event.kind {
                     MouseKind::Press(MouseButton::Left | MouseButton::Right) => {
                         let area = host_area(self.size);
-                        let row = ContextMenuView { menu }.item_at(area, event.col, event.row);
+                        let row = ContextMenuView {
+                            menu,
+                            chrome: Chrome::default(),
+                        }
+                        .item_at(area, event.col, event.row);
                         vec![menu.click(row)]
                     }
                     _ => Vec::new(),

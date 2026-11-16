@@ -88,6 +88,27 @@ impl<'a> Chrome<'a> {
         self.theme.map(|t| Self::color(t.agent(agent)))
     }
 
+    /// A pop-up's inside: text on the raised `popup` surface, so it stands
+    /// apart from the panes behind it. Without colours, the host's own.
+    #[must_use]
+    pub fn popup(&self) -> Style {
+        match self.theme {
+            Some(t) => Style::new()
+                .fg(Self::color(t.bar_text))
+                .bg(Self::color(t.popup)),
+            None => Style::new(),
+        }
+    }
+
+    /// A pop-up's border: the accent, or bold without colours.
+    #[must_use]
+    pub fn popup_border(&self) -> Style {
+        match self.theme {
+            Some(t) => Style::new().fg(Self::color(t.accent)),
+            None => Style::new().add_modifier(Modifier::BOLD),
+        }
+    }
+
     /// Lines next to the focused pane, and sidebar headings.
     #[must_use]
     pub fn highlight(&self) -> Style {
@@ -109,6 +130,17 @@ mod tests {
         let coloured = Chrome::new(Some(&theme)).agent(AgentKind::Claude);
         assert_eq!(coloured, Some(Chrome::color(theme.claude)));
         assert_eq!(Chrome::default().agent(AgentKind::Codex), None);
+    }
+
+    #[test]
+    fn pop_ups_sit_on_their_own_surface() {
+        let theme = Theme::dark();
+        let chrome = Chrome::new(Some(&theme));
+        assert_eq!(chrome.popup().bg, Some(Chrome::color(theme.popup)));
+        assert_eq!(chrome.popup_border().fg, Some(Chrome::color(theme.accent)));
+        let plain = Chrome::default();
+        assert_eq!(plain.popup(), Style::new(), "the host's colours");
+        assert!(plain.popup_border().add_modifier.contains(Modifier::BOLD));
     }
 
     #[test]
