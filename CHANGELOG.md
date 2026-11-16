@@ -10,6 +10,23 @@ they need polishing.
 
 ## [Unreleased]
 
+## [0.1.6](https://github.com/cooksterj/monarch/compare/v0.1.5...v0.1.6) - 2026-11-16
+
+### Added
+
+- *(hooks)* track Codex sub-agents as Claude's are ([#146](https://github.com/cooksterj/monarch/pull/146))
+- *(tui)* pop-ups stand out on their own surface with an accent border ([#145](https://github.com/cooksterj/monarch/pull/145))
+
+### Fixed
+
+- *(tui)* write the status line's mouse badge in lower case ([#144](https://github.com/cooksterj/monarch/pull/144))
+
+### Other
+
+- *(readme)* point the latest release at v0.1.5 and describe sub-agents ([#143](https://github.com/cooksterj/monarch/pull/143))
+- *(deps)* Bump the minor-and-patch group with 2 updates ([#131](https://github.com/cooksterj/monarch/pull/131))
+- Bump amannn/action-semantic-pull-request from 6.1.1 to 6.1.2 in the actions group ([#130](https://github.com/cooksterj/monarch/pull/130))
+
 ## [0.1.5](https://github.com/cooksterj/monarch/compare/v0.1.4...v0.1.5) - 2026-11-16
 
 ### Added
