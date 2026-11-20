@@ -1,6 +1,7 @@
 //! A repository's git worktrees: lists them, adds one (the directory comes
-//! from `[projects]`; an existing branch is checked out, else a new one is
-//! made) and removes one.
+//! from `[projects]`; an existing branch is checked out, one only on a
+//! remote is checked out tracking it, else a new one is made) and removes
+//! one.
 
 use std::path::{Path, PathBuf};
 
@@ -23,7 +24,8 @@ impl WorktreeManager {
     }
 
     /// Adds the worktree `request` asks for; returns its directory and
-    /// whether its branch was made for it.
+    /// whether its branch is new (a branch made to track a remote's one
+    /// counts as existing).
     ///
     /// # Errors
     /// Not in a repository, a bad name, the directory exists, or git
@@ -45,28 +47,63 @@ impl WorktreeManager {
                 path.display()
             )));
         }
-        let branch = format!("refs/heads/{name}");
-        let exists = self
-            .git
-            .run(dir, &["rev-parse", "--verify", "--quiet", &branch])
-            .is_some();
-        if exists && request.base.is_some() {
+        let source = self.source(dir, name)?;
+        if request.base.is_some() && source != Source::New {
             return Err(ServerError::Worktree(format!(
-                "branch {name} exists; a base only applies to a new branch"
+                "branch {name} exists{}; a base only applies to a new branch",
+                source
+                    .remote()
+                    .map_or(String::new(), |r| format!(" on {r}"))
             )));
         }
         let target = path.to_string_lossy();
         let mut args = vec!["worktree", "add"];
-        if exists {
-            args.extend([&*target, name]);
-        } else {
-            args.extend(["-b", name, &*target]);
-            args.extend(request.base.as_deref());
+        match &source {
+            Source::Local => args.extend([&*target, name]),
+            Source::Remote(remote) => args.extend(["--track", "-b", name, &*target, remote]),
+            Source::New => {
+                args.extend(["-b", name, &*target]);
+                args.extend(request.base.as_deref());
+            }
         }
         self.git
             .try_run(dir, &args)
             .map_err(ServerError::Worktree)?;
-        Ok((path, !exists))
+        Ok((path, source == Source::New))
+    }
+
+    /// Where branch `name` comes from: a local branch, else a remote's
+    /// branch of that name (as `git checkout` guesses), else nothing yet.
+    ///
+    /// # Errors
+    /// Several remotes have the branch, so which to track is a guess.
+    fn source(&self, dir: &Path, name: &str) -> Result<Source, ServerError> {
+        if self.has_ref(dir, &format!("refs/heads/{name}")) {
+            return Ok(Source::Local);
+        }
+        let remotes = self.git.run(dir, &["remote"]).unwrap_or_default();
+        let found: Vec<String> = remotes
+            .lines()
+            .map(|remote| format!("{remote}/{name}"))
+            .filter(|short| self.has_ref(dir, &format!("refs/remotes/{short}")))
+            .collect();
+        match found.as_slice() {
+            [] => Ok(Source::New),
+            [one] => Ok(Source::Remote(one.clone())),
+            several => Err(ServerError::Worktree(format!(
+                "branch {name} is on several remotes ({}); \
+                 make the local branch first, e.g. git branch --track {name} {}",
+                several.join(", "),
+                several[0]
+            ))),
+        }
+    }
+
+    /// Whether the full ref `name` exists.
+    fn has_ref(&self, dir: &Path, name: &str) -> bool {
+        self.git
+            .run(dir, &["rev-parse", "--verify", "--quiet", name])
+            .is_some()
     }
 
     /// Refuses names git wouldn't take, and anything that would read as
@@ -148,6 +185,28 @@ impl WorktreeManager {
     }
 }
 
+/// Where a new worktree's branch comes from.
+#[derive(Debug, PartialEq, Eq)]
+enum Source {
+    /// A local branch of that name.
+    Local,
+    /// Only a remote has it (`origin/feat-x`); a local branch tracking it
+    /// is made.
+    Remote(String),
+    /// Nowhere yet: a new branch from the base or HEAD.
+    New,
+}
+
+impl Source {
+    /// The remote branch tracked, if any.
+    fn remote(&self) -> Option<&str> {
+        match self {
+            Self::Remote(r) => Some(r),
+            Self::Local | Self::New => None,
+        }
+    }
+}
+
 /// Reads `git worktree list --porcelain`: blocks of `worktree <path>`,
 /// `HEAD …`, then `branch refs/heads/<name>` or `detached`, and maybe
 /// `bare`, `locked` or `prunable`.
@@ -179,7 +238,8 @@ mod tests {
 
     use super::*;
 
-    /// Answers like a repository at `/src/app` with branch `old`, and
+    /// Answers like a repository at `/src/app` with branch `old`, remotes
+    /// `origin` (with `shared` and `both`) and `fork` (with `both`), and
     /// records every command.
     #[derive(Clone, Default)]
     struct FakeGit(Arc<Mutex<Vec<String>>>);
@@ -191,9 +251,15 @@ mod tests {
                 ["rev-parse", "--path-format=absolute", "--git-common-dir"] => {
                     Some("/src/app/.git".into())
                 }
-                ["rev-parse", "--verify", "--quiet", branch] => {
-                    (*branch == "refs/heads/old").then(String::new)
-                }
+                ["rev-parse", "--verify", "--quiet", branch] => [
+                    "refs/heads/old",
+                    "refs/remotes/origin/shared",
+                    "refs/remotes/origin/both",
+                    "refs/remotes/fork/both",
+                ]
+                .contains(branch)
+                .then(String::new),
+                ["remote"] => Some("origin\nfork".into()),
                 ["check-ref-format", "--branch", name] => {
                     (!name.contains("..")).then(|| (*name).to_owned())
                 }
@@ -263,6 +329,55 @@ mod tests {
             ..request("old")
         };
         assert!(maker.create(&based).is_err(), "base for an existing branch");
+    }
+
+    #[test]
+    fn a_branch_only_on_one_remote_is_checked_out_tracking_it() {
+        let git = FakeGit::default();
+        let maker = WorktreeManager::new(Box::new(git.clone()));
+        let (_, new_branch) = maker.create(&request("shared")).expect("made");
+        assert!(!new_branch, "the branch already existed, on origin");
+        let log = git.0.lock().expect("log").clone();
+        assert_eq!(
+            log.last().map(String::as_str),
+            Some("worktree add --track -b shared /nonexistent-monarch-wt/app/shared origin/shared")
+        );
+        let based = NewWorktree {
+            base: Some("main".into()),
+            ..request("shared")
+        };
+        let err = maker.create(&based).expect_err("base for a remote branch");
+        assert!(err.to_string().contains("exists on origin/shared"), "{err}");
+    }
+
+    #[test]
+    fn a_branch_on_several_remotes_is_refused_not_guessed() {
+        let git = FakeGit::default();
+        let maker = WorktreeManager::new(Box::new(git.clone()));
+        let err = maker.create(&request("both")).expect_err("ambiguous");
+        assert!(
+            err.to_string()
+                .contains("several remotes (origin/both, fork/both)"),
+            "{err}"
+        );
+        let log = git.0.lock().expect("log").clone();
+        assert!(
+            !log.iter().any(|c| c.starts_with("worktree add")),
+            "{log:?}"
+        );
+    }
+
+    #[test]
+    fn a_branch_nowhere_is_made_from_head() {
+        let git = FakeGit::default();
+        let maker = WorktreeManager::new(Box::new(git.clone()));
+        let (_, new_branch) = maker.create(&request("fresh")).expect("made");
+        assert!(new_branch);
+        let log = git.0.lock().expect("log").clone();
+        assert_eq!(
+            log.last().map(String::as_str),
+            Some("worktree add -b fresh /nonexistent-monarch-wt/app/fresh")
+        );
     }
 
     #[test]
