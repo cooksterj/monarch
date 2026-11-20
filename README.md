@@ -183,7 +183,7 @@ Monarch is the youngest and smallest project in this comparison. Several of thes
 | **Plugins** | — | ✓ | ✓ | custom sidebars | ✓ | via TPM | — |
 | **Platforms** | macOS, Linux | macOS, Linux, Windows | macOS, Linux, Windows, BSD | macOS | macOS, Linux, Windows | macOS, Linux, BSD | macOS, Linux |
 | **License** | MIT or Apache-2.0 | Apache-2.0 | MIT | GPL-3.0+, some parts BUSL-1.1 | MIT | ISC | AGPL-3.0 |
-| **Latest release** | v0.1.6 | v0.9.5 | v0.12.1 | v0.65.2.2 | v0.45.1 | 3.8 | v1.0.20 |
+| **Latest release** | v0.1.7 | v0.9.5 | v0.12.1 | v0.65.2.2 | v0.45.1 | 3.8 | v1.0.20 |
 
 <sub>Checked against each project's docs on 2026-11-05. The cmux column describes its macOS app; cmux also has a separate terminal multiplexer, cmux TUI. These tools move quickly: Zellij's unreleased changes already add an inbox and agent status.</sub>
 
@@ -237,7 +237,7 @@ Each release also publishes tarballs and checksums on the [releases page](https:
 With a stable Rust toolchain, 1.88 or newer:
 
 ```sh
-cargo install --git https://github.com/cooksterj/monarch --tag v0.1.6   # a release
+cargo install --git https://github.com/cooksterj/monarch --tag v0.1.7   # a release
 cargo install --git https://github.com/cooksterj/monarch                # latest main
 cargo install --path . --locked                                         # from a clone
 ```
