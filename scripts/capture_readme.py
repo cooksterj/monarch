@@ -567,7 +567,7 @@ class Shot:
     crop: tuple = None              # (first col, first row, end col, end row)
     canvas: tuple = None            # (cols, rows): scale the crop to fit this
     caption: tuple = None           # (keys, words)
-    ring: str = None                # outlines the sidebar row naming this agent
+    ring: str = None                # highlights the sidebar row naming this agent
     fg: str = TERM_FG
     bg: str = TERM_BG
     strip: str = "#0c0d12"
@@ -603,12 +603,16 @@ def cells(rows, cursor, shot):
 
 
 def ring_mark(rows, shot):
+    """A band behind the sidebar row naming `shot.ring`: an amber wash the
+    sidebar's full width with a bar at its left edge. It sits under the
+    text, so no line of it crosses a glyph or touches the rows around it."""
     if not shot.ring:
         return ""
     c0, r0, _, r1 = shot.crop or (0, 0, len(rows[0]), len(rows))
-    row = next(y for y in range(r0, r1) if f" {shot.ring} " in row_text(rows[y])[:31])
-    return (f'<u style="left:{(1 - c0) * CELL_W}px;top:{(row - r0) * CELL_H - 1}px;'
-            f'width:{29 * CELL_W}px;height:{CELL_H}px"></u>')
+    width = SIDEBAR[2]
+    row = next(y for y in range(r0, r1) if f" {shot.ring} " in row_text(rows[y])[:width])
+    return (f'<u style="left:{-c0 * CELL_W}px;top:{(row - r0) * CELL_H}px;'
+            f'width:{width * CELL_W}px;height:{CELL_H}px"></u>')
 
 
 def page(snap, shot):
@@ -637,14 +641,14 @@ background:{shot.bg};border-radius:10px;border:1px solid #3a3d4e;overflow:hidden
 .g{{position:absolute;left:{PAD - 1}px;top:{PAD - 1}px;width:{grid_w}px;height:{grid_h}px;{fit}}}
 .g i,.g b,.g u{{position:absolute;display:block;font-style:normal;font-weight:400;text-decoration:none}}
 .g b{{width:{CELL_W}px;height:{CELL_H}px;line-height:{CELL_H}px;text-align:center;overflow:visible;white-space:pre}}
-.g u{{border:2px solid #e8a33d;border-radius:6px;box-sizing:content-box;margin:-1px 0 0 -4px;padding:0 2px}}
+.g u{{background:rgba(232,163,61,.2);box-shadow:inset 3px 0 #e8a33d;border-radius:2px}}
 svg{{position:absolute;left:0;top:0}}
 .c{{position:absolute;left:0;right:0;bottom:0;height:{shot.caption_h}px;box-sizing:border-box;padding:0 {PAD + 2}px;
 display:flex;align-items:center;gap:12px;background:{shot.strip};border-top:1px solid #3a3d4e;color:{shot.fg};
 font:17px/1.3 -apple-system,'Segoe UI',Helvetica,Arial,sans-serif}}
 kbd{{font:600 15px {FONT};color:#1a1a1a;background:#e8a33d;padding:3px 9px;border-radius:5px;white-space:nowrap}}
-</style><div class=t style="font:{FONT_PX}px {FONT}"><div class=g>{''.join(out)}
-<svg width="{grid_w}" height="{grid_h}">{''.join(svg)}</svg>{ring_mark(rows, shot)}</div>{strip}</div>"""
+</style><div class=t style="font:{FONT_PX}px {FONT}"><div class=g>{ring_mark(rows, shot)}{''.join(out)}
+<svg width="{grid_w}" height="{grid_h}">{''.join(svg)}</svg></div>{strip}</div>"""
     return doc, width + 2 * PAD, total
 
 

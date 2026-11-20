@@ -27,7 +27,7 @@ brew tap cooksterj/monarch && brew trust cooksterj/monarch && brew install cooks
   <img src="docs/assets/hero.webp" width="100%" alt="A recording of Monarch with six agents, and two sub-agents under a11y, in a sidebar grouped by git repository. The agent named retry, in another tab, shows an amber diamond because it needs permission to run a command. The user opens the inbox, types 1 to answer without leaving the pane they are in, and retry goes back to work. They then jump to the agent named header, which has finished, and read its diff.">
 </picture>
 
-<sub>Recorded from the real binary in a PTY. The agents are scripted, the repositories are disposable, and the captions and amber ring were added for the recording. [`scripts/capture_readme.py`](scripts/capture_readme.py) regenerates every image on this page.</sub>
+<sub>Recorded from the real binary in a PTY. The agents are scripted, the repositories are disposable, and the captions and amber row highlight were added for the recording. [`scripts/capture_readme.py`](scripts/capture_readme.py) regenerates every image on this page.</sub>
 
 > [!NOTE]
 > **Pre-1.0.** Monarch is stable enough for daily use on macOS and Linux, and every feature shown here is available in the current release. Until 1.0, keys, configuration and the wire format may change between releases. See the [roadmap and progress](docs/plan.md).
