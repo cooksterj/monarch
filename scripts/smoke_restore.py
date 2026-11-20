@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""M1 spike 6: a session killed with `kill -9` comes back.
+"""A session killed with `kill -9` comes back.
 
 Plays the host terminal for `monarch attach` and checks that:
 
@@ -13,7 +13,7 @@ Plays the host terminal for `monarch attach` and checks that:
   `--resume <uuid>`; a Codex pane comes back through `codex resume` (stand-in
   agent scripts record their arguments).
 
-Usage: python3 scripts/spike6_restore_smoke.py target/debug/monarch
+Usage: python3 scripts/smoke_restore.py target/debug/monarch
 """
 
 import fcntl
@@ -225,7 +225,7 @@ def stop_servers():
 
 
 def run_all(binary):
-    with tempfile.TemporaryDirectory(prefix="monarch-spike6-") as run:
+    with tempfile.TemporaryDirectory(prefix="monarch-restore-") as run:
         # No sidebar: it would show the directory name, and the full path
         # printed by pwd must fit on one row.
         config = os.path.join(run, "config.toml")
@@ -244,7 +244,7 @@ def run_all(binary):
             agents_resume_their_sessions(binary, env, run)
         finally:
             stop_servers()
-    print("spike 6 restore smoke: ok")
+    print("smoke restore: ok")
 
 
 if __name__ == "__main__":

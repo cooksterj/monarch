@@ -27,7 +27,7 @@ brew tap cooksterj/monarch && brew trust cooksterj/monarch && brew install cooks
   <img src="docs/assets/hero.webp" width="100%" alt="A recording of Monarch with six agents in a sidebar grouped by git repository. The agent named retry, in another tab, shows an amber diamond because it needs permission to run a command. The user opens the inbox, types 1 to answer without leaving the pane they are in, and retry goes back to work. They then jump to the agent named header, which has finished, and read its diff.">
 </picture>
 
-<sub>The real binary, recorded in a PTY. The agents are scripted, the repositories are throwaway, and the captions and amber ring are added for the recording. [`scripts/readme_shots.py`](scripts/readme_shots.py) regenerates every capture on this page.</sub>
+<sub>The real binary, recorded in a PTY. The agents are scripted, the repositories are throwaway, and the captions and amber ring are added for the recording. [`scripts/capture_readme.py`](scripts/capture_readme.py) regenerates every capture on this page.</sub>
 
 > [!NOTE]
 > **Early.** Monarch is usable day to day on macOS and Linux, and everything shown here works today. Versions before 1.0 may still change keys, config and the wire format between releases. [Progress is in the plan](docs/plan.md).
@@ -92,7 +92,7 @@ screen    ◆ Blocked (rule bash_permission_prompt)
 
 Monarch stays out of its way. Vim gets its mouse, Shift+Enter still works in Claude Code, and a 1 MiB paste arrives in one piece. Only the keys after the prefix are Monarch's. Colour queries get your real terminal's answer, and panes get `TERM=xterm-256color` and `TERM_PROGRAM=monarch`, so nothing pretends to be your terminal.
 
-CI checks this with PTY harnesses that play the host terminal. [One](scripts/spike3_input_matrix.py) types a matrix of keys at the terminal core and compares what the pane receives byte for byte. Others drive `monarch attach` through the [mouse](scripts/spike5_mouse_smoke.py), and through [detaching and restoring](scripts/spike6_restore_smoke.py).
+CI checks this with PTY harnesses that play the host terminal. [One](scripts/smoke_input_matrix.py) types a matrix of keys at the terminal core and compares what the pane receives byte for byte. Others drive `monarch attach` through the [mouse](scripts/smoke_mouse.py), and through [detaching and restoring](scripts/smoke_restore.py).
 
 It's quick, too. In a [20-pane benchmark](docs/bench/m6-twenty-panes.md) on an Apple M2 Max, with ten panes printing a line every 20 ms in other tabs, a keystroke reached the program in 87 µs at the median and 266 µs at p99. With all 20 idle, client and server together used 0.7 % CPU.
 

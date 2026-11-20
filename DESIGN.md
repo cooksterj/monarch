@@ -229,7 +229,7 @@ Inbox, pickers, the worktree form and review share one shape: a square dim borde
 Half-block pixel art at three depths: 19 × 7, 11 × 3 and 3 × 1 cells. Wings cycle open, half, closed, half. It is built only from the three wing tokens.
 
 ### Capture Frame
-`scripts/readme_shots.py` draws the client's real output cell by cell from a real PTY. Box-drawing and block characters are drawn as vector shapes so they join with no gaps. The `capture-frame` has a 1px `capture-border` outline. The capture path records colour, bold and reverse only, so dim text appears at full brightness in captures.
+`scripts/capture_readme.py` draws the client's real output cell by cell from a real PTY. Box-drawing and block characters are drawn as vector shapes so they join with no gaps. The `capture-frame` has a 1px `capture-border` outline. The capture path records colour, bold and reverse only, so dim text appears at full brightness in captures.
 
 Three annotations sit outside what the app draws: the `capture-caption` strip, the `capture-key-chip` showing the key pressed, and a 2px `dark-accent` ring with `ring` corners around a sidebar row. The README's caption says that captions and the ring were added for the recording.
 
@@ -241,7 +241,7 @@ Three annotations sit outside what the app draws: the `capture-caption` strip, t
 ### Do:
 - **Do** take every chrome colour from a theme token, and define new tokens in all eight themes.
 - **Do** pair each state's colour with its own glyph, and check that it reads under `NO_COLOR`.
-- **Do** make product imagery with `scripts/readme_shots.py` from the real binary, with scripted agents and added annotations stated in the caption.
+- **Do** make product imagery with `scripts/capture_readme.py` from the real binary, with scripted agents and added annotations stated in the caption.
 - **Do** use `docs/assets/logo.svg` as it is on any ground; its keyline handles both.
 - **Do** keep the README to GitHub-flavoured Markdown, with `<picture>` and image attributes for layout.
 

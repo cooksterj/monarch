@@ -661,7 +661,7 @@
     "dos": [
       "**Do** take every chrome colour from a theme token, and define new tokens in all eight themes.",
       "**Do** pair each state's colour with its own glyph, and check that it reads under `NO_COLOR`.",
-      "**Do** make product imagery with `scripts/readme_shots.py` from the real binary, with scripted agents and added annotations stated in the caption.",
+      "**Do** make product imagery with `scripts/capture_readme.py` from the real binary, with scripted agents and added annotations stated in the caption.",
       "**Do** use `docs/assets/logo.svg` as it is on any ground; its keyline handles both.",
       "**Do** keep the README to GitHub-flavoured Markdown, with `<picture>` and image attributes for layout."
     ],

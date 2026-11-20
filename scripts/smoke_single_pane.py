@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Headless smoke test for the M1 spike-1 prototype.
+"""Headless smoke test for the `single_pane` prototype.
 
 Runs `single_pane` inside a pseudo-terminal, types commands into the pane,
 and checks that the output renders and that `Ctrl-b q` exits cleanly.
-Usage: python3 scripts/spike1_smoke.py target/debug/examples/single_pane
+Usage: python3 scripts/smoke_single_pane.py target/debug/examples/single_pane
 """
 
 import os
@@ -60,7 +60,7 @@ def main():
             status = st
     assert status is not None, "prototype did not exit after Ctrl-b q"
     assert os.WIFEXITED(status) and os.WEXITSTATUS(status) == 0, f"bad exit {status}"
-    print("spike1 smoke: ok (rendered output, answered DA, Ctrl-b q exited 0)")
+    print("smoke single_pane: ok (rendered output, answered DA, Ctrl-b q exited 0)")
 
 
 if __name__ == "__main__":
