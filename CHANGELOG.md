@@ -10,6 +10,13 @@ they need polishing.
 
 ## [Unreleased]
 
+## [0.1.8](https://github.com/cooksterj/monarch/compare/v0.1.7...v0.1.8) - 2026-11-20
+
+### Other
+
+- *(roadmap)* plan the merge loop and turn record as the next differentiators ([#157](https://github.com/cooksterj/monarch/pull/157))
+- *(readme)* point the latest release at v0.1.7 ([#155](https://github.com/cooksterj/monarch/pull/155))
+
 ## [0.1.7](https://github.com/cooksterj/monarch/compare/v0.1.6...v0.1.7) - 2026-11-20
 
 ### Fixed
