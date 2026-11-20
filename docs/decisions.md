@@ -19,6 +19,12 @@ already says. Dates are when the decision was made.
 - **macOS and Linux only for v1** (2026-10-23). Unix sockets and PTYs; Windows later behind the same
   traits.
 - **Named layouts parked** (2026-11-08, user's decision).
+- **Next, set Monarch apart by taking agent work all the way to merged** (2026-11-19). The
+  competitors now match its rows in the comparison table, and all of them stop at showing the diff.
+  Monarch creates the worktrees and reads every agent's diff, so landing a change, warning about
+  overlapping edits and best-of-N build on what it already has. Hook data powers the per-turn
+  record, which tools that read the screen can't produce reliably. Several machines in one view
+  and plugins stay out of scope: there, others are already ahead.
 
 ## Terminal
 
