@@ -30,7 +30,7 @@ brew tap cooksterj/monarch && brew trust cooksterj/monarch && brew install cooks
 <sub>Recorded from the real binary in a PTY. The agents are scripted, the repositories are disposable, and the captions and amber row highlight were added for the recording. [`scripts/capture_readme.py`](scripts/capture_readme.py) regenerates every image on this page.</sub>
 
 > [!NOTE]
-> **Pre-1.0.** Monarch is stable enough for daily use on macOS and Linux, and every feature shown here is available in the current release. Until 1.0, keys, configuration and the wire format may change between releases. See the [roadmap and progress](docs/plan.md).
+> **Pre-1.0.** Monarch is stable enough for daily use on macOS and Linux, and every feature shown here is available in the current release. Until 1.0, keys, configuration and the wire format may change between releases. See the [roadmap](docs/roadmap.md).
 
 ## Features
 
