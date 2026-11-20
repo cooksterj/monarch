@@ -25,7 +25,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --all -- --check
       - run: cargo clippy --workspace --all-targets -- -D warnings
-      - run: bash scripts/lint-size.sh
+      - run: bash scripts/lint_size.sh
 
   test:
     name: Test (${{ matrix.os }})
@@ -46,12 +46,12 @@ jobs:
       - name: Fidelity smoke (PTY harnesses)
         run: |
           cargo build -p monarch-mux-tui --example single_pane
-          python3 scripts/spike1_smoke.py target/debug/examples/single_pane
-          python3 scripts/spike3_input_matrix.py target/debug/examples/single_pane
+          python3 scripts/smoke_single_pane.py target/debug/examples/single_pane
+          python3 scripts/smoke_input_matrix.py target/debug/examples/single_pane
           cargo build --bin monarch
-          python3 scripts/spike4_attach_smoke.py target/debug/monarch
-          python3 scripts/spike5_mouse_smoke.py target/debug/monarch
-          python3 scripts/spike6_restore_smoke.py target/debug/monarch
+          python3 scripts/smoke_attach.py target/debug/monarch
+          python3 scripts/smoke_mouse.py target/debug/monarch
+          python3 scripts/smoke_restore.py target/debug/monarch
 
   msrv:
     name: MSRV

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""M1 spike 5: mouse routing through the real binary, headless.
+"""Mouse routing through the real binary, headless.
 
 Plays the host terminal for `monarch attach` and checks that:
 
@@ -12,7 +12,7 @@ Plays the host terminal for `monarch attach` and checks that:
 * a program's own OSC 52 copy (vim, nvim, tmux) reaches the host;
 * `prefix m` hands the mouse to the host terminal and takes it back.
 
-Usage: python3 scripts/spike5_mouse_smoke.py target/debug/monarch
+Usage: python3 scripts/smoke_mouse.py target/debug/monarch
 """
 
 import base64
@@ -273,7 +273,7 @@ def main():
 
 
 def run_all(binary):
-    with tempfile.TemporaryDirectory(prefix="monarch-spike5-") as run:
+    with tempfile.TemporaryDirectory(prefix="monarch-mouse-") as run:
         host = Host(binary, run, "shell")
         wheel_scrolls_history(host)
         selection_copies(host)
@@ -298,7 +298,7 @@ def run_all(binary):
         host.pump(0.3)
         host.end()
         print("  alt screen: wheel becomes 3 arrow keys; clicks are not typed")
-    print("spike5 mouse smoke: ok")
+    print("smoke mouse: ok")
 
 
 if __name__ == "__main__":

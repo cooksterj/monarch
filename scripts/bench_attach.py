@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""M6 performance pass: a 20-pane session through the real attach client.
+"""A 20-pane session through the real attach client.
 
 Starts `monarch server` with 20 panes and attaches `monarch attach` in a
 PTY at 200x50, the way a user would. For each scenario it reports the
@@ -21,7 +21,7 @@ Scenarios:
 User state, config and sockets live in a temporary directory; nothing
 touches the user's own Monarch state.
 
-  python3 scripts/perf_attach.py target/release/monarch [--seconds 10]
+  python3 scripts/bench_attach.py target/release/monarch [--seconds 10]
 """
 import argparse
 import fcntl
@@ -127,7 +127,7 @@ def measure(session, seconds, probe=None):
                     latencies.append(time.perf_counter() - sent)
                     break
                 if time.perf_counter() - sent > 1:
-                    raise SystemExit("perf_attach: a key never reached the probe pane")
+                    raise SystemExit("bench_attach: a key never reached the probe pane")
             session.pump(0.01)
     took = time.time() - start
     return {

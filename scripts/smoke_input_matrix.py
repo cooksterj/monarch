@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""M1 spike 3: input fidelity matrix and host mode mirroring, headless.
+"""Input fidelity matrix and host mode mirroring, headless.
 
 This script plays the host terminal. It runs the `single_pane` prototype in a
 pseudo-terminal, answers its startup probe as a kitty-capable host would, and
@@ -12,7 +12,7 @@ checks that:
   DECSCUSR, title) and are undone on exit;
 * the probed host background answers the pane's OSC 11 query.
 
-Usage: python3 scripts/spike3_input_matrix.py target/debug/examples/single_pane
+Usage: python3 scripts/smoke_input_matrix.py target/debug/examples/single_pane
 """
 
 import fcntl
@@ -50,7 +50,7 @@ class Host:
     """The host terminal side of the prototype's pty."""
 
     def __init__(self, binary, setup):
-        fd, self.dump = tempfile.mkstemp(prefix="monarch-spike3-")
+        fd, self.dump = tempfile.mkstemp(prefix="monarch-input-")
         os.close(fd)
         args = [binary, sys.executable, "-c", RECORDER, self.dump, setup.hex()]
         self.pid, self.fd = pty.fork()
@@ -166,7 +166,7 @@ def main():
     binary = sys.argv[1]
     legacy_pane(binary)
     modes_pane(binary)
-    print("spike3 input matrix: ok")
+    print("smoke input matrix: ok")
 
 
 if __name__ == "__main__":

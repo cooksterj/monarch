@@ -17,7 +17,7 @@ clippy:
 
 # Enforce the 300-line limit on non-test source.
 lint-size:
-    bash scripts/lint-size.sh
+    bash scripts/lint_size.sh
 
 # Licenses and advisories (needs cargo-deny).
 deny:
@@ -34,20 +34,20 @@ install:
     "$bin" setup
     "$bin" doctor || true
 
-# Headless PTY harnesses for the M1 spike prototype (fidelity checks).
+# Headless PTY harnesses that play the host terminal (scripts/smoke_*.py; CI runs them too).
 smoke:
     cargo build -p monarch-mux-tui --example single_pane
-    python3 scripts/spike1_smoke.py target/debug/examples/single_pane
-    python3 scripts/spike3_input_matrix.py target/debug/examples/single_pane
+    python3 scripts/smoke_single_pane.py target/debug/examples/single_pane
+    python3 scripts/smoke_input_matrix.py target/debug/examples/single_pane
     cargo build --bin monarch
-    python3 scripts/spike4_attach_smoke.py target/debug/monarch
-    python3 scripts/spike5_mouse_smoke.py target/debug/monarch
-    python3 scripts/spike6_restore_smoke.py target/debug/monarch
+    python3 scripts/smoke_attach.py target/debug/monarch
+    python3 scripts/smoke_mouse.py target/debug/monarch
+    python3 scripts/smoke_restore.py target/debug/monarch
 
 # M6: 20 panes through the real attach client (release build; prints a table)
 bench-attach *ARGS:
     cargo build --release --bin monarch
-    python3 scripts/perf_attach.py target/release/monarch {{ARGS}}
+    python3 scripts/bench_attach.py target/release/monarch {{ARGS}}
 
 # M1 spike 4: latency/load bench (release build; prints a table, non-zero on failure)
 bench-spike4 *ARGS:
@@ -58,4 +58,4 @@ bench-spike4 *ARGS:
 # Regenerate the README's images from the real binary (needs pyte, Chrome, img2webp).
 readme-shots:
     cargo build --release
-    python3 scripts/readme_shots.py target/release/monarch docs/assets
+    python3 scripts/capture_readme.py target/release/monarch docs/assets

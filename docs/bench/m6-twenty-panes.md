@@ -1,7 +1,7 @@
 # M6: 20 panes through the real client
 
 Run with `just bench-attach` (release) or
-`python3 scripts/perf_attach.py target/debug/monarch` (the debug build
+`python3 scripts/bench_attach.py target/debug/monarch` (the debug build
 developers run). Unlike spike 4, which used protocol clients, this drives
 the real `monarch attach` client in a PTY at 200×50, with the sidebar,
 themes, animations, agent detection, git probes and persistence all on.

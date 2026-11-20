@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""M1 spike 4: attach, detach, reattach and exit through the real binary.
+"""Attach, detach, reattach and exit through the real binary.
 
 Plays the host terminal for `monarch attach`: answers the startup probe,
 types into the auto-started server's shell, detaches with Ctrl-b d,
 reattaches to find the screen intact, then exits the shell and expects the
 session to end.
 
-Usage: python3 scripts/spike4_attach_smoke.py target/debug/monarch
+Usage: python3 scripts/smoke_attach.py target/debug/monarch
 """
 
 import fcntl
@@ -116,7 +116,7 @@ def main():
 
 
 def run_all(binary):
-    with tempfile.TemporaryDirectory(prefix="monarch-spike4-") as run:
+    with tempfile.TemporaryDirectory(prefix="monarch-attach-") as run:
         # bash, not /bin/sh: on macOS /bin/sh is a wrapper that execs bash, so
         # the pane's program (and the tab's automatic name) would be `bash`
         # there and `sh` on Linux. HOME is the run's directory so no rc file
@@ -231,7 +231,7 @@ def run_all(binary):
         two_clients_share_a_session(binary, env)
         sidebar_scrolls(binary, env)  # before the reload checks leave a bad config
         sidebar_groups_and_focuses(binary, env, run)
-    print("spike4 attach smoke: ok")
+    print("smoke attach: ok")
 
 
 def two_clients_share_a_session(binary, env):

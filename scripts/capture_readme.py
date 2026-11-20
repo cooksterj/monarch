@@ -11,7 +11,7 @@ your own Monarch state is not touched.
 
   python3 -m venv /tmp/shots && /tmp/shots/bin/pip install pyte
   cargo build --release
-  /tmp/shots/bin/python scripts/readme_shots.py target/release/monarch docs/assets
+  /tmp/shots/bin/python scripts/capture_readme.py target/release/monarch docs/assets
 
 Needs Google Chrome, libwebp's img2webp and rustc. Uses JetBrains Mono when
 installed. `just readme-shots` runs it with whichever python3 has pyte.
@@ -413,7 +413,7 @@ class Host:
                 break
             except OSError:  # no reader yet: the agent is still starting
                 if time.time() > deadline:
-                    raise SystemExit(f"readme_shots: agent {name} never started")
+                    raise SystemExit(f"capture_readme: agent {name} never started")
                 self.pump(0.1)
         os.write(fd, (json.dumps(cmd) + "\n").encode())
         os.close(fd)
@@ -898,7 +898,7 @@ def main():
     os.makedirs(out, exist_ok=True)
     for tool, need in (("Chrome", CHROME), ("img2webp", shutil.which("img2webp")), ("rustc", shutil.which("rustc"))):
         if not need or not os.path.exists(need):
-            raise SystemExit(f"readme_shots: {tool} not found")
+            raise SystemExit(f"capture_readme: {tool} not found")
     if args.only in (None, "welcome"):
         record_welcome(monarch, out)
     if args.only in (None, "restored"):
