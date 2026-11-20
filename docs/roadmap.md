@@ -11,7 +11,7 @@ changes what is next. The details of finished work belong in the PR and the chan
 ## Status
 
 Pre-1.0, released through release-plz and cargo-dist: tarballs, a shell installer and a Homebrew
-tap. Latest release **v0.1.6** (2026-11-16); see [`CHANGELOG.md`](../CHANGELOG.md). crates.io
+tap. Latest release **v0.1.7** (2026-11-20 UTC); see [`CHANGELOG.md`](../CHANGELOG.md). crates.io
 publishing stays off (`git_only`) until the user decides otherwise.
 
 ## Milestones
