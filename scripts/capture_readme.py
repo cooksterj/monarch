@@ -39,7 +39,7 @@ COLS, ROWS = 108, 26
 CELL_W, CELL_H, FONT_PX = 9, 20, 15
 PAD = 10
 CAPTION_H = 44
-SIDEBAR = (0, 0, 31, 15)            # the sidebar's rows in the demo session
+SIDEBAR = (0, 0, 31, 17)            # the sidebar's rows in the demo session
 TERM_FG, TERM_BG = "#d5d8e4", "#14151c"
 CHROME = (shutil.which("google-chrome") or shutil.which("chromium")
           or "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
@@ -85,8 +85,8 @@ def act(cmd):
     if "screen" in cmd:
         text = "\x1b[?25l\x1b[2J\x1b[H" + cmd["screen"].replace("\n", "\r\n")
         os.write(1, text.encode())
-    if "hook" in cmd:
-        event = dict(cmd["hook"], cwd=os.getcwd())
+    for hook in cmd.get("hooks", [cmd["hook"]] if "hook" in cmd else []):
+        event = dict(hook, cwd=os.getcwd())
         subprocess.run([monarch, "hook", kind], input=json.dumps(event).encode(),
                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     pending = cmd.get("on_key", pending if "on_key" not in cmd else None)
@@ -150,8 +150,13 @@ A11Y = agent_screen("""{g}⏺{x} I'll label the nav landmarks,
 {g}⏺{x} {w}Bash{x}(npm run test:a11y)
   {d}⎿  31 passed, 2 failed{x}
 
-{g}⏺{x} Two failures: the footer links
-  have no accessible name.
+{g}⏺{x} Two failures. Handing them off.
+
+{g}⏺{x} {w}Agent{x}(Name the footer links)
+  {d}⎿  Running in the background{x}
+
+{g}⏺{x} {w}Agent{x}(Check colour contrast)
+  {d}⎿  Done{x}
 
 {o}✻{x} Thinking… {d}(41s){x}""", SPLIT_W)
 TESTS = agent_screen("""{g}⏺{x} I'll run the suite until it's
@@ -229,6 +234,23 @@ SCENE = {
 }
 SPLIT = {"tests": ("claude", "storefront-worktrees/feat-a11y")}
 TABS = ["a11y", "retry", "pay", "header", "docs"]
+
+
+def handoff(agent_id, task, *inside):
+    """a11y's Agent tool starting a background sub-agent for `task`, then
+    the events the sub-agent itself sends (they carry its `agent_id`)."""
+    started = {"hook_event_name": "SubagentStart", "agent_id": agent_id, "agent_type": "general-purpose"}
+    named = {"hook_event_name": "PostToolUse", "tool_name": "Agent", "tool_input": {"description": task},
+             "tool_response": {"status": "async_launched", "agentId": agent_id, "description": task}}
+    return [started, named] + [dict(e, agent_id=agent_id, agent_type="general-purpose") for e in inside]
+
+
+SUBAGENTS = (handoff("a11y-links", "Name the footer links",
+                     {"hook_event_name": "PreToolUse", "tool_name": "Grep",
+                      "tool_input": {"pattern": "<a href", "path": "src/footer.tsx"}})
+             + handoff("a11y-contrast", "Check colour contrast",
+                       {"hook_event_name": "SubagentStop",
+                        "last_assistant_message": "All text meets WCAG AA contrast."}))
 STOP_HEADER = {"hook_event_name": "Stop", "last_assistant_message":
                "Fixed the overlap on narrow screens. The header now wraps below 640px."}
 COMMAND = {"command": "cargo clean && cargo test retry"}
@@ -688,7 +710,9 @@ def start(host):
     host.pump(0.3)
     type_text(host, "a11y")
     host.keys(b"\r")
-    host.pump(2.5)
+    host.pump(0.5)
+    host.tell("a11y", hooks=SUBAGENTS)
+    host.pump(2.0)
 
 
 CAPTIONS = {

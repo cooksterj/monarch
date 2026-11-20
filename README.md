@@ -24,7 +24,7 @@ brew tap cooksterj/monarch && brew trust cooksterj/monarch && brew install cooks
 
 <picture>
   <source media="(max-width: 600px)" srcset="docs/assets/hero-phone.webp">
-  <img src="docs/assets/hero.webp" width="100%" alt="A recording of Monarch with six agents in a sidebar grouped by git repository. The agent named retry, in another tab, shows an amber diamond because it needs permission to run a command. The user opens the inbox, types 1 to answer without leaving the pane they are in, and retry goes back to work. They then jump to the agent named header, which has finished, and read its diff.">
+  <img src="docs/assets/hero.webp" width="100%" alt="A recording of Monarch with six agents, and two sub-agents under a11y, in a sidebar grouped by git repository. The agent named retry, in another tab, shows an amber diamond because it needs permission to run a command. The user opens the inbox, types 1 to answer without leaving the pane they are in, and retry goes back to work. They then jump to the agent named header, which has finished, and read its diff.">
 </picture>
 
 <sub>Recorded from the real binary in a PTY. The agents are scripted, the repositories are disposable, and the captions and amber ring were added for the recording. [`scripts/capture_readme.py`](scripts/capture_readme.py) regenerates every image on this page.</sub>
@@ -34,7 +34,7 @@ brew tap cooksterj/monarch && brew trust cooksterj/monarch && brew install cooks
 
 ## Features
 
-[Worktrees](#parallel-agents-in-isolated-worktrees) · [Attention inbox](#an-inbox-for-agents-waiting-on-you) · [Agent state](#where-agent-state-comes-from) · [Terminal fidelity](#terminal-fidelity) · [Diff review](#built-in-diff-review) · [Detach and SSH](#detach-and-reattach-from-anywhere) · [Restore](#restore-after-a-crash) · [Automation](#automation-from-the-cli) · [Themes](#themes-and-key-presets)
+[Worktrees](#parallel-agents-in-isolated-worktrees) · [Sidebar](#every-agent-at-a-glance) · [Attention inbox](#an-inbox-for-agents-waiting-on-you) · [Agent state](#where-agent-state-comes-from) · [Terminal fidelity](#terminal-fidelity) · [Diff review](#built-in-diff-review) · [Detach and SSH](#detach-and-reattach-from-anywhere) · [Restore](#restore-after-a-crash) · [Automation](#automation-from-the-cli) · [Themes](#themes-and-key-presets)
 
 ### Parallel agents in isolated worktrees
 
@@ -46,15 +46,29 @@ monarch new fix/idempotency --agent codex --detached
 monarch new feat/a11y --agent claude
 ```
 
-<img align="right" width="38%" src="docs/assets/sidebar.png" alt="Monarch's sidebar. Panes are grouped under checkout-api and storefront by branch, each with a state glyph, an agent icon, a name and its current activity. One branch shows plus 7, minus 3 and 1 commit to push.">
-
-No configuration is required. The sidebar derives each pane's repository and worktree from its working directory and shows how each checkout differs from its upstream: `+7` `−3` lines changed, `?1` untracked files, `↑1` commits to push.
-
 From inside Monarch, `prefix N` opens the same action as a form. The prefix is `Ctrl-b`, and every key is [rebindable](docs/guide.md#keys).
 
-<img src="docs/assets/worktree.png" width="440" alt="The new worktree form, with the branch name feat/parser typed in and a choice of starting a shell, Claude Code or Codex.">
+<p align="center">
+  <img src="docs/assets/worktree.png" width="560" alt="The new worktree form, with the branch name feat/parser typed in and a choice of starting a shell, Claude Code or Codex.">
+</p>
 
-<br clear="right">
+### Every agent at a glance
+
+The sidebar groups panes by repository and worktree, derived from each pane's working directory with no configuration. Each row shows the agent's state, its program, its name, what it is doing and how long its current turn has taken. Each worktree's heading shows how it differs from its upstream.
+
+<p align="center">
+  <img src="docs/assets/sidebar.png" width="300" alt="Monarch's sidebar. Panes are grouped under checkout-api and storefront by branch, each with a state glyph, an agent icon, a name, its current activity and a stopwatch. Under the a11y agent, two indented sub-agent rows: Name the footer links, working, and Check colour contrast, done. The feat/retry branch shows plus 7, minus 3 and 1 commit to push.">
+</p>
+
+| State | | Worktree badge | |
+|:---:|---|:---:|---|
+| `●` | working | `+7` `−3` | lines added and removed |
+| `◆` | blocked, waiting on you | `?1` | untracked files |
+| `○` | idle | `↑1` `↓1` | commits ahead of and behind upstream |
+| `✓` | done | | |
+| `✗` | error | | |
+
+**Sub-agents** appear as indented rows beneath the agent that started them, named by their task and marked with the same glyphs: Claude Code's sub-agents and teammates, and agents Codex spawns. A sub-agent's question blocks its parent, so it reaches the inbox like any other. Finished rows remain until your next prompt, so you can see what was done.
 
 ### An inbox for agents waiting on you
 
@@ -63,8 +77,6 @@ When an agent in another tab needs a decision, such as permission to run a comma
 `prefix a` opens the attention inbox: every agent waiting on you, longest wait first, with its question or last message and how long it has been waiting. Press `y`, `n` or a number to answer; Monarch sends the reply to that agent in the form it expects, and you stay in your current pane. `Enter` jumps to the agent's pane instead, `prefix Tab` goes directly to the next blocked agent, and `prefix g` then `b` filters the pane list to blocked agents.
 
 <img src="docs/assets/inbox.png" width="640" alt="The inbox. It lists retry, blocked on 'Allow Bash cargo clean and cargo test', and header, done with its last message. A hint line reads: move, enter jump, y/n/1-9 answer, esc close.">
-
-Sub-agents are tracked too. When Claude Code delegates to sub-agents or teammates, or Codex spawns agents, each appears as a row beneath its parent, named by its task and marked with the same state glyphs. A sub-agent's question blocks its parent, so it reaches the inbox like any other. Finished rows remain until your next prompt, so you can see what was done.
 
 ### Where agent state comes from
 
