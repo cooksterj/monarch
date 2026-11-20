@@ -862,7 +862,7 @@ html,body{{width:1280px;height:640px;overflow:hidden;background:#0d0e13}}
 h1{{font-size:64px;line-height:1;margin:0 0 18px;font-weight:700;letter-spacing:-.02em}}
 p{{font-size:29px;line-height:1.28;margin:0;color:#d5d8e4;text-wrap:balance}}
 .shot{{position:absolute;left:488px;top:{(640 - SOCIAL_SHOT_H) // 2}px;transform-origin:0 0;transform:scale({SOCIAL_SCALE})}}
-</style><div class=card>{logo}<h1>Monarch</h1><p>Every agent in its own pane, and you always see which one needs you.</p></div>
+</style><div class=card>{logo}<h1>Monarch</h1><p>A terminal multiplexer for AI coding agents that shows you which one needs you.</p></div>
 <div class=shot>{body}</div>"""
     src = os.path.join(out, "social.html")
     write(src, doc)

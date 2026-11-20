@@ -5,9 +5,9 @@
 <h1 align="center">Monarch</h1>
 
 <p align="center">
-  <strong>Every agent in its own pane, and you always see which one needs you.</strong><br>
-  A terminal multiplexer for Claude Code, Codex and your shells.<br>
-  Keys, mouse, paste and colours reach your programs as they would in a bare terminal.
+  <strong>A terminal multiplexer for AI coding agents that shows you which one needs you.</strong><br>
+  Run Claude Code, Codex and your shells side by side, grouped by repository and worktree.<br>
+  Keys, mouse, paste and colours reach your programs exactly as they would in a bare terminal.
 </p>
 
 <p align="center">
@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <a href="#install">Install</a> · <a href="#a-day-with-six-agents">A day with six agents</a> · <a href="#how-it-compares">How it compares</a> · <a href="docs/guide.md">User guide</a>
+  <a href="#install">Install</a> · <a href="#features">Features</a> · <a href="#how-it-compares">How it compares</a> · <a href="docs/guide.md">User guide</a>
 </p>
 
 ```sh
@@ -27,18 +27,18 @@ brew tap cooksterj/monarch && brew trust cooksterj/monarch && brew install cooks
   <img src="docs/assets/hero.webp" width="100%" alt="A recording of Monarch with six agents in a sidebar grouped by git repository. The agent named retry, in another tab, shows an amber diamond because it needs permission to run a command. The user opens the inbox, types 1 to answer without leaving the pane they are in, and retry goes back to work. They then jump to the agent named header, which has finished, and read its diff.">
 </picture>
 
-<sub>The real binary, recorded in a PTY. The agents are scripted, the repositories are throwaway, and the captions and amber ring are added for the recording. [`scripts/capture_readme.py`](scripts/capture_readme.py) regenerates every capture on this page.</sub>
+<sub>Recorded from the real binary in a PTY. The agents are scripted, the repositories are disposable, and the captions and amber ring were added for the recording. [`scripts/capture_readme.py`](scripts/capture_readme.py) regenerates every image on this page.</sub>
 
 > [!NOTE]
-> **Early.** Monarch is usable day to day on macOS and Linux, and everything shown here works today. Versions before 1.0 may still change keys, config and the wire format between releases. [Progress is in the plan](docs/plan.md).
+> **Pre-1.0.** Monarch is stable enough for daily use on macOS and Linux, and every feature shown here is available in the current release. Until 1.0, keys, configuration and the wire format may change between releases. See the [roadmap and progress](docs/plan.md).
 
-## A day with six agents
+## Features
 
-[09:02 Worktrees](#0902-start-the-first-three) · [09:14 Inbox](#0914-one-of-them-needs-you) · [10:20 Fidelity](#1020-you-open-vim-in-the-next-pane) · [11:30 Review](#1130-one-of-them-says-its-done) · [12:10 Detach](#1210-go-to-lunch) · [13:05 SSH](#1305-pick-it-up-from-somewhere-else) · [15:40 Restore](#1540-the-server-dies) · [16:45 CLI](#1645-let-an-agent-run-the-next-one) · [17:30 Themes](#1730-someone-asks-what-theme-that-is)
+[Worktrees](#parallel-agents-in-isolated-worktrees) · [Attention inbox](#an-inbox-for-agents-waiting-on-you) · [Agent state](#where-agent-state-comes-from) · [Terminal fidelity](#terminal-fidelity) · [Diff review](#built-in-diff-review) · [Detach and SSH](#detach-and-reattach-from-anywhere) · [Restore](#restore-after-a-crash) · [Automation](#automation-from-the-cli) · [Themes](#themes-and-key-presets)
 
-### 09:02 Start the first three
+### Parallel agents in isolated worktrees
 
-Each one gets its own git worktree and tab, so they can't overwrite each other's work.
+`monarch new` creates a git worktree and opens a new tab in it, running an agent or a shell, so agents working in parallel never overwrite each other's changes.
 
 ```sh
 monarch new feat/retry --agent claude --detached
@@ -48,33 +48,35 @@ monarch new feat/a11y --agent claude
 
 <img align="right" width="38%" src="docs/assets/sidebar.png" alt="Monarch's sidebar. Panes are grouped under checkout-api and storefront by branch, each with a state glyph, an agent icon, a name and its current activity. One branch shows plus 7, minus 3 and 1 commit to push.">
 
-Nothing needs configuring. The sidebar works out the repository and worktree from each pane's directory, then shows how each checkout differs: `+7` `−3` lines changed, `?1` new files, `↑1` commits to push.
+No configuration is required. The sidebar derives each pane's repository and worktree from its working directory and shows how each checkout differs from its upstream: `+7` `−3` lines changed, `?1` untracked files, `↑1` commits to push.
 
-Already inside Monarch? `prefix N` does the same from a form. The prefix is `Ctrl-b`, and every key is [rebindable](docs/guide.md#keys).
+From inside Monarch, `prefix N` opens the same action as a form. The prefix is `Ctrl-b`, and every key is [rebindable](docs/guide.md#keys).
 
 <img src="docs/assets/worktree.png" width="440" alt="The new worktree form, with the branch name feat/parser typed in and a choice of starting a shell, Claude Code or Codex.">
 
 <br clear="right">
 
-### 09:14 One of them needs you
+### An inbox for agents waiting on you
 
-You're working in `a11y`. In another tab, `retry` wants to run a command, and an amber diamond appears on its row in the sidebar.
+When an agent in another tab needs a decision, such as permission to run a command, an amber diamond appears on its row in the sidebar.
 
-`prefix a` opens the inbox: every agent waiting on you, longest wait first, with the question it asked or the last thing it said and how long it has been waiting. Type `y` or `n` and the answer goes to that agent in the form it expects, while you stay where you are. `Enter` jumps to its pane instead, `prefix Tab` goes straight to the next blocked agent, and `prefix g` then `b` lists only the agents waiting on you, as a jump list.
+`prefix a` opens the attention inbox: every agent waiting on you, longest wait first, with its question or last message and how long it has been waiting. Press `y`, `n` or a number to answer; Monarch sends the reply to that agent in the form it expects, and you stay in your current pane. `Enter` jumps to the agent's pane instead, `prefix Tab` goes directly to the next blocked agent, and `prefix g` then `b` filters the pane list to blocked agents.
 
 <img src="docs/assets/inbox.png" width="640" alt="The inbox. It lists retry, blocked on 'Allow Bash cargo clean and cargo test', and header, done with its last message. A hint line reads: move, enter jump, y/n/1-9 answer, esc close.">
 
-When Claude Code hands work to sub-agents or teammates, or Codex spawns agents, each gets its own row under the agent that started it, named by its task and marked with the same glyphs. A sub-agent's question blocks its parent's row, so it reaches the inbox like any other. Finished rows stay until your next prompt, so you can see what was done.
+Sub-agents are tracked too. When Claude Code delegates to sub-agents or teammates, or Codex spawns agents, each appears as a row beneath its parent, named by its task and marked with the same state glyphs. A sub-agent's question blocks its parent, so it reaches the inbox like any other. Finished rows remain until your next prompt, so you can see what was done.
 
-Monarch knew because the agent told it. `monarch setup` adds hooks to Claude Code and Codex, backing up each file it edits. Other agents are recognised from terminal notifications and from their screen.
+### Where agent state comes from
+
+Agents report their own state. `monarch setup` installs hooks for Claude Code and Codex, backing up each file it edits. Other agents are recognised from terminal notifications and from what is on their screen.
 
 <img src="docs/assets/signals.svg" width="560" alt="A diagram. Monarch learns an agent's state from three sources, most trusted first: the agent's own hooks, terminal notifications, and detection rules for 22 agents reading the screen. They resolve to one state per pane: working, blocked, idle, done, error or exited.">
 
-You can always ask why. `prefix i` shows it for the pane you're in: the state and which signal set it, what the screen looks like to the detection rules, and the last few states the agent went through. It follows the agent while open.
+Every state can be explained. `prefix i` shows, for the current pane, the state and the signal that set it, how the detection rules read the screen, and the agent's recent state history. The view updates live while it is open.
 
-<img src="docs/assets/agent-info.png" width="640" alt="The agent info for retry. State: Blocked for 5s, from its hooks. Activity: Allow Bash cargo clean and cargo test retry. Program: claude. Screen: Blocked by rule bash_permission_prompt, claude 2026.10.11. Under Recent states, oldest first: Idle from its screen 22 seconds ago, Working from its hooks 21 seconds ago with the prompt fix the retry backoff, then Blocked from its hooks 5 seconds ago. Under Rules, thirteen rules of the Claude manifest with their state, priority and region; bash_permission_prompt is marked as the one that fired, with the text it read.">
+<img src="docs/assets/agent-info.png" width="640" alt="The agent info for retry. State: Blocked for 5s, from its hooks. Activity: Allow Bash cargo clean and cargo test retry. Program: claude. Screen: Blocked by rule bash_permission_prompt, claude 2026.10.11. Under Recent states, oldest first: Idle from its screen, Working from its hooks with the prompt fix the retry backoff, Blocked on the Bash permission, Working on the command, then Blocked again 5 seconds ago. Under Rules, the first twelve of 31 rules in the Claude manifest with their state, priority and region.">
 
-The same answer from a shell:
+The same information is available from the command line:
 
 ```text
 $ monarch agent explain p2
@@ -88,49 +90,47 @@ manifest  claude 2026.10.11.1
 screen    ◆ Blocked (rule bash_permission_prompt)
 ```
 
-### 10:20 You open vim in the next pane
+### Terminal fidelity
 
-Monarch stays out of its way. Vim gets its mouse, Shift+Enter still works in Claude Code, and a 1 MiB paste arrives in one piece. Only the keys after the prefix are Monarch's. Colour queries get your real terminal's answer, and panes get `TERM=xterm-256color` and `TERM_PROGRAM=monarch`, so nothing pretends to be your terminal.
+Programs in a pane behave as they would in a bare terminal. Vim receives mouse events, Shift+Enter works in Claude Code, and a 1 MiB paste arrives intact. Monarch claims only the keys pressed after the prefix. Colour queries are answered by your real terminal, and panes run with `TERM=xterm-256color` and `TERM_PROGRAM=monarch`, so nothing impersonates your terminal.
 
-CI checks this with PTY harnesses that play the host terminal. [One](scripts/smoke_input_matrix.py) types a matrix of keys at the terminal core and compares what the pane receives byte for byte. Others drive `monarch attach` through the [mouse](scripts/smoke_mouse.py), and through [detaching and restoring](scripts/smoke_restore.py).
+CI verifies this with PTY harnesses that act as the host terminal. [One](scripts/smoke_input_matrix.py) sends a matrix of keys through the terminal core and compares what the pane receives byte for byte; others drive `monarch attach` through [mouse input](scripts/smoke_mouse.py) and through [detaching and restoring](scripts/smoke_restore.py).
 
-It's quick, too. In a [20-pane benchmark](docs/bench/m6-twenty-panes.md) on an Apple M2 Max, with ten panes printing a line every 20 ms in other tabs, a keystroke reached the program in 87 µs at the median and 266 µs at p99. With all 20 idle, client and server together used 0.7 % CPU.
+Overhead is low. In a [20-pane benchmark](docs/bench/m6-twenty-panes.md) on an Apple M2 Max, with ten panes in other tabs printing a line every 20 ms, keystroke latency to the program was 87 µs at the median and 266 µs at p99. With all 20 panes idle, client and server together used 0.7 % CPU.
 
-A few things don't pass through yet. Kitty graphics and sixel images aren't supported, and while Monarch has the mouse you hold Shift to use your terminal's own selection.
+Known limitations: Kitty graphics and sixel images are not yet supported, and while Monarch has mouse capture, hold Shift to use your terminal's native selection.
 
-### 11:30 One of them says it's done
+### Built-in diff review
 
-A green tick appears on `header`'s row. `prefix v` shows its uncommitted changes file by file, so you can read them before you believe it. Spot something off, press `c`, type a line, and the note lands in `header`'s prompt with the file, the hunk and your words, while you keep reading. `e` opens the file in `$EDITOR`.
+When an agent finishes, a green tick appears on its row. `prefix v` shows the pane's uncommitted changes file by file, so you can review the work before accepting it. Press `c` on a hunk to write a note; Monarch sends it to the agent's prompt with the file and hunk attached while you keep reading. `e` opens the file in `$EDITOR`.
 
 <img src="docs/assets/review.png" width="100%" alt="The review view for branch fix/header: two files listed on the left, and on the right a coloured diff of src/header.tsx with added lines in green and removed lines in red.">
 
-### 12:10 Go to lunch
+### Detach and reattach from anywhere
 
-`prefix d` detaches, and closing the terminal does the same. The server keeps every agent running for as long as its machine stays awake.
+`prefix d` detaches, as does closing the terminal. The server keeps every agent running for as long as the machine is awake.
 
 ```text
 $ monarch ls
 main   6 panes, 5 tabs
 ```
 
-### 13:05 Pick it up from somewhere else
+On a machine that stays on, connect with `ssh` and run `monarch` to pick up where you left off. Several terminals can be attached to one session at once. Copying uses OSC 52, which reaches your local clipboard over SSH when your terminal permits clipboard access.
 
-If Monarch runs on a machine that stays on, `ssh` in and run `monarch`. Two terminals can be attached at once. Copying uses OSC 52, which reaches your local clipboard over SSH if your terminal allows clipboard access.
+### Restore after a crash
 
-### 15:40 The server dies
-
-Say a reboot, or a stray `kill -9`. The next `monarch` brings back your tabs, your splits and each pane's working directory. Agents Monarch started resume their conversations: `claude --resume` for Claude Code, `codex resume` for Codex.
+If the server stops unexpectedly, after a reboot or a `kill -9`, the next `monarch` restores your tabs, splits and each pane's working directory. Agents that Monarch started resume their conversations: `claude --resume` for Claude Code, `codex resume` for Codex.
 
 <picture>
   <source media="(max-width: 600px)" srcset="docs/assets/restored-phone.png">
-  <img src="docs/assets/restored.png" width="100%" alt="Monarch just after a kill -9 and a new attach. The sidebar is back with the day's six agents, grouped by repository and branch. The retry pane reads: monarch, restored after the server stopped, resuming Claude Code session, followed by the scripted agent printing the claude --resume command Monarch ran.">
+  <img src="docs/assets/restored.png" width="100%" alt="Monarch just after a kill -9 and a new attach. The sidebar is back with all six agents, grouped by repository and branch. The retry pane reads: monarch, restored after the server stopped, resuming Claude Code session, followed by the scripted agent printing the claude --resume command Monarch ran.">
 </picture>
 
-An agent you started by hand comes back as a shell in the same directory. Running programs and their screens can't survive the server, as with tmux. `monarch kill` ends a session for good.
+An agent you started by hand returns as a shell in the same directory. As with tmux, running programs and their screens cannot outlive the server. `monarch kill` ends a session permanently.
 
-### 16:45 Let an agent run the next one
+### Automation from the CLI
 
-Agents in panes can use the same commands you do. `monarch setup` installs a skill that teaches them how.
+Agents running in panes can use the same commands you do, so one agent can start, instruct and wait on another. `monarch setup` installs a skill that teaches them how.
 
 ```sh
 monarch new feat-parser --agent claude --detached
@@ -139,9 +139,9 @@ monarch agent wait p7 --timeout 600     # until p7 is blocked, done or failed
 monarch agent read p7                   # what it said when it stopped
 ```
 
-### 17:30 Someone asks what theme that is
+### Themes and key presets
 
-Monarch's own, which follows your terminal's background, light or dark. Catppuccin, Tokyo Night and Gruvbox are built in too, each in both, and you can override single colours. Monarch colours only its own chrome; programs in panes keep theirs. Keys are as easy to change, with `monarch`, `tmux` and `herdr` presets.
+The default theme follows your terminal's background, light or dark. Catppuccin, Tokyo Night and Gruvbox are built in, each in light and dark variants, and individual colours can be overridden. Themes apply only to Monarch's own interface; programs in panes keep their colours. Key bindings ship with `monarch`, `tmux` and `herdr` presets and can be changed individually.
 
 <p align="center">
   <img src="docs/assets/theme-monarch-light.png" width="32%" alt="Monarch's sidebar in the monarch-light theme, on a light terminal.">
@@ -151,7 +151,7 @@ Monarch's own, which follows your terminal's background, light or dark. Catppucc
 
 ## How it compares
 
-Monarch is about two weeks old and the smallest project here. Several of these tools are further along, and some do things Monarch doesn't. A dash means we couldn't find the feature in that project's docs, which doesn't prove it's absent. [Corrections are welcome](https://github.com/cooksterj/monarch/issues).
+Monarch is the youngest and smallest project in this comparison. Several of these tools are more mature, and some offer features Monarch does not. A dash means the feature could not be found in that project's documentation, which does not prove it is absent. [Corrections are welcome](https://github.com/cooksterj/monarch/issues).
 
 | | Monarch | [Herdr](https://github.com/herdrdev/herdr) | [TUIOS](https://github.com/Gaurav-Gosain/tuios) | [cmux](https://github.com/manaflow-ai/cmux) | [Zellij](https://github.com/zellij-org/zellij) | [tmux](https://github.com/tmux/tmux) | [Claude Squad](https://github.com/smtg-ai/claude-squad) |
 |---|---|---|---|---|---|---|---|
@@ -175,16 +175,16 @@ Monarch is about two weeks old and the smallest project here. Several of these t
 
 <sub>Checked against each project's docs on 2026-11-05. The cmux column describes its macOS app; cmux also has a separate terminal multiplexer, cmux TUI. These tools move quickly: Zellij's unreleased changes already add an inbox and agent status.</sub>
 
-**Choose something else if:**
+**Another tool may suit you better if you want:**
 
-- you want the tool that's already on every server: **tmux**.
-- you want layouts, floating panes, a web client and a plugin system, with or without agents: **Zellij**.
-- you want the established agent multiplexer, with Windows, plugins and several machines in one window: **Herdr**.
-- you want a tiling window manager with modes, BSP layouts and kitty graphics: **TUIOS**.
-- you're on a Mac and prefer a native app with a built-in browser: **cmux**.
-- you want a simple list of sessions on top of tmux: **Claude Squad**.
+- the multiplexer already installed on every server: **tmux**.
+- layouts, floating panes, a web client and a plugin system, with or without agents: **Zellij**.
+- the established agent multiplexer, with Windows support, plugins and several machines in one window: **Herdr**.
+- a tiling window manager with modes, BSP layouts and kitty graphics: **TUIOS**.
+- a native macOS app with a built-in browser: **cmux**.
+- a simple session list on top of tmux: **Claude Squad**.
 
-**Choose Monarch if** you want prefix-only keys that leave everything else to your programs, key handling that CI compares byte for byte, agent state that starts from the agent's own hooks, and an inbox you can answer from.
+**Monarch is a good fit if you want** prefix-only keys that leave everything else to your programs, input handling verified byte for byte in CI, agent state sourced first from the agent's own hooks, and an inbox you can answer from.
 
 <details>
 <summary>Sources for the table</summary>
@@ -204,7 +204,7 @@ Monarch runs on macOS and Linux. Each release ships prebuilt binaries for Apple 
 
 **Homebrew**
 
-The tap is [`cooksterj/homebrew-monarch`](https://github.com/cooksterj/homebrew-monarch). Homebrew 7 asks you to tap and trust third-party taps before it will load their formulas; older Homebrews have no `brew trust` and skip that step. Use the full name: a bare `brew install monarch` is a different program, the Monarch launcher cask.
+The tap is [`cooksterj/homebrew-monarch`](https://github.com/cooksterj/homebrew-monarch). Homebrew 7 requires third-party taps to be trusted before it loads their formulas; earlier versions have no `brew trust` and skip that step. Use the fully qualified name: `brew install monarch` installs an unrelated program, the Monarch launcher cask.
 
 ```sh
 brew tap cooksterj/monarch && brew trust cooksterj/monarch && brew install cooksterj/monarch/monarch
@@ -212,13 +212,13 @@ brew tap cooksterj/monarch && brew trust cooksterj/monarch && brew install cooks
 
 **Shell installer**
 
-Downloads the binary for your machine into `~/.cargo/bin` (no Rust needed) and tells you if that isn't on your `PATH`:
+Downloads the binary for your platform into `~/.cargo/bin` (Rust is not required) and warns you if that directory is not on your `PATH`:
 
 ```sh
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/cooksterj/monarch/releases/latest/download/monarch-mux-installer.sh | sh
 ```
 
-Every release also attaches the tarballs and their checksums on the [releases page](https://github.com/cooksterj/monarch/releases), if you would rather unpack one yourself.
+Each release also publishes tarballs and checksums on the [releases page](https://github.com/cooksterj/monarch/releases) for manual installation.
 
 **From source**
 
@@ -230,9 +230,9 @@ cargo install --git https://github.com/cooksterj/monarch                # latest
 cargo install --path . --locked                                         # from a clone
 ```
 
-The package is `monarch-mux` (plain `monarch` was taken), the binary is `monarch` either way.
+The package is named `monarch-mux` because `monarch` was already taken; the binary is `monarch` in every case.
 
-Then, once:
+**First run**
 
 ```sh
 monarch setup    # let Claude Code and Codex report their state; installs the Monarch skill
@@ -240,11 +240,13 @@ monarch doctor   # check the whole setup, with a fix for anything missing
 monarch          # attach to the session `main`, starting it if needed
 ```
 
-`monarch setup` adds hooks to `~/.claude/settings.json` and `~/.codex/config.toml` (honouring `CLAUDE_CONFIG_DIR` and `CODEX_HOME`), touching nothing else and backing each file up first. `--dry-run` shows what would change; `--uninstall` removes it all. Outside Monarch the hooks do nothing. Codex asks you to trust new hooks in `/hooks`.
+`monarch setup` adds hooks to `~/.claude/settings.json` and `~/.codex/config.toml` (honouring `CLAUDE_CONFIG_DIR` and `CODEX_HOME`), backs up each file first and changes nothing else. `--dry-run` previews the changes; `--uninstall` reverts them. The hooks have no effect outside Monarch. Codex asks you to approve new hooks in `/hooks`.
 
-To upgrade, run `brew upgrade cooksterj/monarch/monarch` or the installer again. The hooks run the `monarch` on your `PATH`, so they follow it. A running session keeps the build it started with; when the new one refuses to attach to it, the message says how to restart the session with its tabs and conversations restored.
+**Upgrading**
 
-The first time you attach, the welcome screen shows the few keys you need.
+Run `brew upgrade cooksterj/monarch/monarch` or the installer again. The hooks call whichever `monarch` is on your `PATH`, so they pick up the new version automatically. A running session keeps the build it started with; if the new client refuses to attach to it, the error explains how to restart the session with its tabs and conversations restored.
+
+On first attach, a welcome screen lists the essential keys.
 
 <img src="docs/assets/welcome.webp" width="100%" alt="Monarch's welcome screen: pixel-art monarch butterflies rise past a card with the name, the tagline and the keys a newcomer needs.">
 
@@ -253,7 +255,7 @@ The first time you attach, the welcome screen shows the few keys you need.
 <details>
 <summary><strong>Keys</strong></summary>
 
-Everything starts with the prefix, `Ctrl-b`. Press it and wait to see every key.
+Every command starts with the prefix, `Ctrl-b`. Press it and pause to see all available keys.
 
 | Keys | Action |
 |---|---|
@@ -289,7 +291,7 @@ monarch ls              # running sessions
 monarch new feat/x --agent claude   # a worktree for branch feat/x, with Claude Code in it
 ```
 
-None of these change anything:
+Read-only commands:
 
 | Command | What it tells you |
 |---|---|
@@ -307,7 +309,7 @@ The `agent` commands use the session you're in, or `main` outside Monarch; `-s <
 
 </details>
 
-**[The user guide](docs/guide.md)** covers all of it: agents and their states, the inbox, worktrees and review, copy mode and the mouse, sessions and restore, every key, rebinding, configuration and themes, and how agents can drive Monarch themselves.
+**[The user guide](docs/guide.md)** covers everything in detail: agents and their states, the inbox, worktrees and review, copy mode and the mouse, sessions and restore, every key, rebinding, configuration and themes, and how agents can drive Monarch.
 
 ## Development
 
@@ -315,11 +317,11 @@ The `agent` commands use the session you're in, or `main` outside Monarch; `-s <
 just check   # fmt, clippy, file-size lint, tests
 ```
 
-Read [`CLAUDE.md`](CLAUDE.md) for code conventions and [`docs/`](docs/README.md) for the design, architecture and benchmarks.
+See [`CLAUDE.md`](CLAUDE.md) for code conventions and [`docs/`](docs/README.md) for design, architecture and benchmarks. Contributions follow [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Credits
 
-Monarch's agent detection rules come from [Herdr](https://github.com/herdrdev/herdr), unmodified, under the Apache License 2.0. [Attribution](crates/monarch-detect/manifests/ATTRIBUTION.md).
+Monarch's agent detection rules are taken unmodified from [Herdr](https://github.com/herdrdev/herdr) under the Apache License 2.0; see the [attribution](crates/monarch-detect/manifests/ATTRIBUTION.md).
 
 ## License
 
