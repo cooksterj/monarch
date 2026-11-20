@@ -180,7 +180,7 @@ A warm butterfly over cool terminal chrome, where saturated colour is reserved f
 
 The app is a character grid: a sidebar, panes, and a status bar, all whole cells. Density is the terminal's.
 
-The README is a single GitHub column. The mark, name and promise are centred above the install command and a full-width hero. Images size by attribute: `100%` for full screens, `38%` right-floated for the sidebar, `32%` each for the row of three themes, and fixed widths of 440, 560 and 640 for popups and the diagram. `<picture>` swaps in phone crops at `max-width: 600px`.
+The README is a single GitHub column. The mark, name and promise are centred above the install command and a full-width hero. Images size by attribute: `100%` for full screens, `32%` each for the row of three themes, and fixed widths, centred, of 300 for the sidebar and 560 or 640 for popups and the diagram. Nothing floats beside text. `<picture>` swaps in phone crops at `max-width: 600px`.
 
 The README's Features section has one `###` heading per feature, named for what it does, with a line of jump links above them. This device belongs to the README and is not a rule for other surfaces.
 
