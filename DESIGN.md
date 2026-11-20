@@ -69,7 +69,7 @@ typography:
     fontWeight: 400
 rounded:
   key-chip: "5px"
-  ring: "6px"
+  highlight: "2px"
   capture: "10px"
   diagram: "14px"
 spacing:
@@ -195,7 +195,7 @@ Flat everywhere. Nothing in the app, captures, diagram or README has a shadow. A
 
 ## Shapes
 
-App boxes use square box-drawing corners (`┌ ┐ └ ┘`), including panes and popups. Rounded corners exist only in framing outside the app: `capture`, `diagram`, `ring` and `key-chip`.
+App boxes use square box-drawing corners (`┌ ┐ └ ┘`), including panes and popups. Rounded corners exist only in framing outside the app: `capture`, `diagram`, `highlight` and `key-chip`.
 
 The butterfly is bilaterally symmetric in both forms. The logo mirrors one half with `<use>`, and the sprite stores the left half and mirrors it in code.
 
@@ -231,7 +231,7 @@ Half-block pixel art at three depths: 19 × 7, 11 × 3 and 3 × 1 cells. Wings c
 ### Capture Frame
 `scripts/capture_readme.py` draws the client's real output cell by cell from a real PTY. Box-drawing and block characters are drawn as vector shapes so they join with no gaps. The `capture-frame` has a 1px `capture-border` outline. The capture path records colour, bold and reverse only, so dim text appears at full brightness in captures.
 
-Three annotations sit outside what the app draws: the `capture-caption` strip, the `capture-key-chip` showing the key pressed, and a 2px `dark-accent` ring with `ring` corners around a sidebar row. The README's caption says that captions and the ring were added for the recording.
+Three annotations sit outside what the app draws: the `capture-caption` strip, the `capture-key-chip` showing the key pressed, and a highlight behind one sidebar row: a 20 % `dark-accent` wash the sidebar's full width with a 3px `dark-accent` bar at its left edge and `highlight` corners. It is drawn under the text, so no line crosses a glyph or touches a neighbouring row (an outlined box around a 20px row did both). The README's caption says that captions and the highlight were added for the recording.
 
 ### Signals Diagram
 `docs/assets/signals.svg` is a self-contained dark panel with the `diagram-panel` ground and a 1px `capture-border` outline. Three `wing` dots shrink and fade down the trust ladder (radius 9, 7, 5; opacity 1, 0.7, 0.45). States below use `monarch-dark` colours and their glyph shapes drawn as vectors. Its text colours (#e6e8f0, #a4a8ba) and exited square (#7f8396) are local to this file. Its Blocked row uses the `blocked_from` colour, #c8a000.

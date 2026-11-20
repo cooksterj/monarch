@@ -609,12 +609,12 @@
       "css": ".ds-capture { margin: 0; background: #14151c; color: #d5d8e4; border: 1px solid #3a3d4e; border-radius: 10px; overflow: hidden; } .ds-capture-grid { padding: 10px; font: 15px/20px 'JetBrains Mono',Menlo,'DejaVu Sans Mono',monospace; } .ds-capture-strip { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px; background: #0c0d12; border-top: 1px solid #3a3d4e; font: 17px/1.3 -apple-system,'Segoe UI',Helvetica,Arial,sans-serif; } .ds-key { background: #e8a33d; color: #1a1a1a; border-radius: 5px; padding: 3px 9px; font: 600 15px 'JetBrains Mono',Menlo,'DejaVu Sans Mono',monospace; white-space: nowrap; }"
     },
     {
-      "name": "Attention Ring",
+      "name": "Attention Highlight",
       "kind": "custom",
       "refersTo": "dark-accent",
-      "description": "A capture annotation around one sidebar row, disclosed in the README's caption.",
-      "html": "<div class=\"ds-ring-ground\"><span class=\"ds-ring\"><span class=\"ds-ring-glyph\">◆</span> 2 retry</span></div>",
-      "css": ".ds-ring-ground { background: #14151c; color: #d5d8e4; padding: 10px; font: 15px/20px 'JetBrains Mono',Menlo,'DejaVu Sans Mono',monospace; } .ds-ring { border: 2px solid #e8a33d; border-radius: 6px; padding: 0 6px; } .ds-ring-glyph { color: #c8a000; font-weight: 700; }"
+      "description": "A capture annotation behind one sidebar row, disclosed in the README's caption: an amber wash with a bar at its left edge, drawn under the text.",
+      "html": "<div class=\"ds-highlight-ground\"><span class=\"ds-highlight\"><span class=\"ds-highlight-glyph\">◆</span> 2 retry</span></div>",
+      "css": ".ds-highlight-ground { background: #14151c; color: #d5d8e4; padding: 10px; font: 15px/20px 'JetBrains Mono',Menlo,'DejaVu Sans Mono',monospace; } .ds-highlight { display: block; background: rgba(232,163,61,.2); box-shadow: inset 3px 0 #e8a33d; border-radius: 2px; padding: 0 6px; } .ds-highlight-glyph { color: #c8a000; font-weight: 700; }"
     }
   ],
   "narrative": {
