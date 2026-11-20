@@ -1,0 +1,98 @@
+# Roadmap
+
+Monarch is a terminal multiplexer for AI coding agents that shows which agent needs you, under one
+hard constraint: **UX is paramount, but the terminal experience must never be degraded.** This page
+says what is done, what is open and what comes next. Why things are the way they are is in
+[decisions](decisions.md); how they work is in the [architecture overview](architecture/overview.md).
+
+Keep this page short. A PR updates it when it finishes a milestone item, opens or closes a gap, or
+changes what is next. The details of finished work belong in the PR and the changelog, not here.
+
+## Status
+
+Pre-1.0, released through release-plz and cargo-dist: tarballs, a shell installer and a Homebrew
+tap. Latest release **v0.1.6** (2026-11-16); see [`CHANGELOG.md`](../CHANGELOG.md). crates.io
+publishing stays off (`git_only`) until the user decides otherwise.
+
+## Milestones
+
+- [x] **M0 Scaffold and installability**: workspace, config, CI, cargo-dist, licences.
+- [x] **M1 Terminal core**: the automated parts of all six spikes pass in CI (`just smoke`).
+  Manual checks still open are listed under [Open manual checks](#open-manual-checks).
+- [x] **M2 Multiplexing and navigation**: tabs, splits, keymap and presets, key popup, palette,
+  go-to picker, copy mode and search, sidebar, config hot reload, mouse, multi-client.
+- [x] **M3 Agent awareness**: hooks, `monarch setup`, OSC and screen-manifest detection, attention
+  inbox with quick answers, `monarch agent explain/wait/read`, the Monarch skill.
+- [x] **M4 Projects and worktrees**: review pane with notes to the agent, `monarch new` and
+  `prefix N`, project picker, checkout badges.
+- [x] **M5 Persistence and restore**: layout restore, agent resume, `monarch ls/kill`, session
+  switching.
+- [x] **M6 Polish and release**: themes, help, doctor, welcome, 20-pane performance pass, docs,
+  v0.1.0 release.
+- [x] **Sub-agents** (slices 1–2): Claude Code and Codex sub-agent rows in the sidebar, named by
+  their task, blocking their parent when they ask.
+
+## Next up
+
+1. **Sub-agent slice 3**: a manifest count capture for agents without hooks (Grok's "Waiting on
+   subagent…", Antigravity's "· N tasks").
+2. **Mouse reports in multi-pane layouts**: re-encode coordinates for every layout, not only one
+   full-screen pane.
+3. **Remnant text** re-reported on 2026-11-12, unreproduced: on the next sighting, check whether it
+   survives detach and reattach.
+
+Parked by the user: named layouts (`prefix Space`, 2026-11-08); notifications (toasts, host OSC
+forwarding, bells), dropped on 2026-10-25 because the sidebar and inbox are the attention surface.
+
+## Open manual checks
+
+- **Real terminals** (kitty, Ghostty, iTerm2, Alacritty, WezTerm, Terminal.app, and over SSH):
+  vim, htop, less, claude and codex at parity with a bare terminal (resize, reflow, scrollback, wide
+  characters); Shift+Enter in `claude`; no Esc delay in vim; `cat -v` matches a bare terminal; wheel,
+  clicks, drag/double/triple-click copy, `"+y` in vim, `prefix m`, Shift+drag native selection.
+- **Spike 2**: replay recorded Claude Code/Codex transcripts through `OscTap`; measure the overhead
+  of a 200 MB `cat`; how Claude Code probes OSC 7501.
+- **Spike 4**: a second client over `ssh localhost`; ten real idle `claude` panes.
+- **Restore**: a real `claude` conversation resumes after `kill -9` of the server.
+
+## Known gaps
+
+**Terminal**
+- Skin-tone, flag and ZWJ emoji sequences take two emulator cells per code point against one host
+  glyph.
+- The startup probe is sent once per attach, not again on FocusGained, and the server should keep
+  the last client's `HostInfo` so panes started before an attach still answer OSC 10/11.
+- A pane flooding output costs about one core of parsing even when hidden (inherent to keeping
+  hidden panes correct).
+- Memory is mostly scrollback (≈70 MB for a flooded 200-column pane at 10k lines); the pane writer
+  channel is unbounded, so a huge paste into a program that never reads grows memory.
+- Selection copies soft-wrapped lines with a newline at the wrap (the wire has no wrap flag).
+- Copy mode: search runs under the pane lock; line numbers drift once full scrollback drops lines.
+
+**Server and sessions**
+- The client starts the server with its own environment and working directory.
+- Server-side settings (`[terminal]`, `[agents]`) apply only when a server starts; config is per
+  client, so two clients may use different keys.
+- Two Codex panes in one directory are told apart only after each has reported once.
+
+**UI**
+- Sidebar: no collapsing of groups or of an agent's sub-agents; no age per sub-agent.
+- Review: no syntax highlighting, staged/unstaged split, word diff, horizontal scroll, or note to an
+  agent in another pane of the checkout.
+- Project picker: repositories with no pane open aren't listed; removing a worktree keeps its
+  branch.
+- `prefix A` always opens a tab (no split placement); dividers show no handle while dragging.
+- The go-to filter keys (`b w i d`) act only on an empty query.
+
+**Release**
+- After each release, a `docs(readme): point the latest release at vX.Y.Z` PR updates the README's
+  comparison row and `cargo install --tag` line.
+- The README comparison table was last checked on 2026-11-05.
+- `docs/assets/social-preview.png` is uploaded to the repo settings by hand whenever it changes.
+- Releases need the repo secrets `RELEASE_PLZ_TOKEN` and `HOMEBREW_TAP_TOKEN` (and
+  `CARGO_REGISTRY_TOKEN` once crates.io publishing is on).
+
+## Out of scope for v1
+
+Windows, managing remote machines, plugins, image protocols (kitty graphics, sixel), and Herdr
+socket-API compatibility.

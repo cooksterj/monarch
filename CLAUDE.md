@@ -5,12 +5,15 @@ under one hard constraint: **UX is paramount, but the terminal experience must n
 
 ## Start of every session
 
-1. Read `docs/plan.md`, especially the **Progress** section at the end — it says what's done and
-   what's next.
+1. Read `docs/roadmap.md`: what's done, "Next up", open manual checks and known gaps.
 2. Run `just check` (or `cargo test --workspace`) to confirm the baseline is green.
-3. Continue from "Next up". Update Progress **in the same commit** as the work it describes.
+3. Continue from "Next up".
 
-Architecture details for the terminal core: `docs/architecture/terminal-core.md`.
+Keep `docs/roadmap.md` short and current **in the same commit** as the work: tick a milestone item,
+add or close a known gap, or change "Next up". Don't write up finished work there; the PR
+description and changelog record it. When a PR makes a real choice between alternatives, add one
+entry to `docs/decisions.md` (what was chosen and why). How things fit together:
+`docs/architecture/overview.md`; the terminal core in depth: `docs/architecture/terminal-core.md`.
 
 ## Locked decisions (don't relitigate)
 
@@ -82,7 +85,7 @@ views, fixture tests for each detection manifest, `criterion` for hot paths.
 - `gh pr create --fill` then `gh pr merge --auto --squash`; CI must pass before it merges.
 - Releases happen only by merging release-plz's `chore: release vX.Y.Z` PR. Don't bump versions
   or edit `CHANGELOG.md` by hand in feature PRs.
-- Never end a session with unpushed work: push the branch (draft PR if red) and note it in
-  Progress in `docs/plan.md`.
+- Never end a session with unpushed work: push the branch (draft PR if red) and note it under
+  "Next up" in `docs/roadmap.md`.
 - Crates publish as `monarch-mux-*`; `[lib] name` keeps imports as `monarch_core` etc. Use
   `cargo test -p monarch-mux-term`, not `-p monarch-term`.
