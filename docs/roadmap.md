@@ -41,6 +41,23 @@ publishing stays off (`git_only`) until the user decides otherwise.
 3. **Remnant text** re-reported on 2026-11-12, unreproduced: on the next sighting, check whether it
    survives detach and reattach.
 
+Then the differentiators, in order (why: [decisions](decisions.md#product)):
+
+4. **Land from review**: `L` in `prefix v` commits, rebases onto the base branch, runs a configured
+   check command, opens a PR with `gh`, then removes the worktree and its branch.
+5. **Overlap warning**: flag on the sidebar rows, and before landing, when two worktrees' diffs
+   touch the same files or hunks.
+6. **Best-of-N**: `monarch race "<prompt>" --agents claude,codex,…` starts one worktree per agent
+   with the same prompt; review compares the finished diffs side by side and lands the one you pick.
+7. **"While you were away"**: a per-agent record of each turn from hooks (prompt, files edited,
+   commands run, outcome), summarised on reattach and readable with `monarch agent log`.
+8. **Context meter**: context-window fill (and spend, where the agent reports it) on each row.
+9. **Public fidelity report**: run the input matrix against tmux, Zellij and Herdr and publish the
+   results.
+
+Considered, not committed: approval rules answered from the inbox ("always allow `cargo test`
+here"), only with exact matching and an audit log.
+
 Parked by the user: named layouts (`prefix Space`, 2026-11-08); notifications (toasts, host OSC
 forwarding, bells), dropped on 2026-10-25 because the sidebar and inbox are the attention surface.
 
