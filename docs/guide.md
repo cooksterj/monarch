@@ -159,8 +159,10 @@ Monarch groups panes by the repository and worktree of their working directory; 
 nothing to set up.
 
 **A new worktree**, `prefix N`: type a branch name, choose shell, Claude Code or Codex with `Tab`
-or `←` `→`, and press `Enter`. Monarch checks the branch out in a new worktree (creating the
-branch from the current commit if it doesn't exist) and opens a tab there. Worktrees go beside the
+or `←` `→`, and press `Enter`. Monarch checks the branch out in a new worktree and opens a tab
+there. A branch only on a remote (say `origin/feat-x`, pushed by someone else) is checked out
+tracking it, as `git switch feat-x` would; Monarch doesn't fetch, so run `git fetch` first for a
+branch pushed since. A branch nowhere yet is made from the current commit. Worktrees go beside the
 repository as `<repo>-worktrees/<branch>`, or under `projects.worktree_root`. From a shell:
 
 ```sh

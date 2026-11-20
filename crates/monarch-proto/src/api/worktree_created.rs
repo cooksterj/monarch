@@ -10,7 +10,8 @@ pub struct WorktreeCreated {
     pub path: String,
     /// The branch checked out there.
     pub branch: String,
-    /// Whether the branch was made for it (else it already existed).
+    /// Whether the branch was made for it (else it already existed, here
+    /// or on a remote it now tracks).
     pub new_branch: bool,
     /// The pane opened in it.
     pub pane: PaneId,
