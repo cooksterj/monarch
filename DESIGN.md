@@ -182,7 +182,7 @@ The app is a character grid: a sidebar, panes, and a status bar, all whole cells
 
 The README is a single GitHub column. The mark, name and promise are centred above the install command and a full-width hero. Images size by attribute: `100%` for full screens, `38%` right-floated for the sidebar, `32%` each for the row of three themes, and fixed widths of 440, 560 and 640 for popups and the diagram. `<picture>` swaps in phone crops at `max-width: 600px`.
 
-Timestamps as `###` headings structure the README's main story, with a line of jump links above them. This device belongs to the README and is not a rule for other surfaces.
+The README's Features section has one `###` heading per feature, named for what it does, with a line of jump links above them. This device belongs to the README and is not a rule for other surfaces.
 
 Captures render a 108 × 26 grid, or a crop of it, on `cell-width` by `cell-height` cells inside `capture-pad`. Stills render at 2x, and the hero at 1.5x wide and 2x for phones. The phone hero uses `caption-strip-phone`.
 
