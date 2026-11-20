@@ -10,6 +10,21 @@ they need polishing.
 
 ## [Unreleased]
 
+## [0.1.7](https://github.com/cooksterj/monarch/compare/v0.1.6...v0.1.7) - 2026-11-20
+
+### Fixed
+
+- *(server)* check out a remote-only branch tracking it in a new worktree ([#149](https://github.com/cooksterj/monarch/pull/149))
+
+### Other
+
+- split plan.md into a roadmap, decisions and an architecture overview ([#154](https://github.com/cooksterj/monarch/pull/154))
+- *(readme)* highlight the hero's waiting row behind the text, not with a box ([#153](https://github.com/cooksterj/monarch/pull/153))
+- *(readme)* show sub-agents, give the sidebar its own section ([#152](https://github.com/cooksterj/monarch/pull/152))
+- *(readme)* organise by feature, tighten the wording, regenerate the images ([#151](https://github.com/cooksterj/monarch/pull/151))
+- *(scripts)* name scripts by what they are, not the spike they came from ([#150](https://github.com/cooksterj/monarch/pull/150))
+- *(readme)* point the latest release at v0.1.6 ([#147](https://github.com/cooksterj/monarch/pull/147))
+
 ## [0.1.6](https://github.com/cooksterj/monarch/compare/v0.1.5...v0.1.6) - 2026-11-16
 
 ### Added
