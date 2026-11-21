@@ -73,6 +73,10 @@ impl CopyMode {
             OverlayKey::Char('V') => self.toggle(SelectShape::Lines),
             OverlayKey::Ctrl('v') => self.toggle(SelectShape::Block),
             OverlayKey::Char('y') | OverlayKey::Enter => self.copy(key),
+            OverlayKey::Char('a') => match self.selection() {
+                Some((start, end, shape)) => CopyStep::Quote { start, end, shape },
+                None => CopyStep::Stay,
+            },
             OverlayKey::Char(c @ ('/' | '?')) => {
                 self.prompt = Some(Prompt {
                     text: String::new(),

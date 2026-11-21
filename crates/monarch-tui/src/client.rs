@@ -3,6 +3,9 @@
 
 mod agent_info;
 mod applied;
+mod ask_prompt;
+mod ask_step;
+mod ask_target;
 mod attach_app;
 mod attach_options;
 mod attach_outcome;
@@ -43,6 +46,7 @@ mod popup_views;
 mod project_picker;
 mod project_step;
 mod quick_answer;
+mod quote;
 mod review_note;
 mod review_state;
 mod review_step;
@@ -64,6 +68,9 @@ mod worktree_step;
 
 pub use agent_info::AgentInfo;
 pub use applied::Applied;
+pub use ask_prompt::AskPrompt;
+pub use ask_step::AskStep;
+pub use ask_target::AskTarget;
 pub use attach_app::AttachApp;
 pub use attach_options::AttachOptions;
 pub use attach_outcome::AttachOutcome;
@@ -104,6 +111,7 @@ pub use popup_views::PopupViews;
 pub use project_picker::ProjectPicker;
 pub use project_step::ProjectStep;
 pub use quick_answer::QuickAnswer;
+pub use quote::{MAX_QUOTE, Quote};
 pub use review_note::{MAX_EXCERPT, ReviewNote};
 pub use review_state::ReviewState;
 pub use review_step::ReviewStep;

@@ -27,7 +27,7 @@ const PLAIN: [(&str, Action); 15] = [
 
 /// Client actions without a parameter, by name (kept apart so `PLAIN`
 /// stays the session's list).
-const LOCAL: [(&str, Action); 18] = [
+const LOCAL: [(&str, Action); 19] = [
     ("toggle-mouse", Action::ToggleMouse),
     ("command-palette", Action::CommandPalette),
     ("go-to-pane", Action::GoToPane),
@@ -38,6 +38,7 @@ const LOCAL: [(&str, Action); 18] = [
     ("next-blocked", Action::NextBlocked),
     ("agent-info", Action::AgentInfo),
     ("launch-agent", Action::LaunchAgent),
+    ("ask-agent", Action::Ask),
     ("review", Action::Review),
     ("new-worktree", Action::NewWorktree),
     ("projects", Action::Projects),

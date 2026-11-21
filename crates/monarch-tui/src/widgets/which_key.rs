@@ -185,11 +185,11 @@ mod tests {
         │         x  close pane           1-9  go to tab              S  sessions     │
         │         z  zoom                   c  new tab                [  copy mode    │
         │ hjkl ←↓↑→  focus                  n  next tab               a  inbox        │
-        │         o  focus next             p  prev tab             g w  go to pane   │
-        │         {  swap prev              ,  rename tab             i  agent info   │
-        │         }  swap next              .  rename pane            m  toggle mouse │
-        │         =  equalize               :  palette                s  projects     │
-        │      HJKL  resize                 A  launch agent           …  4 more       │
+        │         o  focus next             p  prev tab               e  ask agent    │
+        │         {  swap prev              ,  rename tab           g w  go to pane   │
+        │         }  swap next              .  rename pane            i  agent info   │
+        │         =  equalize               :  palette                m  toggle mouse │
+        │      HJKL  resize                 A  launch agent           …  5 more       │
         ╰ ? all keys and help ────────────────────────────────────────────────────────╯
         "#);
     }
@@ -203,7 +203,7 @@ mod tests {
         │         x  close pane│
         │         z  zoom      │
         │ hjkl ←↓↑→  focus     │
-        │         …  28 more   │
+        │         …  29 more   │
         ╰ ? all keys and help ─╯
         "#);
     }

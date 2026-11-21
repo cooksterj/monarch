@@ -144,6 +144,16 @@ prompt's second option. The status line says what was sent.
 
 **`prefix Tab`** jumps straight to the next blocked agent.
 
+**Ask an agent**, `prefix e`: select text with the mouse (code in `vim`, a stack trace, a log),
+press `prefix e`, type what you want and press `Enter`. Every pane running an agent is listed:
+ones that can take a prompt now first, then those in the selection's checkout (`here`). `Tab` or
+the arrows choose another. Your words and the selection, quoted as a code block, are typed into
+that agent's pane as one paste and submitted. Monarch only sends to an agent at its prompt (idle,
+done or failed): a working agent would get it mid-turn, and a blocked one would take it as the
+answer to its question, so for those the status line says why nothing was sent. With nothing
+selected, `prefix e` sends just your words. `a` does the same from copy mode (on its selection)
+and from the review (on the hunk shown).
+
 **Why does it say Working?** `prefix i` opens the agent info for the focused pane: its state,
 how long it has been there and which signal set it (hooks, a notification, its screen, or
 Monarch launching it); what its screen shows to the detection rules now, with the rule that
@@ -190,6 +200,7 @@ a time with `Ctrl-e` and `Ctrl-y`.
 | `[` `]` | previous / next hunk |
 | `g` `G` | top / bottom |
 | `c` | note on the hunk shown, sent to the pane's agent |
+| `a` | ask any agent about the hunk shown |
 | `r` | refresh |
 | `e` or `Enter` | open the file in `$EDITOR`, zoomed over the pane |
 | `q` or `Esc` | close |
@@ -220,6 +231,7 @@ Copying uses OSC 52, which works over SSH; your terminal may need clipboard acce
 | `g` `G` | top of history / bottom |
 | `v` or `Space`, `V`, `Ctrl-v` | select characters, lines, a block |
 | `y` or `Enter` | copy the selection and leave |
+| `a` | ask an agent about the selection, and leave |
 | `/` `?`, then `n` `N` | search down / up, repeat |
 | `q`, `Ctrl-c`, `Esc` | leave (`Esc` first clears a selection) |
 
@@ -253,6 +265,7 @@ directory. Running programs and their screens can't survive the server, as with 
 | `Tab` | next blocked agent |
 | `i` | agent info: why the focused pane's agent is in its state |
 | `A` | launch an agent in a new tab |
+| `e` | ask an agent about the selection |
 | `N` | new worktree |
 | `s` | projects |
 | `S` | sessions |

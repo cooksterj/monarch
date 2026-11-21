@@ -23,6 +23,7 @@ impl AttachApp {
             Action::NextBlocked => self.next_blocked(),
             Action::AgentInfo => self.open_agent_info(),
             Action::LaunchAgent => self.open_launch(),
+            Action::Ask => self.open_ask(),
             Action::Review => self.open_review(),
             Action::NewWorktree => self.open_worktree_form(),
             Action::Projects => self.open_projects(),
@@ -53,6 +54,8 @@ impl AttachApp {
             self.help_input(bytes);
         } else if self.popups.info.is_some() {
             self.info_input(bytes);
+        } else if self.popups.ask.is_some() {
+            self.ask_input(bytes);
         } else if self.popups.note.is_some() {
             self.note_input(bytes);
         } else if self.popups.review.is_some() {
@@ -72,15 +75,7 @@ impl AttachApp {
         } else if self.popups.picker.is_some() {
             return self.picker_input(bytes);
         } else {
-            for key in OverlayKey::decode(bytes) {
-                if self.copy.is_none() {
-                    break;
-                }
-                self.copy_key(key);
-            }
-            if self.copy.is_none() {
-                self.focus.set_overlay(false);
-            }
+            self.copy_input(bytes);
         }
         None
     }

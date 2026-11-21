@@ -282,6 +282,7 @@ Every command starts with the prefix, `Ctrl-b`. Press it and pause to see all av
 | `prefix i` | agent info: the signal, the rule that fired and the last few states |
 | `prefix g`, then `b` `w` `i` `d` | go to a pane; narrow to blocked, working, idle or done agents |
 | `prefix A` | launch Claude Code or Codex in a new tab, here |
+| `prefix e` | ask an agent about the selected text: your prompt plus the selection, quoted |
 | `prefix N` | new worktree: branch name, then shell, Claude Code or Codex |
 | `prefix s` | projects: every worktree |
 | `prefix v` | review the focused pane's uncommitted changes |

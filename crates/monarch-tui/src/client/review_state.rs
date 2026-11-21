@@ -92,7 +92,7 @@ impl ReviewState {
     /// Applies one key: `j`/`k` (arrows, Tab) pick a file; Space/PgDn and
     /// `b`/PgUp page the diff, Ctrl-e/Ctrl-y move it a line, `[`/`]` a
     /// hunk, `g`/`G` jump to its ends; `c` writes a note on the hunk
-    /// shown; `r` refreshes; Esc/`q` close.
+    /// shown and `a` asks any agent about it; `r` refreshes; Esc/`q` close.
     pub fn key(&mut self, key: OverlayKey) -> ReviewStep {
         match key {
             OverlayKey::Char('j') | OverlayKey::Down | OverlayKey::Tab => self.pick(1),
@@ -108,6 +108,7 @@ impl ReviewState {
             OverlayKey::Char(']') => self.jump_hunk(true),
             OverlayKey::Char('[') => self.jump_hunk(false),
             OverlayKey::Char('c') => return ReviewStep::Note,
+            OverlayKey::Char('a') => return ReviewStep::Ask,
             OverlayKey::Char('g') | OverlayKey::Home => self.scroll = 0,
             OverlayKey::Char('G') | OverlayKey::End => self.scroll = self.max_scroll(),
             OverlayKey::Char('r') => return ReviewStep::Refresh,
@@ -194,6 +195,8 @@ mod tests {
         }));
         assert_eq!(state.key(OverlayKey::Char('e')), ReviewStep::Edit);
         assert_eq!(state.editable(), None);
+        assert_eq!(state.key(OverlayKey::Char('a')), ReviewStep::Ask);
+        assert_eq!(state.note_target(), None, "a deleted file has no hunk");
     }
 
     #[test]

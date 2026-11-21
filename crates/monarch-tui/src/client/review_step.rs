@@ -13,6 +13,8 @@ pub enum ReviewStep {
     Edit,
     /// Write a note on the hunk shown, for the pane's agent.
     Note,
+    /// Ask any agent about the hunk shown.
+    Ask,
 }
 
 #[cfg(test)]

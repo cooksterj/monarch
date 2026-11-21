@@ -51,6 +51,14 @@ impl AgentState {
         matches!(self, Self::Blocked | Self::Done | Self::Error)
     }
 
+    /// Whether the agent is at its prompt, so text typed into its pane
+    /// becomes the next turn. Not while working, and never while blocked:
+    /// typing there would answer the question it is asking.
+    #[must_use]
+    pub fn takes_prompt(self) -> bool {
+        matches!(self, Self::Idle | Self::Done | Self::Finished | Self::Error)
+    }
+
     /// Single-cell glyph shown in the sidebar and status bar.
     #[must_use]
     pub fn glyph(self) -> char {
@@ -114,6 +122,23 @@ mod tests {
         );
         let err = "busy".parse::<AgentState>().expect_err("not a state");
         assert!(err.to_string().starts_with("unknown state \"busy\""));
+    }
+
+    #[test]
+    fn only_an_agent_at_its_prompt_takes_one() {
+        let taking: Vec<_> = AgentState::ALL
+            .into_iter()
+            .filter(|s| s.takes_prompt())
+            .collect();
+        assert_eq!(
+            taking,
+            [
+                AgentState::Error,
+                AgentState::Done,
+                AgentState::Finished,
+                AgentState::Idle
+            ]
+        );
     }
 
     #[test]

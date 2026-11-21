@@ -139,6 +139,19 @@ pub enum ClientMsg {
         /// Where the divider should sit, in pane-area cells.
         to: u16,
     },
+    /// Read a range of a pane's grid, scrollback included, to quote to an
+    /// agent; answered with `ServerMsg::Quote` (as `Copy`, but the text
+    /// comes back to the client instead of going to the clipboard).
+    Quote {
+        /// Pane to read from.
+        pane: PaneId,
+        /// One end of the range.
+        start: GridPoint,
+        /// The other end, inclusive.
+        end: GridPoint,
+        /// How the range becomes text.
+        shape: SelectShape,
+    },
 }
 
 #[cfg(test)]
@@ -160,6 +173,18 @@ mod tests {
             pane: PaneId(3),
             text: "Review note on a.rs:\n\nfix it".into(),
             enter: true,
+        };
+        let bytes = postcard::to_allocvec(&msg).expect("encode");
+        assert_eq!(postcard::from_bytes::<ClientMsg>(&bytes).ok(), Some(msg));
+    }
+
+    #[test]
+    fn quotes_survive_the_attach_encoding() {
+        let msg = ClientMsg::Quote {
+            pane: PaneId(2),
+            start: GridPoint { line: -40, col: 0 },
+            end: GridPoint { line: 3, col: 79 },
+            shape: SelectShape::Lines,
         };
         let bytes = postcard::to_allocvec(&msg).expect("encode");
         assert_eq!(postcard::from_bytes::<ClientMsg>(&bytes).ok(), Some(msg));

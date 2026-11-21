@@ -74,6 +74,22 @@ fn leaving_the_view_asks_for_a_scroll_once() {
 }
 
 #[test]
+fn a_asks_an_agent_about_the_selection() {
+    let s = screen(&[], 0, 0);
+    let mut copy = CopyMode::new(PaneId(1), &s);
+    assert_eq!(keys(&mut copy, &s, &[Char('a')]), CopyStep::Stay, "none");
+    keys(&mut copy, &s, &[Char('V'), Char('k')]);
+    assert_eq!(
+        keys(&mut copy, &s, &[Char('a')]),
+        CopyStep::Quote {
+            start: at(3, 0),
+            end: at(2, 0),
+            shape: SelectShape::Lines
+        }
+    );
+}
+
+#[test]
 fn selections_toggle_change_shape_and_copy() {
     let s = screen(&[], 0, 0);
     let mut copy = CopyMode::new(PaneId(1), &s);

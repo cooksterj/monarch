@@ -38,8 +38,10 @@ publishing stays off (`git_only`) until the user decides otherwise.
    pick an agent. The prompt carries the selection's `path:lines`, found with `git grep` in the
    pane's checkout, else "from pane N". Enter sends at once to an idle agent and queues for a busy
    or blocked one until it is idle. With no agent in the checkout, it starts one with the prompt
-   (a split here, or a new worktree), or several at once. Slices: existing agents; new agents
-   (`NewWorktree.prompt`, a `Hello::WIRE` bump); source lookup; the send-when-idle queue.
+   (a split here, or a new worktree), or several at once. Slices: ~~existing agents~~ (done:
+   sends only to an agent at its prompt, refuses the rest); new agents (`NewWorktree.prompt`, a
+   `Hello::WIRE` bump); source lookup; the send-when-idle queue; a right-click "ask" (opening the
+   menu clears the selection today).
 2. **Sub-agent slice 3**: a manifest count capture for agents without hooks (Grok's "Waiting on
    subagent…", Antigravity's "· N tasks").
 3. **Mouse reports in multi-pane layouts**: re-encode coordinates for every layout, not only one

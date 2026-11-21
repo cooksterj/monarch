@@ -98,6 +98,13 @@ pub enum ServerMsg {
         /// Why it is in its state.
         explained: Option<Box<PaneExplanation>>,
     },
+    /// Answer to [`super::ClientMsg::Quote`]: the text of the range.
+    Quote {
+        /// The pane read.
+        pane: PaneId,
+        /// The range's text, wrapped lines whole.
+        text: String,
+    },
 }
 
 #[cfg(test)]
@@ -112,5 +119,15 @@ mod tests {
             ServerMsg::Clipboard("a".into()),
             ServerMsg::Clipboard("b".into())
         );
+    }
+
+    #[test]
+    fn quotes_survive_the_attach_encoding() {
+        let msg = ServerMsg::Quote {
+            pane: PaneId(2),
+            text: "fn main() {}\n".into(),
+        };
+        let bytes = postcard::to_allocvec(&msg).expect("encode");
+        assert_eq!(postcard::from_bytes::<ServerMsg>(&bytes).ok(), Some(msg));
     }
 }
