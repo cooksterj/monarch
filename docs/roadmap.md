@@ -34,7 +34,10 @@ publishing stays off (`git_only`) until the user decides otherwise.
 
 ## Next up
 
-1. **Ask from a selection** (`prefix e`; `a` in copy mode and review): select code, write a prompt,
+1. **File viewer** (`prefix f`), done in slice 1: search the checkout, read a file highlighted by
+   tree-sitter, `V` select, `a` ask with the exact `path:lines`. Next: highlighting in the
+   review's diffs (same crate), `/` search in the viewer, horizontal scroll for long lines.
+2. **Ask from a selection** (`prefix e`; `a` in copy mode and review): select code, write a prompt,
    pick an agent. The prompt carries the selection's `path:lines`, found with `git grep` in the
    pane's checkout, else "from pane N". Enter sends at once to an idle agent and queues for a busy
    or blocked one until it is idle. With no agent in the checkout, it starts one with the prompt
@@ -42,25 +45,25 @@ publishing stays off (`git_only`) until the user decides otherwise.
    sends only to an agent at its prompt, refuses the rest); new agents (`NewWorktree.prompt`, a
    `Hello::WIRE` bump); source lookup; the send-when-idle queue; a right-click "ask" (opening the
    menu clears the selection today).
-2. **Sub-agent slice 3**: a manifest count capture for agents without hooks (Grok's "Waiting on
+3. **Sub-agent slice 3**: a manifest count capture for agents without hooks (Grok's "Waiting on
    subagent…", Antigravity's "· N tasks").
-3. **Mouse reports in multi-pane layouts**: re-encode coordinates for every layout, not only one
+4. **Mouse reports in multi-pane layouts**: re-encode coordinates for every layout, not only one
    full-screen pane.
-4. **Remnant text** re-reported on 2026-11-12, unreproduced: on the next sighting, check whether it
+5. **Remnant text** re-reported on 2026-11-12, unreproduced: on the next sighting, check whether it
    survives detach and reattach.
 
 Then the differentiators, in order (why: [decisions](decisions.md#product)):
 
-5. **Land from review**: `L` in `prefix v` commits, rebases onto the base branch, runs a configured
+6. **Land from review**: `L` in `prefix v` commits, rebases onto the base branch, runs a configured
    check command, opens a PR with `gh`, then removes the worktree and its branch.
-6. **Overlap warning**: flag on the sidebar rows, and before landing, when two worktrees' diffs
+7. **Overlap warning**: flag on the sidebar rows, and before landing, when two worktrees' diffs
    touch the same files or hunks.
-7. **Best-of-N**: `monarch race "<prompt>" --agents claude,codex,…` starts one worktree per agent
+8. **Best-of-N**: `monarch race "<prompt>" --agents claude,codex,…` starts one worktree per agent
    with the same prompt; review compares the finished diffs side by side and lands the one you pick.
-8. **"While you were away"**: a per-agent record of each turn from hooks (prompt, files edited,
+9. **"While you were away"**: a per-agent record of each turn from hooks (prompt, files edited,
    commands run, outcome), summarised on reattach and readable with `monarch agent log`.
-9. **Context meter**: context-window fill (and spend, where the agent reports it) on each row.
-10. **Public fidelity report**: run the input matrix against tmux, Zellij and Herdr and publish the
+10. **Context meter**: context-window fill (and spend, where the agent reports it) on each row.
+11. **Public fidelity report**: run the input matrix against tmux, Zellij and Herdr and publish the
    results.
 
 Considered, not committed: approval rules answered from the inbox ("always allow `cargo test`
@@ -102,7 +105,7 @@ forwarding, bells), dropped on 2026-10-25 because the sidebar and inbox are the 
 
 **UI**
 - Sidebar: no collapsing of groups or of an agent's sub-agents; no age per sub-agent.
-- Review: no syntax highlighting, staged/unstaged split, word diff, horizontal scroll, or note to an
+- Review: no syntax highlighting (the file viewer has it), staged/unstaged split, word diff, horizontal scroll, or note to an
   agent in another pane of the checkout.
 - Project picker: repositories with no pane open aren't listed; removing a worktree keeps its
   branch.

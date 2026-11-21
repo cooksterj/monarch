@@ -34,6 +34,7 @@ impl Action {
             Self::LaunchAgent => "start Claude Code or Codex in a new tab",
             Self::Ask => "ask an agent about the selection",
             Self::Review => "review the checkout's uncommitted changes",
+            Self::OpenFile => "view a file from the checkout, highlighted",
             Self::NewWorktree => "new worktree with an agent or a shell",
             Self::Projects => "jump to, open or remove worktrees",
             Self::Sessions => "switch to another session, or start one",
@@ -89,7 +90,9 @@ impl Action {
             Self::Inbox | Self::NextBlocked | Self::AgentInfo | Self::LaunchAgent | Self::Ask => {
                 ActionGroup::Agents
             }
-            Self::Review | Self::NewWorktree | Self::Projects => ActionGroup::Projects,
+            Self::Review | Self::OpenFile | Self::NewWorktree | Self::Projects => {
+                ActionGroup::Projects
+            }
             Self::Detach
             | Self::ToggleMouse
             | Self::CommandPalette

@@ -1,7 +1,7 @@
 //! What every server task shares.
 
 use std::collections::BTreeMap;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard};
 
 use monarch_core::{AgentKind, PaneId};
@@ -10,12 +10,13 @@ use tokio::sync::Notify;
 use tokio::sync::mpsc::UnboundedSender;
 
 use crate::{
-    CliGitRunner, DiffReader, InputRouter, LaunchConfig, PaneEnv, PaneEvent, PaneIo, PaneRuntime,
-    PaneSpec, PersistedPane, Placement, ProcessProbe, ServerError, SessionState, SpawnParams,
-    SystemProbe, WorktreeManager,
+    CliGitRunner, DiffReader, FileReader, InputRouter, LaunchConfig, PaneEnv, PaneEvent, PaneIo,
+    PaneRuntime, PaneSpec, PersistedPane, Placement, ProcessProbe, ServerError, SessionState,
+    SpawnParams, SystemProbe, WorktreeManager,
 };
 
 mod explain;
+mod files;
 mod input;
 mod read;
 mod session;
@@ -39,6 +40,7 @@ pub struct ServerContext {
     launch: LaunchConfig,
     probe: Box<dyn ProcessProbe>,
     diffs: DiffReader,
+    files: FileReader,
     worktrees: WorktreeManager,
 }
 
@@ -60,6 +62,7 @@ impl ServerContext {
             launch,
             probe: Box::new(SystemProbe::new()),
             diffs: DiffReader::new(Box::new(CliGitRunner)),
+            files: FileReader::new(Box::new(CliGitRunner)),
             worktrees: WorktreeManager::new(Box::new(CliGitRunner)),
         }
     }
@@ -116,11 +119,8 @@ impl ServerContext {
 
     /// What [`Self::edit`] would run, if the file is inside the checkout.
     fn edit_spec(&self, pane: PaneId, path: &str, editor: &str) -> Option<PaneSpec> {
-        let inside = Path::new(path)
-            .components()
-            .all(|c| matches!(c, Component::Normal(_)));
         let root = self.lock().place(pane)?.worktree?;
-        (inside && !path.is_empty() && !editor.trim().is_empty())
+        (FileReader::is_inside(path) && !editor.trim().is_empty())
             .then(|| PaneSpec::edit(editor, path, PathBuf::from(root)))
     }
 

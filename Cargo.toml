@@ -32,6 +32,7 @@ monarch-core = { package = "monarch-mux-core", path = "crates/monarch-core", ver
 monarch-proto = { package = "monarch-mux-proto", path = "crates/monarch-proto", version = "0.1.7" }
 monarch-term = { package = "monarch-mux-term", path = "crates/monarch-term", version = "0.1.7" }
 monarch-detect = { package = "monarch-mux-detect", path = "crates/monarch-detect", version = "0.1.7" }
+monarch-syntax = { package = "monarch-mux-syntax", path = "crates/monarch-syntax", version = "0.1.7" }
 monarch-server = { package = "monarch-mux-server", path = "crates/monarch-server", version = "0.1.7" }
 monarch-tui = { package = "monarch-mux-tui", path = "crates/monarch-tui", version = "0.1.7" }
 monarch-cli = { package = "monarch-mux-cli", path = "crates/monarch-cli", version = "0.1.7" }
@@ -65,6 +66,18 @@ futures-util = { version = "0.3", default-features = false, features = ["sink", 
 uuid = { version = "1", features = ["v4"] }
 nucleo-matcher = "0.3"
 sysinfo = { version = "0.38", default-features = false, features = ["system"] }
+tree-sitter = "0.26"
+tree-sitter-highlight = "0.26"
+tree-sitter-bash = "0.25"
+tree-sitter-c = "0.24"
+tree-sitter-go = "0.25"
+tree-sitter-javascript = "0.25"
+tree-sitter-json = "0.24"
+tree-sitter-python = "0.25"
+tree-sitter-rust = "0.24"
+tree-sitter-toml-ng = "0.7"
+tree-sitter-typescript = "0.23"
+tree-sitter-yaml = "0.7"
 
 [package]
 name = "monarch-mux"

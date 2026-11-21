@@ -111,6 +111,14 @@ already says. Dates are when the decision was made.
 
 ## Worktrees and review
 
+- **The file viewer highlights with tree-sitter, in its own crate** (2026-11-21). `syntect` was the
+  other choice, but it only parses through `bincode` 1.x, which is unmaintained, and the user's
+  rule is maintained dependencies only. tree-sitter's highlighter and the official grammars are
+  maintained and MIT-licensed. The grammars are C compiled at build time (no Zig). Highlighting
+  lives in `monarch-syntax`, with no IO and no colours, so its build dependencies stay in one place
+  and the review can reuse it. The server reads and highlights off the async runtime and sends
+  `SyntaxToken` runs, and the client colours them from the theme.
+
 - **Git runs as the `git` command, not libgit2** (2026-10-23). Fewer build dependencies, and it
   honours the user's git configuration.
 - **No fetch before creating a worktree** (2026-11-19). It would put a network round trip in every

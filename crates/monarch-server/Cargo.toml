@@ -17,6 +17,7 @@ monarch-core.workspace = true
 monarch-proto.workspace = true
 monarch-term.workspace = true
 monarch-detect.workspace = true
+monarch-syntax.workspace = true
 futures-util.workspace = true
 portable-pty.workspace = true
 rustix.workspace = true

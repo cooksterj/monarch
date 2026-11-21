@@ -14,6 +14,7 @@ use tokio_util::codec::{FramedRead, FramedWrite};
 use crate::{ActionEffect, Placement, RENDER_LANE, ServerContext, ServerError, SessionState};
 
 mod explain;
+mod files;
 mod history;
 mod review;
 mod worktree;
@@ -84,6 +85,8 @@ fn handle(ctx: &Arc<ServerContext>, id: ClientId, msg: ClientMsg) -> bool {
             history::reply(ctx, id, msg);
         }
         ClientMsg::Review(pane) => review::request(ctx, id, pane),
+        ClientMsg::ListFiles(pane) => files::list(ctx, id, pane),
+        ClientMsg::OpenFile { pane, path } => files::open(ctx, id, pane, path),
         ClientMsg::Edit { pane, path, editor } => review::edit(ctx, pane, &path, &editor),
         ClientMsg::NewWorktree(request) => worktree::request(ctx, id, request),
         ClientMsg::Worktrees => worktree::list(ctx, id),

@@ -12,8 +12,8 @@ use super::AttachApp;
 use super::popups::Popups;
 use crate::client::{AttachOptions, AttachView, WindowTitle};
 use crate::{
-    Chrome, MouseOwner, PopupViews, ReviewView, Sidebar, SidebarGroup, StatusLine, TuiError,
-    WhichKey,
+    Chrome, FileViewerView, MouseOwner, PopupViews, ReviewView, Sidebar, SidebarGroup, StatusLine,
+    TuiError, WhichKey,
 };
 
 impl AttachApp {
@@ -100,11 +100,15 @@ impl AttachApp {
             .map_err(|e| TuiError::io("drawing", e))
     }
 
-    /// Tells the review pane how many diff lines a page holds.
+    /// Tells the review pane and the file viewer how many lines a page
+    /// holds.
     fn size_review(&mut self) {
+        let rows = AttachView::pane_area(self.size, self.state.left()).rows;
         if let Some(review) = self.popups.review.as_mut() {
-            let rows = AttachView::pane_area(self.size, self.state.left()).rows;
             review.set_page(ReviewView::diff_rows(rows));
+        }
+        if let Some(viewer) = self.popups.viewer.as_mut() {
+            viewer.set_page(FileViewerView::code_rows(rows));
         }
     }
 

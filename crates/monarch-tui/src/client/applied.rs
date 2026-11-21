@@ -1,7 +1,9 @@
 //! What applying server messages asks the client to do.
 
 use monarch_core::PaneId;
-use monarch_proto::{GridPoint, PaneExplanation, Review, WorktreeCreated, WorktreeEntry};
+use monarch_proto::{
+    CodeFile, GridPoint, PaneExplanation, Review, ServerMsg, WorktreeCreated, WorktreeEntry,
+};
 
 /// Side effects collected by [`super::AttachState::apply`].
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -29,6 +31,10 @@ pub struct Applied {
     /// Answers to explain requests: the pane and why its agent is in its
     /// state (`None` for a pane that is gone).
     pub explained: Vec<(PaneId, Option<Box<PaneExplanation>>)>,
+    /// File lists for the file picker, by pane.
+    pub files: Vec<(PaneId, Result<Vec<String>, String>)>,
+    /// Files opened in the viewer, by pane.
+    pub opened: Vec<(PaneId, Result<CodeFile, String>)>,
     /// Answers to quote requests: the pane and the range's text.
     pub quotes: Vec<(PaneId, String)>,
     /// Panes whose agent status changed.
@@ -36,6 +42,25 @@ pub struct Applied {
 }
 
 impl Applied {
+    /// Keeps `msg` if it is an answer or a request for the host (bell,
+    /// clipboard) rather than a change to the session; ignores the rest.
+    pub fn collect(&mut self, msg: ServerMsg) {
+        match msg {
+            ServerMsg::Explained { pane, explained } => self.explained.push((pane, explained)),
+            ServerMsg::HostWrite(bytes) => self.host_write.extend(bytes),
+            ServerMsg::SearchResult { pane, found } => self.found.push((pane, found)),
+            ServerMsg::Review { pane, review } => self.reviews.push((pane, review)),
+            ServerMsg::WorktreeMade(made) => self.worktrees.push(made),
+            ServerMsg::Worktrees(list) => self.worktree_lists.push(list),
+            ServerMsg::WorktreeRemoved(removed) => self.removed.push(removed),
+            ServerMsg::Clipboard(text) => self.clipboard.push(text),
+            ServerMsg::Quote { pane, text } => self.quotes.push((pane, text)),
+            ServerMsg::Files { pane, files } => self.files.push((pane, files)),
+            ServerMsg::FileOpened { pane, file } => self.opened.push((pane, file)),
+            _ => {}
+        }
+    }
+
     /// Whether there is nothing to do.
     #[must_use]
     pub fn is_empty(&self) -> bool {
@@ -46,6 +71,21 @@ impl Applied {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn answers_are_kept_and_other_messages_ignored() {
+        let mut applied = Applied::default();
+        applied.collect(ServerMsg::Pong(1));
+        assert!(applied.is_empty());
+        let pane = PaneId(2);
+        applied.collect(ServerMsg::Files {
+            pane,
+            files: Ok(vec!["a.rs".into()]),
+        });
+        applied.collect(ServerMsg::Clipboard("x".into()));
+        assert_eq!(applied.files, [(pane, Ok(vec!["a.rs".to_owned()]))]);
+        assert_eq!(applied.clipboard, ["x"]);
+    }
 
     #[test]
     fn default_is_empty() {

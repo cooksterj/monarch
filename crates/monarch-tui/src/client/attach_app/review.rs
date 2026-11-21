@@ -135,7 +135,7 @@ impl AttachApp {
 }
 
 /// The editor to run: `$VISUAL`, else `$EDITOR`, else `vi`, as git picks.
-fn editor(visual: Option<String>, editor: Option<String>) -> String {
+pub(super) fn editor(visual: Option<String>, editor: Option<String>) -> String {
     [visual, editor]
         .into_iter()
         .flatten()

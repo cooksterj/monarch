@@ -42,6 +42,13 @@ pub(super) const MONARCH_DARK: Theme = Theme {
     wing: WING,
     wing_edge: WING_EDGE,
     wing_spot: WING_SPOT,
+    syntax_keyword: c(0xe8a33d),
+    syntax_string: c(0x7ed37e),
+    syntax_comment: c(0x7f849c),
+    syntax_function: c(0x5fafff),
+    syntax_type: c(0xe5c07b),
+    syntax_constant: c(0xc792ea),
+    syntax_property: c(0x6fb3d2),
 };
 
 /// Monarch's own theme for light hosts, darker so it stays readable.
@@ -65,6 +72,13 @@ pub(super) const MONARCH_LIGHT: Theme = Theme {
     wing: WING,
     wing_edge: WING_EDGE,
     wing_spot: WING_SPOT,
+    syntax_keyword: c(0xc25e00),
+    syntax_string: c(0x1a7f37),
+    syntax_comment: c(0x6e7781),
+    syntax_function: c(0x1f6fd1),
+    syntax_type: c(0x8a6100),
+    syntax_constant: c(0x8250df),
+    syntax_property: c(0x0550ae),
 };
 
 /// One palette's colours, in the order [`from`] reads them.
@@ -80,10 +94,14 @@ struct Palette {
     green_soft: u32,
     red: u32,
     cyan: u32,
+    /// Comments: the palette's muted grey.
+    muted: u32,
+    /// Numbers and constants (orange, or Gruvbox's purple).
+    constant: u32,
 }
 
 /// A theme from a palette: the bar and pop-ups on its surface colour, the accent on
-/// its base, states and diffs in its hues.
+/// its base, states, diffs and code in its hues.
 const fn from(p: &Palette) -> Theme {
     Theme {
         bar: c(p.surface),
@@ -105,6 +123,13 @@ const fn from(p: &Palette) -> Theme {
         wing: WING,
         wing_edge: WING_EDGE,
         wing_spot: WING_SPOT,
+        syntax_keyword: c(p.accent),
+        syntax_string: c(p.green),
+        syntax_comment: c(p.muted),
+        syntax_function: c(p.blue),
+        syntax_type: c(p.yellow),
+        syntax_constant: c(p.constant),
+        syntax_property: c(p.cyan),
     }
 }
 
@@ -126,6 +151,8 @@ pub(super) const THEMES: [(&str, Theme); 8] = [
             green_soft: 0xd2f1d0,
             red: 0xf38ba8,
             cyan: 0x89dceb,
+            muted: 0x9399b2,
+            constant: 0xfab387,
         }),
     ),
     (
@@ -142,6 +169,8 @@ pub(super) const THEMES: [(&str, Theme); 8] = [
             green_soft: 0x8cc67f,
             red: 0xd20f39,
             cyan: 0x04a5e5,
+            muted: 0x8c8fa1,
+            constant: 0xfe640b,
         }),
     ),
     (
@@ -158,6 +187,8 @@ pub(super) const THEMES: [(&str, Theme); 8] = [
             green_soft: 0xc8e3a8,
             red: 0xf7768e,
             cyan: 0x7dcfff,
+            muted: 0x565f89,
+            constant: 0xff9e64,
         }),
     ),
     (
@@ -174,6 +205,8 @@ pub(super) const THEMES: [(&str, Theme); 8] = [
             green_soft: 0x8fa872,
             red: 0xf52a65,
             cyan: 0x007197,
+            muted: 0x848cb5,
+            constant: 0xb15c00,
         }),
     ),
     (
@@ -190,6 +223,8 @@ pub(super) const THEMES: [(&str, Theme); 8] = [
             green_soft: 0xd5d78a,
             red: 0xfb4934,
             cyan: 0x8ec07c,
+            muted: 0x928374,
+            constant: 0xd3869b,
         }),
     ),
     (
@@ -206,6 +241,8 @@ pub(super) const THEMES: [(&str, Theme); 8] = [
             green_soft: 0xa8a35c,
             red: 0x9d0006,
             cyan: 0x427b58,
+            muted: 0x7c6f64,
+            constant: 0x8f3f71,
         }),
     ),
 ];
