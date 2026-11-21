@@ -13,14 +13,14 @@ mod widgets;
 pub use client::{
     ANIMATION_STEP, AgentInfo, Applied, AskPrompt, AskStep, AskTarget, AttachApp, AttachOptions,
     AttachOutcome, AttachState, AttachView, AttentionItem, CONFIG_POLL, ClickCounter, ClientEvent,
-    ConfigWatch, ContextMenu, CopyMode, CopyStep, DRAG_STEP, DividerGrab, DragScroll, FocusView,
-    GlyphAnimator, GoToPane, GoToPicker, HelpState, InfoStep, InputKeys, LaunchPicker, LaunchStep,
-    MAX_EXCERPT, MAX_QUOTE, MULTI_CLICK, MouseAction, MouseRouter, NamePrompt, NameStep,
-    NameTarget, NotePrompt, NoteStep, PaneReplica, Picker, PickerItem, PickerStep, PopupViews,
-    ProjectPicker, ProjectStep, QuickAnswer, Quote, ReviewNote, ReviewState, ReviewStep,
-    SelectEvent, SelectUnit, Selection, ServerLink, SessionEntry, SessionLister, SessionPicker,
-    SessionStep, SharedFocus, WELCOME_STEP, WHEEL_LINES, WORKTREE_CHOICES, WelcomeState,
-    WindowTitle, WorktreeForm, WorktreeStep,
+    ConfigWatch, ContextMenu, CopyMode, CopyStep, DRAG_STEP, DividerGrab, DragScroll, FilePickStep,
+    FilePicker, FileViewer, FileViewerStep, FocusView, GlyphAnimator, GoToPane, GoToPicker,
+    HelpState, InfoStep, InputKeys, LaunchPicker, LaunchStep, MAX_EXCERPT, MAX_QUOTE, MULTI_CLICK,
+    MouseAction, MouseRouter, NamePrompt, NameStep, NameTarget, NotePrompt, NoteStep, PaneReplica,
+    Picker, PickerItem, PickerStep, PopupViews, ProjectPicker, ProjectStep, QuickAnswer, Quote,
+    ReviewNote, ReviewState, ReviewStep, SelectEvent, SelectUnit, Selection, ServerLink,
+    SessionEntry, SessionLister, SessionPicker, SessionStep, SharedFocus, WELCOME_STEP,
+    WHEEL_LINES, WORKTREE_CHOICES, WelcomeState, WindowTitle, WorktreeForm, WorktreeStep,
 };
 pub use error::TuiError;
 pub use host::{HostBackend, HostClipboard, HostModeMirror, HostProbe, HostReply, HostTerminal};
@@ -30,8 +30,8 @@ pub use input::{
 };
 pub use platform::{LocalClipboard, SystemClipboard};
 pub use widgets::{
-    AgentInfoView, Chrome, ContextMenuView, GlyphLook, HelpLine, HelpView, MouseOwner, PageView,
-    PaneBorders, PaneView, PickerView, ReviewView, SelectionSpan, Sidebar, SidebarGroup,
-    SidebarRow, StatusLine, StyleConverter, SubagentRow, UnderlineStyle, WelcomeView, WhichKey,
-    WhichKeyEntry, WorktreeFormView,
+    AgentInfoView, Chrome, ContextMenuView, FileViewerView, GlyphLook, HelpLine, HelpView,
+    MouseOwner, PageView, PaneBorders, PaneView, PickerView, ReviewView, SelectionSpan, Sidebar,
+    SidebarGroup, SidebarRow, StatusLine, StyleConverter, SubagentRow, UnderlineStyle, WelcomeView,
+    WhichKey, WhichKeyEntry, WorktreeFormView,
 };

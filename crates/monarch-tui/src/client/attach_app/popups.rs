@@ -6,10 +6,10 @@ use std::time::Instant;
 use monarch_core::{PaneId, UnixMillis};
 
 use crate::{
-    AgentInfo, AgentInfoView, AskPrompt, Chrome, ContextMenu, ContextMenuView, GoToPicker,
-    HelpState, HelpView, LaunchPicker, NamePrompt, NotePrompt, Picker, PickerView, PopupViews,
-    ProjectPicker, ReviewState, ReviewView, SessionPicker, WelcomeState, WelcomeView, WorktreeForm,
-    WorktreeFormView,
+    AgentInfo, AgentInfoView, AskPrompt, Chrome, ContextMenu, ContextMenuView, FilePicker,
+    FileViewer, FileViewerView, GoToPicker, HelpState, HelpView, LaunchPicker, NamePrompt,
+    NotePrompt, Picker, PickerView, PopupViews, ProjectPicker, ReviewState, ReviewView,
+    SessionPicker, WelcomeState, WelcomeView, WorktreeForm, WorktreeFormView,
 };
 
 /// Every pop-up; each takes the keys while open.
@@ -35,6 +35,10 @@ pub(super) struct Popups {
     pub review: Option<ReviewState>,
     /// A note being written in the review, for its pane's agent.
     pub note: Option<NotePrompt>,
+    /// The file picker.
+    pub files: Option<FilePicker>,
+    /// The file viewer.
+    pub viewer: Option<FileViewer>,
     /// The ask composer.
     pub ask: Option<AskPrompt>,
     /// The pane whose selected text the composer waits for (not drawn).
@@ -61,6 +65,8 @@ impl Popups {
             || self.review.is_some()
             || self.note.is_some()
             || self.ask.is_some()
+            || self.files.is_some()
+            || self.viewer.is_some()
             || self.form.is_some()
             || self.help.is_some()
             || self.welcome.is_some()
@@ -93,6 +99,10 @@ impl Popups {
                 .review
                 .as_ref()
                 .map(|state| ReviewView { state, theme }),
+            viewer: self
+                .viewer
+                .as_ref()
+                .map(|viewer| FileViewerView { viewer, theme }),
             form: self
                 .form
                 .as_ref()
@@ -124,6 +134,7 @@ impl Popups {
             .or(self.launch.as_ref().map(LaunchPicker::picker))
             .or(self.namer.as_ref().map(NamePrompt::picker))
             .or(self.ask.as_ref().map(AskPrompt::picker))
+            .or(self.files.as_ref().map(FilePicker::picker))
             .or(self.note.as_ref().map(NotePrompt::picker))
     }
 }

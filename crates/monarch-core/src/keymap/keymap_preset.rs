@@ -65,14 +65,16 @@ fn ch(c: char) -> Key {
     Key::Char(c)
 }
 
-/// The agent keys, the same in every preset.
-fn agents() -> [(Key, Action); 5] {
+/// The agent keys, and the file viewer that feeds them, the same in
+/// every preset.
+fn agents() -> [(Key, Action); 6] {
     [
         (ch('a'), Action::Inbox),
         (Key::Tab, Action::NextBlocked),
         (ch('i'), Action::AgentInfo),
         (ch('A'), Action::LaunchAgent),
         (ch('e'), Action::Ask),
+        (ch('f'), Action::OpenFile),
     ]
 }
 
@@ -237,6 +239,7 @@ mod tests {
         assert!(has(KeymapPreset::Herdr, ch('q'), Action::Detach));
         for preset in KeymapPreset::ALL {
             assert!(has(preset, ch('e'), Action::Ask), "{}", preset.name());
+            assert!(has(preset, ch('f'), Action::OpenFile), "{}", preset.name());
         }
         assert!(has(KeymapPreset::Tmux, ch('w'), Action::GoToPane));
         for preset in KeymapPreset::ALL {

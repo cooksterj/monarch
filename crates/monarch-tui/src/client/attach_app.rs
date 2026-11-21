@@ -24,6 +24,7 @@ mod ask;
 mod copy;
 mod draw;
 mod entry;
+mod files;
 mod help;
 mod inbox;
 mod launch;
@@ -33,6 +34,7 @@ mod popups;
 mod projects;
 mod reload;
 mod rename;
+mod replies;
 mod review;
 mod select;
 mod sessions;
@@ -211,35 +213,18 @@ impl AttachApp {
         self.run_action(action)
     }
 
-    fn after_apply(&mut self, applied: Applied) {
-        for pane in applied.resync {
+    fn after_apply(&mut self, mut applied: Applied) {
+        for pane in std::mem::take(&mut applied.resync) {
             let _ = self.link.send(&ClientMsg::Resync(pane));
         }
-        self.out.extend(applied.host_write);
-        for text in applied.clipboard {
+        self.out.extend(std::mem::take(&mut applied.host_write));
+        for text in std::mem::take(&mut applied.clipboard) {
             self.copy(text);
         }
         self.dirty |= applied.redraw;
-        self.after_copy_frames(applied.found);
-        for (pane, review) in applied.reviews {
-            self.loaded_review(pane, review);
-        }
-        for made in applied.worktrees {
-            self.worktree_made(made);
-        }
-        for list in applied.worktree_lists {
-            self.loaded_worktrees(list);
-        }
-        for removed in applied.removed {
-            self.worktree_removed(removed);
-        }
-        for (pane, explained) in applied.explained {
-            self.explained(pane, explained);
-        }
-        for (pane, text) in applied.quotes {
-            self.quoted(pane, text);
-        }
-        for pane in applied.agents {
+        self.after_copy_frames(std::mem::take(&mut applied.found));
+        self.after_replies(&mut applied);
+        for pane in std::mem::take(&mut applied.agents) {
             self.agent_changed(pane);
         }
         if applied.redraw {

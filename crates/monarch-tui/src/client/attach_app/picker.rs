@@ -25,6 +25,7 @@ impl AttachApp {
             Action::LaunchAgent => self.open_launch(),
             Action::Ask => self.open_ask(),
             Action::Review => self.open_review(),
+            Action::OpenFile => self.open_file_picker(),
             Action::NewWorktree => self.open_worktree_form(),
             Action::Projects => self.open_projects(),
             Action::Sessions => self.open_sessions(),
@@ -60,6 +61,10 @@ impl AttachApp {
             self.note_input(bytes);
         } else if self.popups.review.is_some() {
             self.review_input(bytes);
+        } else if self.popups.files.is_some() {
+            self.file_picker_input(bytes);
+        } else if self.popups.viewer.is_some() {
+            self.viewer_input(bytes);
         } else if self.popups.form.is_some() {
             self.worktree_input(bytes);
         } else if self.popups.projects.is_some() {

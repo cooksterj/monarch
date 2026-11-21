@@ -205,6 +205,27 @@ a time with `Ctrl-e` and `Ctrl-y`.
 | `e` or `Enter` | open the file in `$EDITOR`, zoomed over the pane |
 | `q` or `Esc` | close |
 
+**View a file**, `prefix f`: search the focused pane's checkout by path (tracked and untracked
+files, not ignored ones) and press `Enter`. The file opens over the panes with line numbers and
+syntax highlighting in the theme's colours: Rust, Python, JavaScript, TypeScript (and TSX), Go,
+C, Bash, JSON, TOML and YAML; other files show as plain text. Select lines with `V` and press `a`
+to ask an agent about them: the prompt names the file and lines (`src/pane_io.rs:42-58`) and
+quotes them in a code block tagged with the language. Without a selection, `a` asks about the
+cursor's line. Files larger than 2 MB or 20,000 lines are cut short (the title says so); binary
+files and paths outside the checkout are refused.
+
+| Keys | Action |
+|---|---|
+| `j` `k`, arrows | move a line (`5j` five) |
+| `Ctrl-d` `Ctrl-u` | half a page |
+| `Space` `b`, `PgDn` `PgUp` | a page |
+| `g` `G` | top / bottom; `42G` line 42 |
+| `V` or `v` | select lines (again to stop) |
+| `a` | ask an agent about the selection, or the cursor's line |
+| `y` | copy the selection, or the cursor's line |
+| `e` | open the file in `$EDITOR`, zoomed over the pane |
+| `Esc` | clear the selection, then close; `q` closes |
+
 ## Copy mode and the mouse
 
 **Mouse.** Click focuses a pane. Drag selects text and copies it when you let go;
@@ -270,6 +291,7 @@ directory. Running programs and their screens can't survive the server, as with 
 | `s` | projects |
 | `S` | sessions |
 | `v` | review |
+| `f` | view a file, highlighted |
 | `:` | command palette: every action by name |
 | `?` | help |
 | `[` | copy mode |
@@ -361,7 +383,8 @@ accent = "#ff8800"
 
 Tokens: `bar`, `bar_text`, `popup` (pop-ups' background), `accent`, `accent_text`, `working`, `blocked_from`, `blocked_to`,
 `done_from`, `done_to`, `error`, `added`, `removed`, `hunk`, `claude`, `codex`, `wing`,
-`wing_edge`, `wing_spot`.
+`wing_edge`, `wing_spot`, and for highlighted code `syntax_keyword`, `syntax_string`,
+`syntax_comment`, `syntax_function`, `syntax_type`, `syntax_constant`, `syntax_property`.
 With `NO_COLOR` set, Monarch draws with reverse video and bold instead.
 
 ## Agents driving Monarch

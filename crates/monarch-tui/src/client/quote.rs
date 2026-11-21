@@ -1,6 +1,6 @@
-//! What an ask quotes to the agent: text selected in a pane, or a hunk
-//! from the review; and how quoted text is fenced so the agent can't
-//! mistake where it ends.
+//! What an ask quotes to the agent: text selected in a pane, lines of a
+//! file from the viewer, or a hunk from the review; and how quoted text
+//! is fenced so the agent can't mistake where it ends.
 
 use monarch_core::PaneId;
 
@@ -19,6 +19,19 @@ pub enum Quote {
         /// The selected text, wrapped lines whole.
         text: String,
     },
+    /// Lines of a file, selected in the file viewer.
+    File {
+        /// The pane whose checkout holds it.
+        pane: PaneId,
+        /// The file, from the checkout's top.
+        path: String,
+        /// Its language, to tag the fence (`rust`).
+        language: Option<String>,
+        /// The first line's number, counting from 1.
+        start: usize,
+        /// The lines.
+        lines: Vec<String>,
+    },
     /// The hunk shown in the review.
     Hunk(ReviewNote),
 }
@@ -28,7 +41,7 @@ impl Quote {
     #[must_use]
     pub fn pane(&self) -> PaneId {
         match self {
-            Self::Screen { pane, .. } => *pane,
+            Self::Screen { pane, .. } | Self::File { pane, .. } => *pane,
             Self::Hunk(note) => note.pane,
         }
     }
@@ -43,10 +56,25 @@ impl Quote {
                 let unit = if lines == 1 { "line" } else { "lines" };
                 format!("{lines} {unit} from pane {}", pane.0)
             }
+            Self::File { .. } => self.place(),
             Self::Hunk(note) => match note.hunk() {
                 Some(hunk) => format!("{} {hunk}", note.path),
                 None => note.path.clone(),
             },
+        }
+    }
+
+    /// `src/a.rs:42-58` (or `:42` for one line) for a file quote; the
+    /// summary for the rest.
+    fn place(&self) -> String {
+        match self {
+            Self::File {
+                path, start, lines, ..
+            } => match lines.len() {
+                0 | 1 => format!("{path}:{start}"),
+                n => format!("{path}:{start}-{}", start + n - 1),
+            },
+            _ => self.summary(),
         }
     }
 
@@ -60,6 +88,13 @@ impl Quote {
                 let lines: Vec<&str> = text.trim_end().lines().collect();
                 let excerpt = Self::fenced("", &lines, MAX_QUOTE);
                 format!("{ask}\n\nSelected in pane {}:\n{excerpt}", pane.0)
+            }
+            Self::File {
+                language, lines, ..
+            } => {
+                let lang = language.as_deref().unwrap_or_default();
+                let excerpt = Self::fenced(lang, lines, MAX_QUOTE);
+                format!("{ask}\n\nAbout {}:\n{excerpt}", self.place())
             }
             Self::Hunk(note) => {
                 let place = match note.hunk() {
@@ -139,6 +174,25 @@ mod tests {
         let message = screen(&text.join("\n")).message("Summarise.");
         assert!(message.contains(&format!("l{}\n… 3 more lines\n```", MAX_QUOTE - 1)));
         assert!(!message.contains(&format!("l{MAX_QUOTE}\n")));
+    }
+
+    #[test]
+    fn file_lines_name_the_path_and_range_and_tag_the_language() {
+        let quote = |lines: &[&str]| Quote::File {
+            pane: PaneId(2),
+            path: "src/a.rs".into(),
+            language: Some("rust".into()),
+            start: 42,
+            lines: lines.iter().map(|l| (*l).to_owned()).collect(),
+        };
+        let two = quote(&["fn a() {", "}"]);
+        assert_eq!(two.pane(), PaneId(2));
+        assert_eq!(two.summary(), "src/a.rs:42-43");
+        assert_eq!(
+            two.message("Why?"),
+            "Why?\n\nAbout src/a.rs:42-43:\n```rust\nfn a() {\n}\n```"
+        );
+        assert_eq!(quote(&["x"]).summary(), "src/a.rs:42");
     }
 
     #[test]

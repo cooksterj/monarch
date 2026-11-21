@@ -89,6 +89,9 @@ pub enum Action {
     /// Review the uncommitted changes in the focused pane's checkout:
     /// changed files and their diffs.
     Review,
+    /// View a file from the focused pane's checkout, highlighted, to read,
+    /// select from and ask an agent about.
+    OpenFile,
     /// Make a git worktree for a new or existing branch and open a tab in
     /// it, running an agent or a shell.
     NewWorktree,
@@ -126,6 +129,7 @@ impl Action {
                 | Self::LaunchAgent
                 | Self::Ask
                 | Self::Review
+                | Self::OpenFile
                 | Self::NewWorktree
                 | Self::Projects
                 | Self::Sessions

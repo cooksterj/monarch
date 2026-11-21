@@ -4,7 +4,7 @@ use monarch_core::PaneId;
 use serde::{Deserialize, Serialize};
 
 use super::{AgentStatus, AgentTiming, Delta, LayoutMsg, PanePlace, Snapshot, StyleDef};
-use crate::{GridPoint, PaneExplanation, Review, WorktreeCreated, WorktreeEntry};
+use crate::{CodeFile, GridPoint, PaneExplanation, Review, WorktreeCreated, WorktreeEntry};
 
 /// One server → client attach-stream message.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -98,6 +98,22 @@ pub enum ServerMsg {
         /// Why it is in its state.
         explained: Option<Box<PaneExplanation>>,
     },
+    /// Answer to [`super::ClientMsg::ListFiles`]: the checkout's files,
+    /// tracked and untracked but not ignored, or why there are none.
+    Files {
+        /// The pane asked about.
+        pane: PaneId,
+        /// Paths from the checkout's top, in order.
+        files: Result<Vec<String>, String>,
+    },
+    /// Answer to [`super::ClientMsg::OpenFile`]: the file, highlighted,
+    /// or why it can't be shown.
+    FileOpened {
+        /// The pane asked about.
+        pane: PaneId,
+        /// The file.
+        file: Result<CodeFile, String>,
+    },
     /// Answer to [`super::ClientMsg::Quote`]: the text of the range.
     Quote {
         /// The pane read.
@@ -119,6 +135,28 @@ mod tests {
             ServerMsg::Clipboard("a".into()),
             ServerMsg::Clipboard("b".into())
         );
+    }
+
+    #[test]
+    fn file_answers_survive_the_attach_encoding() {
+        let pane = PaneId(2);
+        for msg in [
+            ServerMsg::Files {
+                pane,
+                files: Ok(vec!["src/a.rs".into()]),
+            },
+            ServerMsg::Files {
+                pane,
+                files: Err("not in a git checkout".into()),
+            },
+            ServerMsg::FileOpened {
+                pane,
+                file: Ok(CodeFile::default()),
+            },
+        ] {
+            let bytes = postcard::to_allocvec(&msg).expect("encode");
+            assert_eq!(postcard::from_bytes::<ServerMsg>(&bytes).ok(), Some(msg));
+        }
     }
 
     #[test]

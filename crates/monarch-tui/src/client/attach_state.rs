@@ -71,21 +71,12 @@ impl AttachState {
                 self.apply_fact(msg, out);
                 out.redraw = true;
             }
-            ServerMsg::Explained { pane, explained } => out.explained.push((pane, explained)),
-            ServerMsg::HostWrite(bytes) => out.host_write.extend(bytes),
-            ServerMsg::SearchResult { pane, found } => out.found.push((pane, found)),
-            ServerMsg::Review { pane, review } => out.reviews.push((pane, review)),
-            ServerMsg::WorktreeMade(made) => out.worktrees.push(made),
-            ServerMsg::Worktrees(list) => out.worktree_lists.push(list),
-            ServerMsg::WorktreeRemoved(removed) => out.removed.push(removed),
-            ServerMsg::Clipboard(text) => out.clipboard.push(text),
-            ServerMsg::Quote { pane, text } => out.quotes.push((pane, text)),
             ServerMsg::PaneExited { pane } => {
                 self.panes.remove(&pane);
                 out.exited.push(pane);
                 out.redraw = true;
             }
-            _ => {}
+            msg => out.collect(msg),
         }
     }
 

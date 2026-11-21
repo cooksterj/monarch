@@ -9,6 +9,7 @@ mod api;
 mod attach;
 mod badge_part;
 mod checkout_status;
+mod code;
 mod error;
 mod hello;
 mod hello_ack;
@@ -29,6 +30,7 @@ pub use attach::{
 };
 pub use badge_part::BadgePart;
 pub use checkout_status::CheckoutStatus;
+pub use code::{CodeFile, CodeLine, CodeSpan};
 pub use error::ProtoError;
 pub use hello::Hello;
 pub use hello_ack::HelloAck;

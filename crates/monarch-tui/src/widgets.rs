@@ -3,6 +3,7 @@
 mod agent_info_view;
 mod chrome;
 mod context_menu_view;
+mod file_viewer_view;
 mod fit_text;
 mod glyph_look;
 mod help_line;
@@ -30,6 +31,7 @@ mod worktree_form_view;
 pub use agent_info_view::AgentInfoView;
 pub use chrome::Chrome;
 pub use context_menu_view::ContextMenuView;
+pub use file_viewer_view::FileViewerView;
 pub use glyph_look::GlyphLook;
 pub use help_line::HelpLine;
 pub use help_view::HelpView;

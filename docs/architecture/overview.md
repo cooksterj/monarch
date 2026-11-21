@@ -16,6 +16,7 @@ monarch (bin) ──► monarch-cli   attach · new · ls · kill · hook · set
 monarch-tui ◄── attach stream (postcard frames) ──► monarch-server (tokio)
                      JSON-lines API (CLI, hooks, agents) ─┘    ├─ monarch-term    Engine trait, alacritty backend, OscTap
                                                                ├─ monarch-detect  screen manifests, OSC signals
+                                                               ├─ monarch-syntax  tree-sitter highlighting
                                                                └─ monarch-core    domain types, config, keymap, theme (no IO)
                               monarch-proto: wire types shared by all
 ```
@@ -27,6 +28,7 @@ monarch-tui ◄── attach stream (postcard frames) ──► monarch-server (
 | `monarch-term` | The `Engine` trait, `AlacrittyEngine`, `OscTap`, selection and search. |
 | `monarch-detect` | Herdr-compatible manifest loader and evaluator, the vendored manifests, `OscSignal`. |
 | `monarch-server` | Sessions, `PaneRuntime`, `StateEngine`, frame coalescer, watchers, persister, worktrees, API and attach connections. |
+| `monarch-syntax` | Syntax highlighting with tree-sitter: source text to lines of `SyntaxToken` runs. Grammars and queries for each `Language`. No IO, no colours. |
 | `monarch-tui` | Raw input, prefix parser, `AttachState` (pure), views and widgets, `HostBackend`. |
 | `monarch-cli` | The commands; `monarch hook` is small and fast (read stdin, post to the socket, exit). |
 

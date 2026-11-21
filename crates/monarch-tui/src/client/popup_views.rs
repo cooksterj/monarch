@@ -4,7 +4,8 @@ use ratatui::Frame;
 use ratatui::layout::Rect;
 
 use crate::{
-    AgentInfoView, ContextMenuView, HelpView, PickerView, ReviewView, WelcomeView, WorktreeFormView,
+    AgentInfoView, ContextMenuView, FileViewerView, HelpView, PickerView, ReviewView, WelcomeView,
+    WorktreeFormView,
 };
 
 /// Each pop-up's widget, when it is open.
@@ -16,6 +17,8 @@ pub struct PopupViews<'a> {
     pub menu: Option<ContextMenuView<'a>>,
     /// The review pane.
     pub review: Option<ReviewView<'a>>,
+    /// The file viewer.
+    pub viewer: Option<FileViewerView<'a>>,
     /// The new-worktree form, with the cursor in it.
     pub form: Option<WorktreeFormView<'a>>,
     /// The help page.
@@ -28,10 +31,14 @@ pub struct PopupViews<'a> {
 
 impl PopupViews<'_> {
     /// Draws those open over `panes` (the menu anywhere on the host),
-    /// bottom to top: review, help, info, form, picker, menu, welcome.
+    /// bottom to top: review, viewer, help, info, form, picker, menu,
+    /// welcome.
     pub fn draw(self, frame: &mut Frame<'_>, panes: Rect) {
         if let Some(review) = self.review {
             frame.render_widget(review, panes);
+        }
+        if let Some(viewer) = self.viewer {
+            frame.render_widget(viewer, panes);
         }
         if let Some(help) = self.help {
             frame.render_widget(help, panes);

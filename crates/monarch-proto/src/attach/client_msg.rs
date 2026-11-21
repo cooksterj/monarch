@@ -139,6 +139,17 @@ pub enum ClientMsg {
         /// Where the divider should sit, in pane-area cells.
         to: u16,
     },
+    /// List the files in the checkout a pane works in; answered with
+    /// `ServerMsg::Files`.
+    ListFiles(PaneId),
+    /// Read and highlight a file from a pane's checkout; answered with
+    /// `ServerMsg::FileOpened`.
+    OpenFile {
+        /// The pane whose checkout holds the file.
+        pane: PaneId,
+        /// The file, from the checkout's top.
+        path: String,
+    },
     /// Read a range of a pane's grid, scrollback included, to quote to an
     /// agent; answered with `ServerMsg::Quote` (as `Copy`, but the text
     /// comes back to the client instead of going to the clipboard).

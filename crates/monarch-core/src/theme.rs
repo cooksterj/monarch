@@ -4,7 +4,7 @@
 
 mod builtin;
 
-use crate::{AgentKind, Rgb};
+use crate::{AgentKind, Rgb, SyntaxToken};
 
 /// The colours Monarch draws its chrome, agent states and diffs in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -49,10 +49,24 @@ pub struct Theme {
     pub wing_edge: Rgb,
     /// …and the spots along the borders.
     pub wing_spot: Rgb,
+    /// Keywords in highlighted code.
+    pub syntax_keyword: Rgb,
+    /// String literals in highlighted code.
+    pub syntax_string: Rgb,
+    /// Comments in highlighted code.
+    pub syntax_comment: Rgb,
+    /// Function names in highlighted code.
+    pub syntax_function: Rgb,
+    /// Type names in highlighted code.
+    pub syntax_type: Rgb,
+    /// Numbers and constants in highlighted code.
+    pub syntax_constant: Rgb,
+    /// Fields and data-file keys in highlighted code.
+    pub syntax_property: Rgb,
 }
 
 /// Every token's name, as `[theme.colors]` spells it.
-pub const THEME_TOKENS: [&str; 19] = [
+pub const THEME_TOKENS: [&str; 26] = [
     "bar",
     "bar_text",
     "popup",
@@ -72,6 +86,13 @@ pub const THEME_TOKENS: [&str; 19] = [
     "wing",
     "wing_edge",
     "wing_spot",
+    "syntax_keyword",
+    "syntax_string",
+    "syntax_comment",
+    "syntax_function",
+    "syntax_type",
+    "syntax_constant",
+    "syntax_property",
 ];
 
 impl Theme {
@@ -120,6 +141,22 @@ impl Theme {
         }
     }
 
+    /// The colour of code of kind `token`; `None` for plain text, which
+    /// takes the surface's text colour.
+    #[must_use]
+    pub fn syntax(&self, token: SyntaxToken) -> Option<Rgb> {
+        Some(match token {
+            SyntaxToken::Plain => return None,
+            SyntaxToken::Keyword => self.syntax_keyword,
+            SyntaxToken::String => self.syntax_string,
+            SyntaxToken::Comment => self.syntax_comment,
+            SyntaxToken::Function => self.syntax_function,
+            SyntaxToken::Type => self.syntax_type,
+            SyntaxToken::Constant => self.syntax_constant,
+            SyntaxToken::Property => self.syntax_property,
+        })
+    }
+
     /// The token called `name` (see [`THEME_TOKENS`]), to override.
     pub fn token_mut(&mut self, name: &str) -> Option<&mut Rgb> {
         Some(match name {
@@ -142,6 +179,13 @@ impl Theme {
             "wing" => &mut self.wing,
             "wing_edge" => &mut self.wing_edge,
             "wing_spot" => &mut self.wing_spot,
+            "syntax_keyword" => &mut self.syntax_keyword,
+            "syntax_string" => &mut self.syntax_string,
+            "syntax_comment" => &mut self.syntax_comment,
+            "syntax_function" => &mut self.syntax_function,
+            "syntax_type" => &mut self.syntax_type,
+            "syntax_constant" => &mut self.syntax_constant,
+            "syntax_property" => &mut self.syntax_property,
             _ => return None,
         })
     }
@@ -179,6 +223,19 @@ mod tests {
         assert_eq!(theme.hunk, Rgb::new(1, 2, 3));
         assert_eq!(theme.bar, Rgb::new(1, 2, 3));
         assert!(theme.token_mut("background").is_none());
+    }
+
+    #[test]
+    fn code_kinds_take_distinct_colours_and_plain_takes_none() {
+        for name in Theme::names() {
+            let t = Theme::named(name).expect(name);
+            assert_eq!(t.syntax(SyntaxToken::Plain), None);
+            let colours: std::collections::HashSet<_> = SyntaxToken::ALL
+                .into_iter()
+                .filter_map(|k| t.syntax(k))
+                .collect();
+            assert_eq!(colours.len(), SyntaxToken::ALL.len() - 1, "{name}");
+        }
     }
 
     #[test]
