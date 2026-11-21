@@ -34,25 +34,31 @@ publishing stays off (`git_only`) until the user decides otherwise.
 
 ## Next up
 
-1. **Sub-agent slice 3**: a manifest count capture for agents without hooks (Grok's "Waiting on
+1. **Ask from a selection** (`prefix e`; `a` in copy mode and review): select code, write a prompt,
+   pick an agent. The prompt carries the selection's `path:lines`, found with `git grep` in the
+   pane's checkout, else "from pane N". Enter sends at once to an idle agent and queues for a busy
+   or blocked one until it is idle. With no agent in the checkout, it starts one with the prompt
+   (a split here, or a new worktree), or several at once. Slices: existing agents; new agents
+   (`NewWorktree.prompt`, a `Hello::WIRE` bump); source lookup; the send-when-idle queue.
+2. **Sub-agent slice 3**: a manifest count capture for agents without hooks (Grok's "Waiting on
    subagent…", Antigravity's "· N tasks").
-2. **Mouse reports in multi-pane layouts**: re-encode coordinates for every layout, not only one
+3. **Mouse reports in multi-pane layouts**: re-encode coordinates for every layout, not only one
    full-screen pane.
-3. **Remnant text** re-reported on 2026-11-12, unreproduced: on the next sighting, check whether it
+4. **Remnant text** re-reported on 2026-11-12, unreproduced: on the next sighting, check whether it
    survives detach and reattach.
 
 Then the differentiators, in order (why: [decisions](decisions.md#product)):
 
-4. **Land from review**: `L` in `prefix v` commits, rebases onto the base branch, runs a configured
+5. **Land from review**: `L` in `prefix v` commits, rebases onto the base branch, runs a configured
    check command, opens a PR with `gh`, then removes the worktree and its branch.
-5. **Overlap warning**: flag on the sidebar rows, and before landing, when two worktrees' diffs
+6. **Overlap warning**: flag on the sidebar rows, and before landing, when two worktrees' diffs
    touch the same files or hunks.
-6. **Best-of-N**: `monarch race "<prompt>" --agents claude,codex,…` starts one worktree per agent
+7. **Best-of-N**: `monarch race "<prompt>" --agents claude,codex,…` starts one worktree per agent
    with the same prompt; review compares the finished diffs side by side and lands the one you pick.
-7. **"While you were away"**: a per-agent record of each turn from hooks (prompt, files edited,
+8. **"While you were away"**: a per-agent record of each turn from hooks (prompt, files edited,
    commands run, outcome), summarised on reattach and readable with `monarch agent log`.
-8. **Context meter**: context-window fill (and spend, where the agent reports it) on each row.
-9. **Public fidelity report**: run the input matrix against tmux, Zellij and Herdr and publish the
+9. **Context meter**: context-window fill (and spend, where the agent reports it) on each row.
+10. **Public fidelity report**: run the input matrix against tmux, Zellij and Herdr and publish the
    results.
 
 Considered, not committed: approval rules answered from the inbox ("always allow `cargo test`

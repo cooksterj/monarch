@@ -25,6 +25,11 @@ already says. Dates are when the decision was made.
   overlapping edits and best-of-N build on what it already has. Hook data powers the per-turn
   record, which tools that read the screen can't produce reliably. Several machines in one view
   and plugins stay out of scope: there, others are already ahead.
+- **Ask from a selection comes first** (2026-11-21, user's decision). Getting code in front of an
+  agent is the most frequent step in the loop and is copy, switch, paste today. `prefix e` was the
+  free key in every preset. Enter sends at once only to an idle agent: typing into a blocked one
+  could answer its approval prompt. With no agent there, it starts one rather than refusing. Starting
+  agents with a prompt is also what best-of-N needs, so that work builds on this.
 
 ## Terminal
 
