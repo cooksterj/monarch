@@ -79,6 +79,7 @@ impl AttachState {
             ServerMsg::Worktrees(list) => out.worktree_lists.push(list),
             ServerMsg::WorktreeRemoved(removed) => out.removed.push(removed),
             ServerMsg::Clipboard(text) => out.clipboard.push(text),
+            ServerMsg::Quote { pane, text } => out.quotes.push((pane, text)),
             ServerMsg::PaneExited { pane } => {
                 self.panes.remove(&pane);
                 out.exited.push(pane);

@@ -18,6 +18,15 @@ pub enum CopyStep {
         /// How the range becomes text.
         shape: SelectShape,
     },
+    /// Ask an agent about this range, then leave.
+    Quote {
+        /// First end of the range.
+        start: GridPoint,
+        /// Other end, inclusive.
+        end: GridPoint,
+        /// How the range becomes text.
+        shape: SelectShape,
+    },
     /// Ask the server where `query` appears next.
     Search {
         /// Plain text to find.

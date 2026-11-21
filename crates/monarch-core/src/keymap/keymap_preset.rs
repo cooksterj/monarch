@@ -65,6 +65,17 @@ fn ch(c: char) -> Key {
     Key::Char(c)
 }
 
+/// The agent keys, the same in every preset.
+fn agents() -> [(Key, Action); 5] {
+    [
+        (ch('a'), Action::Inbox),
+        (Key::Tab, Action::NextBlocked),
+        (ch('i'), Action::AgentInfo),
+        (ch('A'), Action::LaunchAgent),
+        (ch('e'), Action::Ask),
+    ]
+}
+
 /// Arrow keys move focus in every preset.
 fn arrows() -> impl Iterator<Item = (Key, Action)> {
     Direction::ALL
@@ -113,10 +124,6 @@ fn monarch() -> Vec<(Key, Action)> {
         (ch('R'), Action::ReloadConfig),
         (ch('g'), Action::GoToPane),
         (ch('w'), Action::GoToPane),
-        (ch('a'), Action::Inbox),
-        (Key::Tab, Action::NextBlocked),
-        (ch('i'), Action::AgentInfo),
-        (ch('A'), Action::LaunchAgent),
         (ch('v'), Action::Review),
         (ch('N'), Action::NewWorktree),
         (ch('s'), Action::Projects),
@@ -124,6 +131,7 @@ fn monarch() -> Vec<(Key, Action)> {
         (ch('?'), Action::Help),
     ];
     out.extend(arrows());
+    out.extend(agents());
     out.extend(vi(false, Action::Focus));
     out.extend(vi(true, Action::Resize));
     out
@@ -152,10 +160,6 @@ fn tmux() -> Vec<(Key, Action)> {
         (ch('t'), Action::ToggleSidebar),
         (ch('R'), Action::ReloadConfig),
         (ch('w'), Action::GoToPane),
-        (ch('a'), Action::Inbox),
-        (Key::Tab, Action::NextBlocked),
-        (ch('i'), Action::AgentInfo),
-        (ch('A'), Action::LaunchAgent),
         (ch('v'), Action::Review),
         (ch('N'), Action::NewWorktree),
         (ch('s'), Action::Projects),
@@ -163,6 +167,7 @@ fn tmux() -> Vec<(Key, Action)> {
         (ch('?'), Action::Help),
     ];
     out.extend(arrows());
+    out.extend(agents());
     out
 }
 
@@ -186,16 +191,13 @@ fn herdr() -> Vec<(Key, Action)> {
         (ch('t'), Action::ToggleSidebar),
         (ch('R'), Action::ReloadConfig),
         (ch('g'), Action::GoToPane),
-        (ch('a'), Action::Inbox),
-        (Key::Tab, Action::NextBlocked),
-        (ch('i'), Action::AgentInfo),
-        (ch('A'), Action::LaunchAgent),
         (ch('N'), Action::NewWorktree),
         (ch('s'), Action::Projects),
         (ch('S'), Action::Sessions),
         (ch('?'), Action::Help),
     ];
     out.extend(arrows());
+    out.extend(agents());
     out.extend(vi(false, Action::Focus));
     out.extend(vi(true, Action::Swap));
     out
@@ -233,6 +235,9 @@ mod tests {
         );
         assert!(has(KeymapPreset::Monarch, ch('1'), Action::SelectTab(1)));
         assert!(has(KeymapPreset::Herdr, ch('q'), Action::Detach));
+        for preset in KeymapPreset::ALL {
+            assert!(has(preset, ch('e'), Action::Ask), "{}", preset.name());
+        }
         assert!(has(KeymapPreset::Tmux, ch('w'), Action::GoToPane));
         for preset in KeymapPreset::ALL {
             assert!(has(preset, ch(':'), Action::CommandPalette));

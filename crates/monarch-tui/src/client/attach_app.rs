@@ -20,6 +20,7 @@ use crate::{HostBackend, HostModeMirror, TuiError, WhichKeyEntry};
 mod agent_info;
 mod ages;
 mod animate;
+mod ask;
 mod copy;
 mod draw;
 mod entry;
@@ -235,19 +236,29 @@ impl AttachApp {
         for (pane, explained) in applied.explained {
             self.explained(pane, explained);
         }
+        for (pane, text) in applied.quotes {
+            self.quoted(pane, text);
+        }
         for pane in applied.agents {
             self.agent_changed(pane);
         }
-        if applied.redraw && self.drag.is_some() {
-            self.drag_extend();
-        }
         if applied.redraw {
-            self.refresh_inbox();
-            self.refresh_goto();
-            self.publish_panes();
+            self.after_redraw();
         } else {
             self.focus.set(&self.state.focus_view());
         }
+    }
+
+    /// After frames that changed the screen: a drag's selection follows
+    /// the text, and open lists follow the panes and agents.
+    fn after_redraw(&mut self) {
+        if self.drag.is_some() {
+            self.drag_extend();
+        }
+        self.refresh_inbox();
+        self.refresh_ask();
+        self.refresh_goto();
+        self.publish_panes();
     }
 
     fn check_resize(&mut self) -> Result<(), TuiError> {

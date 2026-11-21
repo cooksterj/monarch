@@ -29,6 +29,8 @@ pub struct Applied {
     /// Answers to explain requests: the pane and why its agent is in its
     /// state (`None` for a pane that is gone).
     pub explained: Vec<(PaneId, Option<Box<PaneExplanation>>)>,
+    /// Answers to quote requests: the pane and the range's text.
+    pub quotes: Vec<(PaneId, String)>,
     /// Panes whose agent status changed.
     pub agents: Vec<PaneId>,
 }

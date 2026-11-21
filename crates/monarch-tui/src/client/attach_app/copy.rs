@@ -34,6 +34,19 @@ impl AttachApp {
         self.dirty = true;
     }
 
+    /// Keys in copy mode; those after the one that ends it are dropped.
+    pub(super) fn copy_input(&mut self, bytes: &[u8]) {
+        for key in OverlayKey::decode(bytes) {
+            if self.copy.is_none() {
+                break;
+            }
+            self.copy_key(key);
+        }
+        if self.copy.is_none() {
+            self.focus.set_overlay(self.any_overlay());
+        }
+    }
+
     /// One key in copy mode.
     pub(super) fn copy_key(&mut self, key: OverlayKey) {
         let Some(copy) = self.copy.as_mut() else {
@@ -59,6 +72,10 @@ impl AttachApp {
                     end,
                     shape,
                 }
+            }
+            CopyStep::Quote { start, end, shape } => {
+                self.close_copy();
+                return self.request_quote(pane, start, end, shape);
             }
             CopyStep::Search {
                 query,

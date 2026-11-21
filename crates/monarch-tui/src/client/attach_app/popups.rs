@@ -3,12 +3,12 @@
 
 use std::time::Instant;
 
-use monarch_core::UnixMillis;
+use monarch_core::{PaneId, UnixMillis};
 
 use crate::{
-    AgentInfo, AgentInfoView, Chrome, ContextMenu, ContextMenuView, GoToPicker, HelpState,
-    HelpView, LaunchPicker, NamePrompt, NotePrompt, Picker, PickerView, PopupViews, ProjectPicker,
-    ReviewState, ReviewView, SessionPicker, WelcomeState, WelcomeView, WorktreeForm,
+    AgentInfo, AgentInfoView, AskPrompt, Chrome, ContextMenu, ContextMenuView, GoToPicker,
+    HelpState, HelpView, LaunchPicker, NamePrompt, NotePrompt, Picker, PickerView, PopupViews,
+    ProjectPicker, ReviewState, ReviewView, SessionPicker, WelcomeState, WelcomeView, WorktreeForm,
     WorktreeFormView,
 };
 
@@ -35,6 +35,10 @@ pub(super) struct Popups {
     pub review: Option<ReviewState>,
     /// A note being written in the review, for its pane's agent.
     pub note: Option<NotePrompt>,
+    /// The ask composer.
+    pub ask: Option<AskPrompt>,
+    /// The pane whose selected text the composer waits for (not drawn).
+    pub quoting: Option<PaneId>,
     /// The new-worktree form.
     pub form: Option<WorktreeForm>,
     /// The help page.
@@ -56,6 +60,7 @@ impl Popups {
             || self.menu.is_some()
             || self.review.is_some()
             || self.note.is_some()
+            || self.ask.is_some()
             || self.form.is_some()
             || self.help.is_some()
             || self.welcome.is_some()
@@ -72,13 +77,7 @@ impl Popups {
         now: UnixMillis,
     ) -> PopupViews<'a> {
         let theme = chrome.theme;
-        let picker = (self.picker.as_ref())
-            .or(self.goto.as_ref().map(GoToPicker::picker))
-            .or(self.projects.as_ref().map(ProjectPicker::picker))
-            .or(self.sessions.as_ref().map(SessionPicker::picker))
-            .or(self.launch.as_ref().map(LaunchPicker::picker))
-            .or(self.namer.as_ref().map(NamePrompt::picker))
-            .or(self.note.as_ref().map(NotePrompt::picker));
+        let picker = self.shown_picker();
         let instant = Instant::now();
         PopupViews {
             picker: picker.map(|picker| PickerView { picker, chrome }),
@@ -111,6 +110,21 @@ impl Popups {
                 chrome,
             }),
         }
+    }
+}
+
+impl Popups {
+    /// The one pop-up drawn as a picker, if any: the first open in this
+    /// order.
+    fn shown_picker(&self) -> Option<&Picker> {
+        (self.picker.as_ref())
+            .or(self.goto.as_ref().map(GoToPicker::picker))
+            .or(self.projects.as_ref().map(ProjectPicker::picker))
+            .or(self.sessions.as_ref().map(SessionPicker::picker))
+            .or(self.launch.as_ref().map(LaunchPicker::picker))
+            .or(self.namer.as_ref().map(NamePrompt::picker))
+            .or(self.ask.as_ref().map(AskPrompt::picker))
+            .or(self.note.as_ref().map(NotePrompt::picker))
     }
 }
 

@@ -4,6 +4,8 @@
 use monarch_core::PaneId;
 use monarch_proto::{DiffLine, DiffLineKind};
 
+use super::Quote;
+
 /// Most diff lines quoted back to the agent.
 pub const MAX_EXCERPT: usize = 40;
 
@@ -47,18 +49,20 @@ impl ReviewNote {
             None => format!("Review note on {}:\n\n", self.path),
         };
         out.push_str(text.trim());
-        out.push_str("\n\nThe change in question:\n```diff\n");
-        for line in self.lines.iter().take(MAX_EXCERPT) {
-            out.push_str(line.kind.marker());
-            out.push_str(&line.text);
-            out.push('\n');
-        }
-        if self.lines.len() > MAX_EXCERPT {
-            let more = self.lines.len() - MAX_EXCERPT;
-            out.push_str(&format!("… {more} more lines\n"));
-        }
-        out.push_str("```");
+        out.push_str("\n\nThe change in question:\n");
+        out.push_str(&self.excerpt());
         out
+    }
+
+    /// The hunk as a fenced diff, at most [`MAX_EXCERPT`] lines.
+    #[must_use]
+    pub fn excerpt(&self) -> String {
+        let lines: Vec<String> = self
+            .lines
+            .iter()
+            .map(|l| format!("{}{}", l.kind.marker(), l.text))
+            .collect();
+        Quote::fenced("diff", &lines, MAX_EXCERPT)
     }
 }
 

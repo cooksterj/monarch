@@ -9,7 +9,7 @@ use monarch_proto::{ClientMsg, FileChange, Review};
 
 use super::AttachApp;
 use super::select::NOTICE;
-use crate::{NotePrompt, NoteStep, OverlayKey, ReviewState, ReviewStep};
+use crate::{NotePrompt, NoteStep, OverlayKey, Quote, ReviewState, ReviewStep};
 
 impl AttachApp {
     /// Opens the review of the focused pane's checkout; it shows
@@ -49,6 +49,10 @@ impl AttachApp {
                 }
                 ReviewStep::Edit => self.edit_selected(),
                 ReviewStep::Note => self.open_note(),
+                ReviewStep::Ask => match state.note_target() {
+                    Some(hunk) => self.open_ask_with(Some(Quote::Hunk(hunk))),
+                    None => self.say("nothing to ask about"),
+                },
                 ReviewStep::Close => self.close_review(),
             }
         }

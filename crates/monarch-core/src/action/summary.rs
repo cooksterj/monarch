@@ -21,12 +21,6 @@ impl Action {
             Self::Resize(_) => "move the divider that way",
             Self::ToggleZoom => "zoom the pane to fill the tab, or unzoom",
             Self::Equalize => "give the tab's panes equal space",
-            Self::NewTab => "open a tab",
-            Self::BreakPane => "move the pane to a tab of its own",
-            Self::CloseTab => "close the tab and every pane in it",
-            Self::NextTab => "show the next tab",
-            Self::PrevTab => "show the previous tab",
-            Self::SelectTab(_) => "show that tab",
             Self::Detach => "detach; the session keeps running",
             Self::ToggleMouse => "give the mouse to your terminal, or take it back",
             Self::CommandPalette => "search every command by name",
@@ -38,15 +32,31 @@ impl Action {
             Self::NextBlocked => "jump to the next agent waiting for you",
             Self::AgentInfo => "why the agent is in its state, and its history",
             Self::LaunchAgent => "start Claude Code or Codex in a new tab",
+            Self::Ask => "ask an agent about the selection",
             Self::Review => "review the checkout's uncommitted changes",
             Self::NewWorktree => "new worktree with an agent or a shell",
             Self::Projects => "jump to, open or remove worktrees",
             Self::Sessions => "switch to another session, or start one",
             Self::Help => "this help",
             Self::Welcome => "the welcome screen",
-            Self::RenameTab => "name the tab (blank: its program's name)",
             Self::RenamePane => "name the pane (blank: its automatic name)",
             Self::FocusPane(_) => "focus a pane",
+            tab => tab.tab_summary(),
+        }
+    }
+
+    /// What a tab action does; empty for the rest (the tests check every
+    /// action reads as something).
+    fn tab_summary(self) -> &'static str {
+        match self {
+            Self::NewTab => "open a tab",
+            Self::BreakPane => "move the pane to a tab of its own",
+            Self::CloseTab => "close the tab and every pane in it",
+            Self::NextTab => "show the next tab",
+            Self::PrevTab => "show the previous tab",
+            Self::SelectTab(_) => "show that tab",
+            Self::RenameTab => "name the tab (blank: its program's name)",
+            _ => "",
         }
     }
 
@@ -76,7 +86,7 @@ impl Action {
             | Self::PrevTab
             | Self::SelectTab(_)
             | Self::RenameTab => ActionGroup::Tabs,
-            Self::Inbox | Self::NextBlocked | Self::AgentInfo | Self::LaunchAgent => {
+            Self::Inbox | Self::NextBlocked | Self::AgentInfo | Self::LaunchAgent | Self::Ask => {
                 ActionGroup::Agents
             }
             Self::Review | Self::NewWorktree | Self::Projects => ActionGroup::Projects,

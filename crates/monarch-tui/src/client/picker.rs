@@ -1,5 +1,6 @@
-//! A fuzzy-searched list (the command palette and the go-to picker), or a
-//! plain list whose letter keys answer the highlighted row (the inbox).
+//! A fuzzy-searched list (the command palette and the go-to picker), a
+//! plain list whose letter keys answer the highlighted row (the inbox), or
+//! a line of free text over rows it never filters (the ask composer).
 
 use nucleo_matcher::pattern::{CaseMatching, Normalization, Pattern};
 use nucleo_matcher::{Config, Matcher, Utf32Str};
@@ -25,6 +26,8 @@ pub struct Picker {
     selected: usize,
     /// No search: letters and digits answer the highlighted row.
     list: bool,
+    /// The query is free text: every row stays shown.
+    prompt: bool,
     /// Footer and no-rows text replacing the defaults.
     text: Option<(String, String)>,
 }
@@ -40,6 +43,7 @@ impl Picker {
             matches: Vec::new(),
             selected: 0,
             list: false,
+            prompt: false,
             text: None,
         };
         picker.refilter();
@@ -54,6 +58,18 @@ impl Picker {
             list: true,
             ..Self::new(title, items)
         }
+    }
+
+    /// Free text over `items`: typing writes the query without filtering
+    /// the rows, and the highlight stays where it is moved.
+    #[must_use]
+    pub fn prompt(title: impl Into<String>, items: Vec<PickerItem>) -> Self {
+        let mut picker = Self {
+            prompt: true,
+            ..Self::new(title, items)
+        };
+        picker.refilter();
+        picker
     }
 
     /// The same picker with its own footer `keys` and `empty` text (shown
@@ -197,7 +213,9 @@ impl Picker {
 
     fn edit(&mut self, change: impl FnOnce(&mut String)) {
         change(&mut self.query);
-        self.refilter();
+        if !self.prompt {
+            self.refilter();
+        }
     }
 
     /// Moves the highlight `by` rows down, wrapping.
@@ -208,6 +226,15 @@ impl Picker {
     }
 
     fn refilter(&mut self) {
+        self.selected = 0;
+        if self.prompt {
+            let all = (0..self.items.len()).map(|item| Match {
+                item,
+                chars: Vec::new(),
+            });
+            self.matches = all.collect();
+            return;
+        }
         let pattern = Pattern::parse(&self.query, CaseMatching::Smart, Normalization::Smart);
         let mut matcher = Matcher::new(Config::DEFAULT);
         let mut buf = Vec::new();
@@ -226,7 +253,6 @@ impl Picker {
             .collect();
         scored.sort_by_key(|(score, _)| std::cmp::Reverse(*score));
         self.matches = scored.into_iter().map(|(_, m)| m).collect();
-        self.selected = 0;
     }
 }
 
@@ -357,5 +383,26 @@ mod tests {
             "nothing to answer"
         );
         assert_eq!(list.key(OverlayKey::Esc), PickerStep::Close);
+    }
+
+    #[test]
+    fn a_prompt_types_freely_and_never_filters_its_rows() {
+        let rows = [3, 4].map(|n| PickerItem {
+            label: format!("claude {n}"),
+            detail: String::new(),
+            action: Action::FocusPane(monarch_core::PaneId(n)),
+        });
+        let mut prompt = Picker::prompt("ask", rows.to_vec());
+        assert_eq!(prompt.key(OverlayKey::Tab), PickerStep::Open);
+        typed(&mut prompt, "zzz fix");
+        assert_eq!(prompt.query(), "zzz fix");
+        assert_eq!(prompt.rows().len(), 2, "nothing filtered out");
+        assert_eq!(prompt.selected(), 1, "typing keeps the highlight");
+        assert_eq!(prompt.key(OverlayKey::Ctrl('w')), PickerStep::Open);
+        assert_eq!(prompt.query(), "zzz ");
+        let second = Action::FocusPane(monarch_core::PaneId(4));
+        assert_eq!(prompt.key(OverlayKey::Enter), PickerStep::Run(second));
+        let empty = Picker::prompt("ask", Vec::new());
+        assert_eq!(empty.selected_item(), None);
     }
 }

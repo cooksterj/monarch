@@ -83,6 +83,9 @@ pub enum Action {
     /// Choose an agent to start in a new tab (client-local: the client
     /// asks which).
     LaunchAgent,
+    /// Ask an agent about the selection: write a prompt and choose which
+    /// agent gets it, with the selected text quoted.
+    Ask,
     /// Review the uncommitted changes in the focused pane's checkout:
     /// changed files and their diffs.
     Review,
@@ -121,6 +124,7 @@ impl Action {
                 | Self::NextBlocked
                 | Self::AgentInfo
                 | Self::LaunchAgent
+                | Self::Ask
                 | Self::Review
                 | Self::NewWorktree
                 | Self::Projects
