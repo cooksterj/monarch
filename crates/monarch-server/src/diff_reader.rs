@@ -1,12 +1,16 @@
 //! Reads a checkout's uncommitted changes for the review pane: staged and
 //! unstaged edits against `HEAD`, plus untracked files shown as added.
 
+mod highlight;
 mod unified_diff;
 
 use std::io::Read;
 use std::path::Path;
+use std::sync::{Mutex, PoisonError};
 
 use monarch_proto::{DiffLine, DiffLineKind, FileChange, Review, ReviewFile};
+
+use monarch_syntax::Highlighter;
 
 use crate::GitRunner;
 
@@ -17,19 +21,24 @@ const MAX_LINES: usize = 20_000;
 /// Most of an untracked file read for display.
 const MAX_UNTRACKED: u64 = 64 * 1024;
 
-/// Asks git what changed in a checkout.
+/// Asks git what changed in a checkout, and highlights the diffs.
 pub struct DiffReader {
     git: Box<dyn GitRunner>,
+    syntax: Mutex<Highlighter>,
 }
 
 impl DiffReader {
     /// A reader asking `git`.
     #[must_use]
     pub fn new(git: Box<dyn GitRunner>) -> Self {
-        Self { git }
+        Self {
+            git,
+            syntax: Mutex::new(Highlighter::default()),
+        }
     }
 
-    /// Every change in the checkout at `root`, in path order.
+    /// Every change in the checkout at `root`, in path order, highlighted.
+    /// Runs git and highlights: call it off the async runtime.
     #[must_use]
     pub fn review(&self, root: &Path) -> Review {
         let committed = self.git.run(root, &["rev-parse", "--verify", "-q", "HEAD"]);
@@ -59,6 +68,11 @@ impl DiffReader {
         files.extend(untracked.lines().map(|path| untracked_file(root, path)));
         files.sort_by(|a, b| a.path.cmp(&b.path));
         let truncated = cap(&mut files);
+        let mut syntax = self.syntax.lock().unwrap_or_else(PoisonError::into_inner);
+        files
+            .iter_mut()
+            .for_each(|file| highlight::highlight(&mut syntax, file));
+        drop(syntax);
         Review {
             root: root.to_string_lossy().into_owned(),
             branch: None,

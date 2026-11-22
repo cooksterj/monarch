@@ -192,8 +192,8 @@ Run inside Monarch, the tab just appears; outside, it attaches.
 **Projects**, `prefix s`: every worktree of every repository open in the session. `Enter` opens
 one (focusing its pane, or opening a tab there); `Ctrl-x` twice removes a worktree.
 
-**Review**, `prefix v`: the focused pane's uncommitted changes, file by file with a coloured
-diff. When the pane runs an agent, `c` writes a note on the hunk at the top of the diff and
+**Review**, `prefix v`: the focused pane's uncommitted changes, file by file with a diff
+highlighted as code (added and removed lines on a green or red tint). When the pane runs an agent, `c` writes a note on the hunk at the top of the diff and
 sends it to that agent: the file, the hunk header, your words, and the hunk itself quoted as a
 diff, typed into the pane as one paste and submitted. The review stays open, so you can keep
 reading and send the next one. Move the hunk you mean to the top with `[` and `]`, or a line at
