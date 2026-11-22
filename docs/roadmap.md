@@ -36,8 +36,8 @@ publishing stays off (`git_only`) until the user decides otherwise.
 
 1. **File viewer** (`prefix f`): search the checkout, read a file highlighted by tree-sitter, `V`
    select, `a` ask with the exact `path:lines`; `monarch view <file>`; a selected file name opens
-   with `prefix f`, at the `:line` it names; `/` search and `h`/`l` sideways scroll. Next:
-   highlighting in the review's diffs (same crate).
+   with `prefix f`, at the `:line` it names; `/` search and `h`/`l` sideways scroll; review
+   diffs highlighted the same way.
 2. **Ask from a selection** (`prefix e`; `a` in copy mode and review): select code, write a prompt,
    pick an agent. The prompt carries the selection's `path:lines`, found with `git grep` in the
    pane's checkout, else "from pane N". Enter sends at once to an idle agent and queues for a busy
@@ -106,7 +106,7 @@ forwarding, bells), dropped on 2026-10-25 because the sidebar and inbox are the 
 
 **UI**
 - Sidebar: no collapsing of groups or of an agent's sub-agents; no age per sub-agent.
-- Review: no syntax highlighting (the file viewer has it), staged/unstaged split, word diff, horizontal scroll, or note to an
+- Review: no staged/unstaged split, word diff, horizontal scroll, or note to an
   agent in another pane of the checkout.
 - Project picker: repositories with no pane open aren't listed; removing a worktree keeps its
   branch.

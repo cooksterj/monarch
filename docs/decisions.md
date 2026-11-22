@@ -118,6 +118,13 @@ already says. Dates are when the decision was made.
 
 ## Worktrees and review
 
+- **Review diffs are highlighted per hunk side, on the server** (2026-11-22). Each hunk's context
+  and added lines are highlighted together as the new code, and its context and removed lines as
+  the old, so tree-sitter sees whole statements. Highlighting lines one by one was the other
+  choice, but it loses strings and comments that span lines. The server sends the spans with the
+  diff, as the viewer's are sent (the client stays free of grammars). Added and removed rows keep
+  their meaning through a background tint blended from the theme's `popup` and `added`/`removed`
+  tokens, not new colour tokens.
 - **The file viewer highlights with tree-sitter, in its own crate** (2026-11-21). `syntect` was the
   other choice, but it only parses through `bincode` 1.x, which is unmaintained, and the user's
   rule is maintained dependencies only. tree-sitter's highlighter and the official grammars are
