@@ -10,16 +10,39 @@ use super::review::editor;
 use crate::{FilePickStep, FilePicker, FileViewer, FileViewerStep, OverlayKey};
 
 impl AttachApp {
-    /// `prefix f`: asks the server for the focused pane's files and shows
+    /// `prefix f`: views the file the mouse selection names, when there
+    /// is one; else asks the server for the focused pane's files and shows
     /// the picker, searchable while they arrive.
     pub(super) fn open_file_picker(&mut self) {
         let Some(pane) = self.state.focus() else {
             return self.say("no pane to open a file from");
         };
-        let _ = self.link.send(&ClientMsg::ListFiles(pane));
-        self.popups.files = Some(FilePicker::new(pane));
+        if let Some(selection) = self.selection.take().filter(|s| !s.is_empty()) {
+            let (start, end) = selection.bounds();
+            self.popups.viewing = Some(pane);
+            let _ = self
+                .link
+                .send(&ClientMsg::ViewSelected { pane, start, end });
+            self.dirty = true;
+            return;
+        }
+        self.show_file_picker(FilePicker::new(pane));
+    }
+
+    /// Lists the picker's pane's files and shows it.
+    fn show_file_picker(&mut self, picker: FilePicker) {
+        let _ = self.link.send(&ClientMsg::ListFiles(picker.pane()));
+        self.popups.files = Some(picker);
         self.focus.set_overlay(true);
         self.dirty = true;
+    }
+
+    /// The selection `prefix f` was pressed on named no file: the picker
+    /// opens searching for `text`.
+    pub(super) fn not_a_file(&mut self, pane: PaneId, text: String) {
+        if self.popups.viewing.take_if(|p| *p == pane).is_some() {
+            self.show_file_picker(FilePicker::new(pane).with_query(text));
+        }
     }
 
     /// The server's list of `pane`'s files, if the picker still waits.
@@ -83,6 +106,7 @@ impl AttachApp {
     /// in place of a file picker or viewer already open.
     pub(super) fn view_file(&mut self, pane: PaneId, file: CodeFile) {
         self.popups.files = None;
+        self.popups.viewing = None;
         let mut viewer = FileViewer::new(pane, file.path.clone());
         viewer.load(Ok(file));
         self.popups.viewer = Some(viewer);

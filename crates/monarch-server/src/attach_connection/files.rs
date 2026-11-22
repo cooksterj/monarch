@@ -6,7 +6,7 @@
 use std::sync::Arc;
 
 use monarch_core::{ClientId, PaneId};
-use monarch_proto::ServerMsg;
+use monarch_proto::{GridPoint, SelectShape, ServerMsg};
 
 use crate::ServerContext;
 
@@ -26,6 +26,44 @@ pub(super) fn open(ctx: &Arc<ServerContext>, id: ClientId, pane: PaneId, path: S
         let file = ctx.open_file(pane, &path);
         answer(&ctx, id, ServerMsg::FileOpened { pane, file });
     });
+}
+
+/// Opens the file the selection from `start` to `end` in `pane` names, in
+/// the background; when it names none, sends its text back instead, for
+/// the client to search the checkout with.
+pub(super) fn view_selected(ctx: &Arc<ServerContext>, id: ClientId, at: SelectedRange) {
+    let ctx = Arc::clone(ctx);
+    tokio::task::spawn_blocking(move || {
+        let SelectedRange { pane, start, end } = at;
+        let text = {
+            let state = ctx.lock();
+            let Some(io) = state.pane(pane) else {
+                return;
+            };
+            io.shared()
+                .lock()
+                .text_range(start, end, SelectShape::Chars)
+        };
+        let msg = match ctx.open_named(pane, &text) {
+            Ok(file) => ServerMsg::ViewFile { pane, file },
+            Err(_) => ServerMsg::NotAFile {
+                pane,
+                text: ServerContext::search_text(&text),
+            },
+        };
+        answer(&ctx, id, msg);
+    });
+}
+
+/// A selection in a pane.
+#[derive(Debug, Clone, Copy)]
+pub(super) struct SelectedRange {
+    /// The pane.
+    pub pane: PaneId,
+    /// One end.
+    pub start: GridPoint,
+    /// The other, inclusive.
+    pub end: GridPoint,
 }
 
 fn answer(ctx: &ServerContext, id: ClientId, msg: ServerMsg) {

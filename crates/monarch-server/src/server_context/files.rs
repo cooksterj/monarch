@@ -49,6 +49,34 @@ impl ServerContext {
         Ok(())
     }
 
+    /// The file `text` (selected in `pane`) names, read and highlighted:
+    /// a path from the pane's directory or home (`~/`), a trailing
+    /// `:line` or `:line:col` left off. Reads the disk: call it off the
+    /// async runtime.
+    ///
+    /// # Errors
+    /// The text names no readable file.
+    pub fn open_named(&self, pane: PaneId, text: &str) -> Result<CodeFile, String> {
+        let name = named(text).ok_or_else(|| format!("{text:?} is not a path"))?;
+        let cwd = self.lock().place(pane).map(|p| p.cwd);
+        let cwd = cwd.ok_or_else(|| "this pane's directory isn't known yet".to_owned())?;
+        let home = std::env::var_os("HOME").map(PathBuf::from);
+        let path = match (name.strip_prefix("~/"), home) {
+            (Some(rest), Some(home)) => home.join(rest),
+            _ => Path::new(&cwd).join(name),
+        };
+        let failed = |e: std::io::Error| format!("can't read {name}: {e}");
+        let real = path.canonicalize().map_err(failed)?;
+        self.files.open_at(&real, &self.shown(pane, &real))
+    }
+
+    /// What to search the checkout for when `text` names no file: the
+    /// path it seems to be (`a.rs` for `a.rs:42`), else the text trimmed.
+    #[must_use]
+    pub fn search_text(text: &str) -> String {
+        named(text).unwrap_or(text.trim()).to_owned()
+    }
+
     /// How the viewer names `real`: from the top of `pane`'s checkout when
     /// it is inside (so asks and edits use the checkout's paths), else
     /// whole.
@@ -70,13 +98,32 @@ impl ServerContext {
     }
 }
 
+/// The path in a selection: one line, without surrounding quotes or a
+/// trailing `:line[:col]` (as compilers and agents print them).
+fn named(text: &str) -> Option<&str> {
+    let text = text.trim();
+    if text.contains('\n') {
+        return None;
+    }
+    let mut name = text.trim_matches(|c| matches!(c, '"' | '\'' | '`'));
+    for _ in 0..2 {
+        if let Some((head, tail)) = name.rsplit_once(':')
+            && !tail.is_empty()
+            && tail.bytes().all(|b| b.is_ascii_digit())
+        {
+            name = head;
+        }
+    }
+    (!name.is_empty()).then_some(name)
+}
+
 #[cfg(test)]
 mod tests {
     use monarch_core::PaneId;
     use monarch_proto::{PanePlace, ServerMsg, ViewFile};
 
-    use crate::PaneSpec;
     use crate::test_support::{FakePane, context};
+    use crate::{PaneSpec, ServerContext};
 
     #[test]
     fn panes_outside_a_checkout_have_no_files() {
@@ -149,5 +196,34 @@ mod tests {
         };
         let err = ctx.view_file(&missing).expect_err("no pane");
         assert!(err.starts_with("no pane"), "{err}");
+    }
+
+    #[test]
+    fn a_selection_names_a_path_without_quotes_or_a_line_number() {
+        use super::named;
+        assert_eq!(named("  src/a.rs  "), Some("src/a.rs"));
+        assert_eq!(named("`src/a.rs:42`"), Some("src/a.rs"));
+        assert_eq!(named("src/a.rs:42:7"), Some("src/a.rs"));
+        assert_eq!(named("C:a"), Some("C:a"), "only digits are a line");
+        assert_eq!(named("two\nlines"), None);
+        assert_eq!(named(" "), None);
+        assert_eq!(ServerContext::search_text(" a.rs:42 "), "a.rs");
+        assert_eq!(ServerContext::search_text("x\ny"), "x\ny");
+    }
+
+    #[test]
+    fn selected_names_are_found_from_the_panes_directory() {
+        let ctx = context();
+        let pane = ctx.insert_for_test(PaneSpec::shell_command("sh"), FakePane::shell());
+        assert!(ctx.open_named(pane, "a.rs").is_err(), "directory unknown");
+        let dir = tempfile::tempdir().expect("tempdir");
+        std::fs::create_dir(dir.path().join("src")).expect("mkdir");
+        std::fs::write(dir.path().join("src/a.rs"), "fn a() {}").expect("write");
+        let cwd = dir.path().join("src").to_string_lossy().into_owned();
+        ctx.lock().set_place(pane, Some(PanePlace::outside(cwd)));
+        let file = ctx.open_named(pane, "a.rs:3").expect("found");
+        assert!(file.path.ends_with("src/a.rs"), "{}", file.path);
+        let err = ctx.open_named(pane, "missing.rs").expect_err("missing");
+        assert!(err.starts_with("can't read missing.rs"), "{err}");
     }
 }

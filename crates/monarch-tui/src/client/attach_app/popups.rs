@@ -43,6 +43,8 @@ pub(super) struct Popups {
     pub ask: Option<AskPrompt>,
     /// The pane whose selected text the composer waits for (not drawn).
     pub quoting: Option<PaneId>,
+    /// The pane whose selection `prefix f` waits to open (not drawn).
+    pub viewing: Option<PaneId>,
     /// The new-worktree form.
     pub form: Option<WorktreeForm>,
     /// The help page.

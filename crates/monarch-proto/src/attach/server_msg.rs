@@ -121,13 +121,23 @@ pub enum ServerMsg {
         /// The range's text, wrapped lines whole.
         text: String,
     },
-    /// Open the file viewer over `pane` on `file`, asked for from the
-    /// pane's shell (`monarch view`); every attached client shows it.
+    /// Open the file viewer over `pane` on `file`: asked for from the
+    /// pane's shell (`monarch view`), which every attached client shows,
+    /// or answering [`super::ClientMsg::ViewSelected`].
     ViewFile {
         /// The pane to show it over.
         pane: PaneId,
         /// The file, highlighted.
         file: CodeFile,
+    },
+    /// Answer to [`super::ClientMsg::ViewSelected`] when the selection
+    /// names no file: its text, to search the checkout for instead.
+    NotAFile {
+        /// The pane it was selected in.
+        pane: PaneId,
+        /// What to search for: the path the text seems to be, else the
+        /// text.
+        text: String,
     },
 }
 
@@ -164,6 +174,10 @@ mod tests {
             ServerMsg::ViewFile {
                 pane,
                 file: CodeFile::default(),
+            },
+            ServerMsg::NotAFile {
+                pane,
+                text: "fn main".into(),
             },
         ] {
             let bytes = postcard::to_allocvec(&msg).expect("encode");

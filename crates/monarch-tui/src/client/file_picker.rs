@@ -28,6 +28,15 @@ impl FilePicker {
         }
     }
 
+    /// The same picker with `query` already typed.
+    #[must_use]
+    pub fn with_query(self, query: impl Into<String>) -> Self {
+        Self {
+            picker: self.picker.with_query(query),
+            ..self
+        }
+    }
+
     /// The pane whose checkout is listed.
     #[must_use]
     pub fn pane(&self) -> PaneId {
@@ -85,6 +94,13 @@ mod tests {
     fn search_then_enter_chooses_the_best_match() {
         let mut p = FilePicker::new(PaneId(2));
         assert_eq!(p.pane(), PaneId(2));
+        assert_eq!(
+            FilePicker::new(PaneId(2))
+                .with_query("a.rs")
+                .picker()
+                .query(),
+            "a.rs"
+        );
         typed(&mut p, "pio");
         assert_eq!(
             p.key(OverlayKey::Enter),
