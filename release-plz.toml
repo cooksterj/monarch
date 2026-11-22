@@ -71,3 +71,11 @@ version_group = "monarch"
 [[package]]
 name = "monarch-mux-cli"
 version_group = "monarch"
+
+# New since v0.1.7: release-plz looks every crate up at the shared tag, where
+# this one doesn't exist yet, and fails ("cannot find package"). It takes its
+# version from the workspace, so it still moves in step. Delete this block
+# once a release includes it.
+[[package]]
+name = "monarch-mux-syntax"
+release = false
