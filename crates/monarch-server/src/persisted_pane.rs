@@ -118,6 +118,23 @@ mod tests {
     }
 
     #[test]
+    fn an_agents_first_prompt_is_never_sent_again_on_restore() {
+        let config = AgentConfig::for_kind(AgentKind::Claude);
+        let spec = PaneSpec::agent(AgentKind::Claude, &config).with_prompt("why does it panic?");
+        assert_eq!(
+            spec.argv.last().map(String::as_str),
+            Some("why does it panic?"),
+            "the agent's last argument"
+        );
+        let restored = PersistedPane::new(&spec, None).restore(&launch());
+        assert!(
+            !restored.argv.iter().any(|a| a.contains("panic")),
+            "{:?}",
+            restored.argv
+        );
+    }
+
+    #[test]
     fn a_shell_comes_back_in_its_directory() {
         let dir = tempfile::tempdir().expect("tempdir");
         let pane = PersistedPane::new(&PaneSpec::default(), Some(dir.path().into()));

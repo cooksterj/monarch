@@ -154,6 +154,12 @@ answer to its question, so for those the status line says why nothing was sent. 
 selected, `prefix e` sends just your words. `a` does the same from copy mode (on its selection)
 and from the review (on the hunk shown).
 
+Below the running agents the list offers `+ new Claude Code`, `+ new Codex` and `+ new Claude Code
+and Codex`: they start beside the pane you asked from, in its directory, each given your words and
+the quote as its first message. With no agent running these are the only rows, so `Enter` starts
+Claude Code with the prompt. A restored agent resumes its conversation, so the first prompt is
+never sent again.
+
 **Why does it say Working?** `prefix i` opens the agent info for the focused pane: its state,
 how long it has been there and which signal set it (hooks, a notification, its screen, or
 Monarch launching it); what its screen shows to the detection rules now, with the rule that

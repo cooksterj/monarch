@@ -96,6 +96,13 @@ already says. Dates are when the decision was made.
   dropping them, because Claude's `background_tasks` list teammates under ids that are not their
   `agent_id`s.
 
+- **A new agent gets the ask as its first argument, not typed in** (2026-11-22). Claude Code and
+  Codex both take a prompt as their last argument and start their first turn with it. Typing it
+  into the pane would mean waiting for the agent's prompt to appear and racing its start-up
+  (trust dialogs, updates), and the same race would come back for every agent kind added later.
+  The argument is only part of the first launch: restore rebuilds an agent's command from its
+  config and resumes the conversation, so the prompt is never sent twice.
+
 ## Persistence
 
 - **Restore re-runs only what is safe** (2026-10-23). A shell comes back as a shell in its directory;
