@@ -1,7 +1,7 @@
 //! The ask composer: a prompt for an agent, the agent it goes to, and
 //! what it quotes (a selection or a review hunk, or nothing).
 
-use monarch_core::{Action, AgentKind};
+use monarch_core::{Action, AgentKind, AgentState};
 
 use super::{AskStep, AskTarget, Picker, Quote};
 use crate::{OverlayKey, PickerItem, PickerStep};
@@ -57,8 +57,9 @@ impl AskPrompt {
     }
 
     /// One key: type the prompt, Tab or the arrows choose the agent (or
-    /// new ones), Enter sends to it if it can take a prompt now or starts
-    /// the new ones with it, Esc closes.
+    /// new ones), Enter sends to it (queued until it is at its prompt, if
+    /// it is busy or waiting on you) or starts the new ones with it, Esc
+    /// closes.
     pub fn key(&mut self, key: OverlayKey) -> AskStep {
         let chosen = match self.picker.key(key) {
             PickerStep::Run(action) => action,
@@ -75,10 +76,11 @@ impl AskPrompt {
         };
         match chosen {
             Action::FocusPane(pane) => match self.targets.iter().find(|t| t.pane == pane) {
-                Some(target) => match target.not_ready() {
-                    Some(why) => AskStep::Refuse(why),
-                    None => AskStep::Send { pane, text },
-                },
+                Some(target) if target.ready() => AskStep::Send { pane, text },
+                Some(target) if target.state == AgentState::Exited => {
+                    AskStep::Refuse(target.not_ready().unwrap_or_default())
+                }
+                Some(_) => AskStep::Queue { pane, text },
                 None => AskStep::Open,
             },
             Action::LaunchAgent => self
@@ -161,8 +163,12 @@ mod tests {
     }
 
     #[test]
-    fn busy_or_blocked_agents_and_blank_asks_are_refused() {
-        let targets = vec![target(1, AgentState::Blocked), target(2, AgentState::Idle)];
+    fn busy_or_blocked_agents_queue_exited_and_blank_asks_are_refused() {
+        let targets = vec![
+            target(1, AgentState::Blocked),
+            target(2, AgentState::Idle),
+            target(3, AgentState::Exited),
+        ];
         let mut prompt = AskPrompt::new(None, targets);
         assert_eq!(prompt.picker().title(), "ask an agent");
         assert_eq!(
@@ -170,23 +176,25 @@ mod tests {
             AskStep::Refuse("write what to ask first".into())
         );
         typed(&mut prompt, "go");
-        assert_eq!(prompt.key(OverlayKey::Tab), AskStep::Open);
-        let AskStep::Refuse(why) = prompt.key(OverlayKey::Enter) else {
-            panic!("a blocked agent takes no prompt");
-        };
-        assert!(why.contains("waiting on you"), "{why}");
-        prompt.refresh(vec![
-            target(1, AgentState::Done),
-            target(2, AgentState::Idle),
-        ]);
+        prompt.key(OverlayKey::Tab);
         assert_eq!(
             prompt.key(OverlayKey::Enter),
-            AskStep::Send {
+            AskStep::Queue {
                 pane: PaneId(1),
                 text: "go".into()
             },
-            "the highlight stayed on pane 1, which is ready now"
+            "waiting on you: sent once you have answered"
         );
+        prompt.key(OverlayKey::Tab);
+        let AskStep::Refuse(why) = prompt.key(OverlayKey::Enter) else {
+            panic!("an exited agent takes nothing");
+        };
+        assert!(why.contains("has exited"), "{why}");
+        prompt.refresh(vec![
+            target(1, AgentState::Done),
+            target(2, AgentState::Idle),
+            target(3, AgentState::Exited),
+        ]);
         assert_eq!(prompt.key(OverlayKey::Esc), AskStep::Close);
     }
 

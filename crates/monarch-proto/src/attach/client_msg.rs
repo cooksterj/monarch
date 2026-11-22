@@ -129,6 +129,15 @@ pub enum ClientMsg {
     /// `prefix c` starts a shell). The tab reaches every client through
     /// the layout.
     LaunchAgent(AgentKind),
+    /// Type `text` into `pane`'s agent and press Enter once it is at its
+    /// prompt: at once if it is, else when it finishes its turn or you
+    /// answer it (prompts for one agent go one per turn, oldest first).
+    SendWhenReady {
+        /// The agent's pane.
+        pane: PaneId,
+        /// The prompt.
+        text: String,
+    },
     /// Start each agent in `kinds` beside the focused pane, each given
     /// `prompt` as its first message (the ask composer, when no agent
     /// running suits). They reach every client through the layout.

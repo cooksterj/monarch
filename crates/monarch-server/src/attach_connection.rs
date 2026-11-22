@@ -98,6 +98,9 @@ fn handle(ctx: &Arc<ServerContext>, id: ClientId, msg: ClientMsg) -> bool {
         ClientMsg::Send { pane, text, enter } => review::send(ctx, pane, text, enter),
         ClientMsg::Explain(pane) => explain::request(ctx, id, pane),
         ClientMsg::LaunchAgent(kind) => launch_agent(ctx, kind),
+        ClientMsg::SendWhenReady { pane, text } => {
+            ctx.lock().queue_prompt(pane, text);
+        }
         ClientMsg::LaunchWithPrompt { kinds, prompt } => {
             if let Err(e) = ctx.spawn_agents_with_prompt(&kinds, &prompt) {
                 eprintln!("monarch: {e}");

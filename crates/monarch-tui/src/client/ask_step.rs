@@ -16,6 +16,14 @@ pub enum AskStep {
         /// The whole prompt, quote included.
         text: String,
     },
+    /// Queue `text` for `pane`'s agent, which isn't at its prompt: the
+    /// server types it in once it is. The composer closes.
+    Queue {
+        /// The agent's pane.
+        pane: PaneId,
+        /// The whole prompt, quote included.
+        text: String,
+    },
     /// Start each of `kinds` beside the pane, each asked `text` first;
     /// the composer closes.
     Start {

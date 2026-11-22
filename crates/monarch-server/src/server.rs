@@ -12,8 +12,8 @@ use tokio::task::JoinHandle;
 
 use crate::{
     CliGitRunner, CommandWatcher, Connection, EventLoop, FrameCoalescer, PaneEnv, PaneEvent,
-    Persister, PlaceWatcher, RepoProbe, ScreenWatcher, ServerConfig, ServerContext, ServerError,
-    SocketPath, SystemProbe,
+    Persister, PlaceWatcher, PromptSender, RepoProbe, ScreenWatcher, ServerConfig, ServerContext,
+    ServerError, SocketPath, SystemProbe,
 };
 
 mod restore;
@@ -97,6 +97,7 @@ fn background(
     let tasks = vec![
         tokio::spawn(FrameCoalescer::default().run(Arc::clone(ctx))),
         tokio::spawn(EventLoop::run(Arc::clone(ctx), events)),
+        tokio::spawn(PromptSender::run(Arc::clone(ctx))),
         tokio::spawn(CommandWatcher::new(Box::new(SystemProbe::new())).run(Arc::clone(ctx))),
         tokio::spawn(places.run(Arc::clone(ctx))),
         tokio::spawn(ScreenWatcher::new(ManifestRegistry::bundled()).run(Arc::clone(ctx))),

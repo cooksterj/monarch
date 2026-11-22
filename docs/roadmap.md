@@ -45,7 +45,8 @@ publishing stays off (`git_only`) until the user decides otherwise.
    (a split here, or a new worktree), or several at once. Slices: ~~existing agents~~ (done:
    sends only to an agent at its prompt, refuses the rest); ~~new agents beside the pane~~ (done:
    one or every kind, the prompt as their first argument); new agents in a worktree
-   (`NewWorktree.prompt`); source lookup; the send-when-idle queue; a right-click "ask" (opening
+   (`NewWorktree.prompt`); source lookup; ~~the send-when-idle queue~~ (done; not yet shown on the sidebar, and a
+   queued prompt can't be cancelled); a right-click "ask" (opening
    the menu clears the selection today).
 3. **Sub-agent slice 3**: a manifest count capture for agents without hooks (Grok's "Waiting on
    subagent…", Antigravity's "· N tasks").

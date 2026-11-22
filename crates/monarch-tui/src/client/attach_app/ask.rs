@@ -70,6 +70,14 @@ impl AttachApp {
                 AskStep::Open => {}
                 AskStep::Refuse(why) => self.say(&why),
                 AskStep::Close => self.close_ask(),
+                AskStep::Queue { pane, text } => {
+                    let _ = self.link.send(&ClientMsg::SendWhenReady { pane, text });
+                    self.close_ask();
+                    self.say(&format!(
+                        "queued for the agent in pane {}: sent when it is at its prompt",
+                        pane.0
+                    ));
+                }
                 AskStep::Start { kinds, text } => {
                     let names: Vec<&str> = kinds.iter().map(|k| k.name()).collect();
                     let msg = ClientMsg::LaunchWithPrompt {
