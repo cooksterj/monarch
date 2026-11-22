@@ -123,6 +123,7 @@ impl AttachApp {
             pane: state.pane(),
             path: path.to_owned(),
             editor: editor(std::env::var("VISUAL").ok(), std::env::var("EDITOR").ok()),
+            line: None,
         };
         let _ = self.link.send(&msg);
         self.close_review();

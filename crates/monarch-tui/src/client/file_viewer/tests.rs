@@ -88,7 +88,10 @@ fn loading_and_failed_files_offer_nothing_to_ask_but_still_close() {
     assert_eq!(v.quote(), None);
     assert_eq!(
         keys(&mut v, &[Char('e')]),
-        FileViewerStep::Edit("bin".into())
+        FileViewerStep::Edit {
+            path: "bin".into(),
+            line: 1
+        }
     );
     assert_eq!((v.pane(), v.path()), (PaneId(1), "bin"));
     assert_eq!(keys(&mut v, &[Char('q')]), FileViewerStep::Close);
@@ -161,4 +164,20 @@ fn h_and_l_scroll_sideways_and_0_comes_back() {
     assert_eq!(v.left(), 0);
     keys(&mut v, &[Char('h'), OverlayKey::Left]);
     assert_eq!(v.left(), 0, "never past the start");
+}
+
+#[test]
+fn e_opens_the_editor_at_the_selection_or_the_cursor() {
+    let mut v = viewer(100);
+    let edit = |line| FileViewerStep::Edit {
+        path: "src/a.rs".into(),
+        line,
+    };
+    assert_eq!(keys(&mut v, &[Char('9'), Char('j'), Char('e')]), edit(10));
+    keys(&mut v, &[Char('V'), Char('5'), Char('k')]);
+    assert_eq!(
+        keys(&mut v, &[Char('e')]),
+        edit(5),
+        "the first selected line"
+    );
 }

@@ -64,7 +64,7 @@ impl AttachApp {
         } else if self.popups.files.is_some() {
             self.file_picker_input(bytes);
         } else if self.popups.viewer.is_some() {
-            self.viewer_input(bytes);
+            return self.viewer_input(bytes);
         } else if self.popups.form.is_some() {
             self.worktree_input(bytes);
         } else if self.popups.projects.is_some() {
