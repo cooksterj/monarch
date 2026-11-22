@@ -239,6 +239,8 @@ by their full path, and `e` only edits files in the checkout.
 | `Ctrl-d` `Ctrl-u` | half a page |
 | `Space` `b`, `PgDn` `PgUp` | a page |
 | `g` `G` | top / bottom; `42G` line 42 |
+| `/` | find text (any case, unless you type a capital); `n` `N` next / previous, wrapping |
+| `h` `l`, `←` `→` | scroll sideways, for long lines; `0` back to the start |
 | `V` or `v` | select lines (again to stop) |
 | `a` | ask an agent about the selection, or the cursor's line |
 | `y` | copy the selection, or the cursor's line |

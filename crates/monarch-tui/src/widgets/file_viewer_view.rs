@@ -13,7 +13,8 @@ use unicode_width::UnicodeWidthChar;
 use super::{Chrome, PopupFrame};
 use crate::FileViewer;
 
-const KEYS: &str = " j/k move · V select · a ask · y copy · e edit · space/b page · esc close ";
+const KEYS: &str =
+    " j/k move · / find · V select · a ask · y copy · e edit · h/l sideways · esc close ";
 /// Columns a tab takes, as the review draws them.
 const TAB: usize = 4;
 
@@ -63,10 +64,26 @@ impl FileViewerView<'_> {
         (format!("{mark}{:>digits$} ", i + 1), style)
     }
 
-    /// Draws one line of code into `row`, cut at its right edge.
+    /// The footer: the query being typed, what a search didn't find, or
+    /// the keys.
+    fn footer(&self) -> String {
+        match (self.viewer.typing(), self.viewer.status()) {
+            (Some(typed), _) => format!(" /{typed}▏"),
+            (None, Some(status)) => format!(" {status} "),
+            (None, None) => KEYS.to_owned(),
+        }
+    }
+
+    /// Draws one line of code into `row`: the columns scrolled off the
+    /// left skipped, cut at its right edge, search matches reversed.
     fn draw_code(&self, line: &CodeLine, row: Rect, buf: &mut Buffer) {
-        let (x, y, width) = (row.x, row.y, usize::from(row.width));
-        let mut used = 0;
+        let (x, y) = (row.x, row.y);
+        let (left, right) = (
+            self.viewer.left(),
+            self.viewer.left() + usize::from(row.width),
+        );
+        let found = self.viewer.matches_in(&line.text());
+        let (mut used, mut index) = (0, 0);
         for span in &line.spans {
             let style = self
                 .theme
@@ -77,12 +94,21 @@ impl FileViewerView<'_> {
                     '\t' => (" ".repeat(TAB - used % TAB), TAB - used % TAB),
                     c => (c.to_string(), c.width().unwrap_or(0)),
                 };
-                if used + w > width {
+                if used + w > right {
                     return;
                 }
-                let col = x + u16::try_from(used).unwrap_or(u16::MAX);
-                buf.set_stringn(col, y, &text, w, style);
+                if used >= left {
+                    let hit = found.iter().any(|&(a, b)| (a..b).contains(&index));
+                    let style = if hit {
+                        style.add_modifier(Modifier::REVERSED)
+                    } else {
+                        style
+                    };
+                    let col = x + u16::try_from(used - left).unwrap_or(u16::MAX);
+                    buf.set_stringn(col, y, &text, w, style);
+                }
                 used += w;
+                index += 1;
             }
         }
     }
@@ -95,7 +121,7 @@ impl Widget for FileViewerView<'_> {
         }
         let inner = PopupFrame::new(Chrome::new(self.theme))
             .title(self.title())
-            .footer(KEYS)
+            .footer(self.footer())
             .draw(area, buf);
         let dim = Style::new().add_modifier(Modifier::DIM);
         let file = match self.viewer.file() {
@@ -183,7 +209,7 @@ mod tests {
         │ 3 }                                          │
         │                                              │
         │                                              │
-        ╰ j/k move · V select · a ask · y copy · e edit╯
+        ╰ j/k move · / find · V select · a ask · y copy╯
         ");
     }
 
@@ -200,6 +226,32 @@ mod tests {
         let keyword = Chrome::color(theme.syntax_keyword);
         assert_eq!(buf[(4, 1)].fg, keyword, "`fn` in the keyword colour");
         assert_ne!(buf[(7, 1)].fg, keyword, "plain text is not");
+    }
+
+    #[test]
+    fn searching_marks_matches_and_the_footer_shows_the_query() {
+        let mut v = viewer(&[
+            &[(SyntaxToken::Plain, "let alpha = beta;")],
+            &[(SyntaxToken::Plain, "beta()")],
+        ]);
+        for c in "/beta".chars() {
+            v.key(OverlayKey::Char(c));
+        }
+        let (text, _) = draw(&v, None, 40, 5);
+        assert!(text.contains("/beta▏"), "{text}");
+        v.key(OverlayKey::Enter);
+        let (text, buf) = draw(&v, None, 40, 5);
+        assert!(text.contains("/ find"), "keys again: {text}");
+        let reversed = |x, y| buf[(x, y)].modifier.contains(Modifier::REVERSED);
+        assert!(reversed(16, 1) && reversed(4, 2), "`beta` on both lines");
+        assert!(!reversed(8, 1), "`alpha` is not");
+        v.key(OverlayKey::Char('l'));
+        let (text, _) = draw(&v, None, 40, 5);
+        assert!(
+            text.contains("│ 1 a = beta;"),
+            "8 columns off the left: {text}"
+        );
+        assert!(text.contains("│›2"), "the gutter stays: {text}");
     }
 
     #[test]
