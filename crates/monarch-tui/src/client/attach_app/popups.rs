@@ -105,6 +105,7 @@ impl Popups {
                 .viewer
                 .as_ref()
                 .map(|viewer| FileViewerView { viewer, theme }),
+            viewer_area: None,
             form: self
                 .form
                 .as_ref()

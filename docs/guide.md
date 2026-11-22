@@ -206,7 +206,8 @@ a time with `Ctrl-e` and `Ctrl-y`.
 | `q` or `Esc` | close |
 
 **View a file**, `prefix f`: search the focused pane's checkout by path (tracked and untracked
-files, not ignored ones) and press `Enter`. The file opens over the panes with line numbers and
+files, not ignored ones) and press `Enter`. The file opens over the pane you opened it from, so in a split the agent beside it stays in view
+while you ask it about the code (a pane narrower than 30 columns gets the whole area instead), with line numbers and
 syntax highlighting in the theme's colours: Rust, Python, JavaScript, TypeScript (and TSX), Go,
 C, Bash, JSON, TOML and YAML; other files show as plain text. Select lines with `V` and press `a`
 to ask an agent about them: the prompt names the file and lines (`src/pane_io.rs:42-58`) and

@@ -7,6 +7,7 @@ use std::time::Instant;
 use monarch_core::Action;
 use ratatui::crossterm::terminal::{BeginSynchronizedUpdate, EndSynchronizedUpdate};
 use ratatui::crossterm::{execute, queue};
+use ratatui::layout::Rect;
 
 use super::AttachApp;
 use super::popups::Popups;
@@ -15,6 +16,11 @@ use crate::{
     Chrome, FileViewerView, MouseOwner, PopupViews, ReviewView, Sidebar, SidebarGroup, StatusLine,
     TuiError, WhichKey,
 };
+
+/// The smallest pane the viewer opens over; in a smaller one it covers
+/// every pane, as one pane is too narrow to read code in.
+const VIEWER_MIN_COLS: u16 = 30;
+const VIEWER_MIN_ROWS: u16 = 8;
 
 impl AttachApp {
     /// Mirrors the focused pane onto the host, then draws every visible
@@ -66,7 +72,8 @@ impl AttachApp {
         let copy = self.copy_view();
         let notice = self.notice.as_ref().map(|(text, _)| text.as_str());
         let chrome = Chrome::new(self.glyphs.theme());
-        let popups = popup_views(&self.popups, &self.opts, chrome);
+        let mut popups = popup_views(&self.popups, &self.opts, chrome);
+        popups.viewer_area = self.viewer_area();
         let view = AttachView {
             state: &self.state,
             status: StatusLine {
@@ -107,9 +114,20 @@ impl AttachApp {
         if let Some(review) = self.popups.review.as_mut() {
             review.set_page(ReviewView::diff_rows(rows));
         }
+        let viewer_rows = self.viewer_area().map_or(rows, |area| area.height);
         if let Some(viewer) = self.popups.viewer.as_mut() {
-            viewer.set_page(FileViewerView::code_rows(rows));
+            viewer.set_page(FileViewerView::code_rows(viewer_rows));
         }
+    }
+
+    /// The pane the viewer was opened from, when it is big enough to read
+    /// code in; else `None`, and the viewer covers every pane.
+    fn viewer_area(&self) -> Option<Rect> {
+        let pane = self.popups.viewer.as_ref()?.pane();
+        let rects = self.state.pane_rects();
+        let (_, r) = rects.into_iter().find(|(id, _)| *id == pane)?;
+        (r.cols >= VIEWER_MIN_COLS && r.rows >= VIEWER_MIN_ROWS)
+            .then(|| Rect::new(r.x, r.y, r.cols, r.rows))
     }
 
     /// The sidebar's groups with animated glyphs; none while it is hidden.

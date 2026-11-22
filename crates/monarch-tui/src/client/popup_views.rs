@@ -19,6 +19,9 @@ pub struct PopupViews<'a> {
     pub review: Option<ReviewView<'a>>,
     /// The file viewer.
     pub viewer: Option<FileViewerView<'a>>,
+    /// Where the viewer goes: over the pane it was opened from, so the
+    /// others (the agent asked) stay in view; `None` for all the panes.
+    pub viewer_area: Option<Rect>,
     /// The new-worktree form, with the cursor in it.
     pub form: Option<WorktreeFormView<'a>>,
     /// The help page.
@@ -38,7 +41,7 @@ impl PopupViews<'_> {
             frame.render_widget(review, panes);
         }
         if let Some(viewer) = self.viewer {
-            frame.render_widget(viewer, panes);
+            frame.render_widget(viewer, self.viewer_area.unwrap_or(panes));
         }
         if let Some(help) = self.help {
             frame.render_widget(help, panes);
@@ -102,6 +105,29 @@ mod tests {
             term.backend().buffer()[(10, 0)].symbol(),
             "╭",
             "inside the pane area"
+        );
+    }
+
+    #[test]
+    fn the_viewer_stays_inside_its_own_pane() {
+        let mut viewer = crate::FileViewer::new(monarch_core::PaneId(1), "a.rs");
+        viewer.load(Err("gone".into()));
+        let views = PopupViews {
+            viewer: Some(FileViewerView {
+                viewer: &viewer,
+                theme: None,
+            }),
+            viewer_area: Some(Rect::new(0, 0, 30, 10)),
+            ..PopupViews::default()
+        };
+        let mut term = Terminal::new(TestBackend::new(60, 10)).expect("terminal");
+        term.draw(|f| views.draw(f, Rect::new(0, 0, 60, 10)))
+            .expect("draw");
+        let buf = term.backend().buffer();
+        assert_eq!(buf[(29, 0)].symbol(), "╮", "its own pane's right edge");
+        assert!(
+            (30..60).all(|x| (0..10).all(|y| buf[(x, y)].symbol() == " ")),
+            "the pane beside it is left alone"
         );
     }
 }
