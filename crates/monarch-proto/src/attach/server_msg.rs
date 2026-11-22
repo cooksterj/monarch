@@ -121,6 +121,14 @@ pub enum ServerMsg {
         /// The range's text, wrapped lines whole.
         text: String,
     },
+    /// Open the file viewer over `pane` on `file`, asked for from the
+    /// pane's shell (`monarch view`); every attached client shows it.
+    ViewFile {
+        /// The pane to show it over.
+        pane: PaneId,
+        /// The file, highlighted.
+        file: CodeFile,
+    },
 }
 
 #[cfg(test)]
@@ -152,6 +160,10 @@ mod tests {
             ServerMsg::FileOpened {
                 pane,
                 file: Ok(CodeFile::default()),
+            },
+            ServerMsg::ViewFile {
+                pane,
+                file: CodeFile::default(),
             },
         ] {
             let bytes = postcard::to_allocvec(&msg).expect("encode");

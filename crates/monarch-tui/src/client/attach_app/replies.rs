@@ -1,5 +1,5 @@
 //! The server's answers to this client's own requests (reviews,
-//! worktrees, explanations, quotes, files), each handed to the pop-up
+//! worktrees, explanations, quotes, files) and files sent to view, each handed to the pop-up
 //! that asked.
 
 use super::AttachApp;
@@ -31,6 +31,9 @@ impl AttachApp {
         }
         for (pane, file) in std::mem::take(&mut applied.opened) {
             self.opened_file(pane, file);
+        }
+        for (pane, file) in std::mem::take(&mut applied.viewed) {
+            self.view_file(pane, file);
         }
     }
 }

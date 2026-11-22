@@ -214,6 +214,11 @@ quotes them in a code block tagged with the language. Without a selection, `a` a
 cursor's line. Files larger than 2 MB or 20,000 lines are cut short (the title says so); binary
 files and paths outside the checkout are refused.
 
+From the shell, `monarch view <file>` opens the same viewer over the pane you type it in, with
+the path taken from your current directory (`alias v='monarch view'` makes it a highlighted
+`cat`). It opens any file you can read, inside the checkout or not. Files outside it are named
+by their full path, and `e` only edits files in the checkout.
+
 | Keys | Action |
 |---|---|
 | `j` `k`, arrows | move a line (`5j` five) |

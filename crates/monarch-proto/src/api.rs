@@ -26,6 +26,7 @@ mod status_source;
 mod subagent_report;
 mod tab_rename;
 mod tab_renamed;
+mod view_file;
 mod worktree_created;
 
 pub use agent_read::AgentRead;
@@ -50,4 +51,5 @@ pub use status_source::StatusSource;
 pub use subagent_report::SubagentReport;
 pub use tab_rename::TabRename;
 pub use tab_renamed::TabRenamed;
+pub use view_file::ViewFile;
 pub use worktree_created::WorktreeCreated;

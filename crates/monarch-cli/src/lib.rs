@@ -13,7 +13,7 @@ use clap::Parser;
 pub use cli::{
     AgentCommand, AttachArgs, Cli, Command, ConfigCommand, ExplainArgs, HookCommand, KillArgs,
     NewArgs, PaneCommand, ReadArgs, RenameArgs, SendArgs, ServerArgs, SetupArgs, TabCommand,
-    WaitArgs,
+    ViewArgs, WaitArgs,
 };
 
 /// Parses `std::env::args` and runs the selected command.

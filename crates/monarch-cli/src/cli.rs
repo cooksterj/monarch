@@ -13,6 +13,7 @@ mod send_args;
 mod server_args;
 mod setup_args;
 mod tab_command;
+mod view_args;
 mod wait_args;
 
 use clap::{Parser, Subcommand};
@@ -30,6 +31,7 @@ pub use send_args::SendArgs;
 pub use server_args::ServerArgs;
 pub use setup_args::SetupArgs;
 pub use tab_command::TabCommand;
+pub use view_args::ViewArgs;
 pub use wait_args::WaitArgs;
 
 /// An attention-first terminal multiplexer for AI coding agents.
@@ -75,6 +77,9 @@ pub enum Command {
     /// Act on a session's tabs: name one.
     #[command(subcommand)]
     Tab(TabCommand),
+    /// Show a file over this pane, highlighted, in the file viewer (run
+    /// it inside Monarch).
+    View(ViewArgs),
     /// Run a session server (normally started for you by `monarch`).
     Server(ServerArgs),
     /// List what each key after the prefix does.

@@ -1,10 +1,10 @@
 //! The file viewer's requests: a pane's checkout's files, and one of them
 //! read and highlighted.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use monarch_core::PaneId;
-use monarch_proto::CodeFile;
+use monarch_proto::{CodeFile, ServerMsg, ViewFile};
 
 use super::ServerContext;
 
@@ -27,6 +27,40 @@ impl ServerContext {
         self.files.open(&self.checkout(pane)?, path)
     }
 
+    /// `pane.view`: reads `view.path` (absolute, resolved in the pane's
+    /// shell) and has every attached client open the viewer over the pane
+    /// on it. Reads the disk: call it off the async runtime.
+    ///
+    /// # Errors
+    /// No such pane, a relative path, or the file can't be shown.
+    pub fn view_file(&self, view: &ViewFile) -> Result<(), String> {
+        if !self.lock().pane_ids().contains(&view.pane) {
+            return Err(format!("no pane {} in this session", view.pane));
+        }
+        let path = Path::new(&view.path);
+        if !path.is_absolute() {
+            return Err(format!("{} is not an absolute path", view.path));
+        }
+        let failed = |e: std::io::Error| format!("can't read {}: {e}", view.path);
+        let real = path.canonicalize().map_err(failed)?;
+        let file = self.files.open_at(&real, &self.shown(view.pane, &real))?;
+        let pane = view.pane;
+        self.lock().broadcast(&ServerMsg::ViewFile { pane, file });
+        Ok(())
+    }
+
+    /// How the viewer names `real`: from the top of `pane`'s checkout when
+    /// it is inside (so asks and edits use the checkout's paths), else
+    /// whole.
+    fn shown(&self, pane: PaneId, real: &Path) -> String {
+        let top = self.checkout(pane).ok().and_then(|r| r.canonicalize().ok());
+        let inside = top.and_then(|top| real.strip_prefix(top).ok().map(Path::to_path_buf));
+        inside
+            .unwrap_or_else(|| real.to_path_buf())
+            .to_string_lossy()
+            .into_owned()
+    }
+
     /// The top of `pane`'s checkout.
     fn checkout(&self, pane: PaneId) -> Result<PathBuf, String> {
         let place = self.lock().place(pane);
@@ -38,7 +72,8 @@ impl ServerContext {
 
 #[cfg(test)]
 mod tests {
-    use monarch_proto::PanePlace;
+    use monarch_core::PaneId;
+    use monarch_proto::{PanePlace, ServerMsg, ViewFile};
 
     use crate::PaneSpec;
     use crate::test_support::{FakePane, context};
@@ -60,5 +95,59 @@ mod tests {
         ctx.lock().set_place(pane, Some(place));
         let file = ctx.open_file(pane, "a.rs").expect("opens");
         assert_eq!(file.path, "a.rs");
+    }
+
+    #[test]
+    fn viewing_sends_the_file_to_clients_named_from_the_checkout_when_inside() {
+        let ctx = context();
+        let pane = ctx.insert_for_test(PaneSpec::shell_command("sh"), FakePane::shell());
+        let dir = tempfile::tempdir().expect("tempdir");
+        let elsewhere = tempfile::tempdir().expect("tempdir");
+        std::fs::write(dir.path().join("a.rs"), "fn a() {}").expect("write");
+        std::fs::write(elsewhere.path().join("notes.txt"), "hi").expect("write");
+        let root = dir.path().to_string_lossy().into_owned();
+        let place = PanePlace {
+            worktree: Some(root.clone()),
+            ..PanePlace::outside(root)
+        };
+        ctx.lock().set_place(pane, Some(place));
+        let (lane, mut rx) = tokio::sync::mpsc::channel(8);
+        ctx.lock().add_client(lane);
+        while rx.try_recv().is_ok() {}
+        let view = |path: &std::path::Path| ViewFile {
+            pane,
+            path: path.to_string_lossy().into_owned(),
+        };
+        let mut shown = || match rx.try_recv().expect("sent").pop() {
+            Some(ServerMsg::ViewFile { file, .. }) => file.path,
+            other => panic!("{other:?}"),
+        };
+        ctx.view_file(&view(&dir.path().join("a.rs")))
+            .expect("inside");
+        assert_eq!(shown(), "a.rs", "from the checkout's top");
+        let notes = elsewhere.path().join("notes.txt");
+        ctx.view_file(&view(&notes)).expect("outside");
+        let real = notes.canonicalize().expect("real");
+        assert_eq!(shown(), real.to_string_lossy(), "whole");
+    }
+
+    #[test]
+    fn viewing_refuses_relative_paths_and_unknown_panes() {
+        let ctx = context();
+        let pane = ctx.insert_for_test(PaneSpec::shell_command("sh"), FakePane::shell());
+        let relative = ViewFile {
+            pane,
+            path: "a.rs".into(),
+        };
+        assert_eq!(
+            ctx.view_file(&relative),
+            Err("a.rs is not an absolute path".into())
+        );
+        let missing = ViewFile {
+            pane: PaneId(99),
+            path: "/x".into(),
+        };
+        let err = ctx.view_file(&missing).expect_err("no pane");
+        assert!(err.starts_with("no pane"), "{err}");
     }
 }

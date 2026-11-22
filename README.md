@@ -286,7 +286,7 @@ Every command starts with the prefix, `Ctrl-b`. Press it and pause to see all av
 | `prefix N` | new worktree: branch name, then shell, Claude Code or Codex |
 | `prefix s` | projects: every worktree |
 | `prefix v` | review the focused pane's uncommitted changes |
-| `prefix f` | view a file from the checkout with syntax highlighting; `V` selects lines, `a` asks an agent |
+| `prefix f` | view a file from the checkout with syntax highlighting; `V` selects lines, `a` asks an agent (or `monarch view <file>` from the shell) |
 | `prefix S` | sessions |
 | `prefix [` | copy mode |
 | `prefix :` | command palette |
