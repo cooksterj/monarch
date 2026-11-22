@@ -37,6 +37,8 @@ pub struct Applied {
     pub opened: Vec<(PaneId, Result<CodeFile, String>)>,
     /// Files to show over a pane, asked for from its shell.
     pub viewed: Vec<(PaneId, CodeFile)>,
+    /// Selections that named no file: what to search the checkout for.
+    pub not_files: Vec<(PaneId, String)>,
     /// Answers to quote requests: the pane and the range's text.
     pub quotes: Vec<(PaneId, String)>,
     /// Panes whose agent status changed.
@@ -60,6 +62,7 @@ impl Applied {
             ServerMsg::Files { pane, files } => self.files.push((pane, files)),
             ServerMsg::FileOpened { pane, file } => self.opened.push((pane, file)),
             ServerMsg::ViewFile { pane, file } => self.viewed.push((pane, file)),
+            ServerMsg::NotAFile { pane, text } => self.not_files.push((pane, text)),
             _ => {}
         }
     }

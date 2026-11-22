@@ -163,6 +163,17 @@ pub enum ClientMsg {
         /// How the range becomes text.
         shape: SelectShape,
     },
+    /// Open the file a selection names (`src/a.rs`, `a.rs:42`), found
+    /// from the pane's directory; answered with `ServerMsg::ViewFile` when
+    /// it names one, else `ServerMsg::NotAFile` with the text.
+    ViewSelected {
+        /// Pane the selection is in.
+        pane: PaneId,
+        /// One end of the selection.
+        start: GridPoint,
+        /// The other end, inclusive.
+        end: GridPoint,
+    },
 }
 
 #[cfg(test)]
@@ -184,6 +195,17 @@ mod tests {
             pane: PaneId(3),
             text: "Review note on a.rs:\n\nfix it".into(),
             enter: true,
+        };
+        let bytes = postcard::to_allocvec(&msg).expect("encode");
+        assert_eq!(postcard::from_bytes::<ClientMsg>(&bytes).ok(), Some(msg));
+    }
+
+    #[test]
+    fn a_selection_to_view_survives_the_attach_encoding() {
+        let msg = ClientMsg::ViewSelected {
+            pane: PaneId(2),
+            start: GridPoint { line: 4, col: 3 },
+            end: GridPoint { line: 4, col: 12 },
         };
         let bytes = postcard::to_allocvec(&msg).expect("encode");
         assert_eq!(postcard::from_bytes::<ClientMsg>(&bytes).ok(), Some(msg));

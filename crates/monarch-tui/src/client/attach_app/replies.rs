@@ -35,5 +35,8 @@ impl AttachApp {
         for (pane, file) in std::mem::take(&mut applied.viewed) {
             self.view_file(pane, file);
         }
+        for (pane, text) in std::mem::take(&mut applied.not_files) {
+            self.not_a_file(pane, text);
+        }
     }
 }

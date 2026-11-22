@@ -214,6 +214,11 @@ quotes them in a code block tagged with the language. Without a selection, `a` a
 cursor's line. Files larger than 2 MB or 20,000 lines are cut short (the title says so); binary
 files and paths outside the checkout are refused.
 
+With a file name selected on screen (double-click `src/main.rs` in `ls` or an agent's
+`src/main.rs:42`), `prefix f` opens that file straight away. The name is found from the pane's
+current directory and a trailing line number is ignored. If it names no file, the picker opens
+already searching for it.
+
 From the shell, `monarch view <file>` opens the same viewer over the pane you type it in, with
 the path taken from your current directory (`alias v='monarch view'` makes it a highlighted
 `cat`). It opens any file you can read, inside the checkout or not. Files outside it are named
