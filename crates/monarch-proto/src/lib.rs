@@ -21,7 +21,7 @@ pub use api::{
     AgentRead, AgentReadReply, AgentReport, AgentTransition, AgentWait, AgentWaitReply,
     BackgroundTask, ExplainPanes, KillSession, NewWorktree, PaneExplanation, PaneSend, ReadSource,
     Request, Response, RpcError, RuleOutcome, SessionInfo, StatusSource, SubagentReport, TabRename,
-    TabRenamed, WorktreeCreated,
+    TabRenamed, ViewFile, WorktreeCreated,
 };
 pub use attach::{
     AgentStatus, AgentTiming, ClientMsg, Delta, FrameCodec, HostInfo, LayoutMsg, PaneLayout,

@@ -34,9 +34,11 @@ publishing stays off (`git_only`) until the user decides otherwise.
 
 ## Next up
 
-1. **File viewer** (`prefix f`), done in slice 1: search the checkout, read a file highlighted by
-   tree-sitter, `V` select, `a` ask with the exact `path:lines`. Next: highlighting in the
-   review's diffs (same crate), `/` search in the viewer, horizontal scroll for long lines.
+1. **File viewer** (`prefix f`): search the checkout, read a file highlighted by tree-sitter, `V`
+   select, `a` ask with the exact `path:lines`; ~~`monarch view <file>` from the shell~~ (done).
+   Next: double-click a file name on screen, then `prefix f`, opens it (resolved from the pane's
+   directory); highlighting in the review's diffs (same crate); `/` search and horizontal scroll
+   in the viewer.
 2. **Ask from a selection** (`prefix e`; `a` in copy mode and review): select code, write a prompt,
    pick an agent. The prompt carries the selection's `path:lines`, found with `git grep` in the
    pane's checkout, else "from pane N". Enter sends at once to an idle agent and queues for a busy

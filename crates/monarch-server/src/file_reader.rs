@@ -2,7 +2,7 @@
 //! one file highlighted. Never reads outside the checkout.
 
 use std::io::Read;
-use std::path::{Component, Path};
+use std::path::{Component, Path, PathBuf};
 use std::sync::Mutex;
 
 use monarch_proto::CodeFile;
@@ -70,28 +70,39 @@ impl FileReader {
     /// # Errors
     /// The path leaves the checkout, can't be read, or is binary.
     pub fn open(&self, root: &Path, path: &str) -> Result<CodeFile, String> {
-        let (text, cut) = read_text(root, path)?;
+        self.open_at(&confined(root, path)?, path)
+    }
+
+    /// The file at `file` (resolved by the caller, who named it), shown
+    /// as `shown`. Reads the disk and highlights: call it off the async
+    /// runtime.
+    ///
+    /// # Errors
+    /// The file can't be read, or is binary.
+    pub fn open_at(&self, file: &Path, shown: &str) -> Result<CodeFile, String> {
+        let (text, cut) = read_text(file, shown)?;
+        let language = Language::for_path(file);
         let mut lines = {
             let mut syntax = self
                 .syntax
                 .lock()
                 .unwrap_or_else(std::sync::PoisonError::into_inner);
-            syntax.highlight(Language::for_path(Path::new(path)), &text)
+            syntax.highlight(language, &text)
         };
         let truncated = cut || lines.len() > MAX_LINES;
         lines.truncate(MAX_LINES);
         Ok(CodeFile {
-            path: path.to_owned(),
-            language: Language::for_path(Path::new(path)).map(|l| l.name().to_owned()),
+            path: shown.to_owned(),
+            language: language.map(|l| l.name().to_owned()),
             lines,
             truncated,
         })
     }
 }
 
-/// The text of `path` under `root` (at most [`MAX_BYTES`], with whether
-/// it was cut), refusing paths that leave `root`, symlinks included.
-fn read_text(root: &Path, path: &str) -> Result<(String, bool), String> {
+/// `path` under `root`, resolved, refusing paths that leave `root`,
+/// symlinks included.
+fn confined(root: &Path, path: &str) -> Result<PathBuf, String> {
     if !FileReader::is_inside(path) {
         return Err(format!("{path} is outside the checkout"));
     }
@@ -101,8 +112,18 @@ fn read_text(root: &Path, path: &str) -> Result<(String, bool), String> {
     if !real.starts_with(&top) {
         return Err(format!("{path} links outside the checkout"));
     }
+    Ok(real)
+}
+
+/// The text of `real` (at most [`MAX_BYTES`], with whether it was cut),
+/// named `path` in errors; binary files and directories refused.
+fn read_text(real: &Path, path: &str) -> Result<(String, bool), String> {
+    if real.is_dir() {
+        return Err(format!("{path} is a directory"));
+    }
+    let failed = |e: std::io::Error| format!("can't read {path}: {e}");
     let mut bytes = Vec::new();
-    let file = std::fs::File::open(&real).map_err(failed)?;
+    let file = std::fs::File::open(real).map_err(failed)?;
     file.take(MAX_BYTES + 1)
         .read_to_end(&mut bytes)
         .map_err(failed)?;
@@ -168,6 +189,18 @@ mod tests {
         assert!(err("bin").contains("binary"));
         assert!(err("nope.rs").starts_with("can't read nope.rs"));
         assert!(!FileReader::is_inside(""));
+    }
+
+    #[test]
+    fn a_resolved_file_opens_anywhere_under_the_name_given() {
+        let dir = checkout();
+        let reader = FileReader::new(Box::new(LsFiles));
+        let real = dir.path().join("src/a.rs");
+        let file = reader.open_at(&real, "/far/a.rs").expect("opens");
+        assert_eq!(file.path, "/far/a.rs");
+        assert_eq!(file.language.as_deref(), Some("rust"));
+        let err = reader.open_at(dir.path(), "src").expect_err("a directory");
+        assert_eq!(err, "src is a directory");
     }
 
     #[test]

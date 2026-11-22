@@ -5,7 +5,7 @@ use std::sync::Arc;
 use futures_util::{SinkExt, StreamExt};
 use monarch_proto::{
     AgentRead, AgentReport, AgentWait, ExplainPanes, KillSession, NewWorktree, PaneSend, Request,
-    Response, RpcError, SessionInfo, TabRename,
+    Response, RpcError, SessionInfo, TabRename, ViewFile,
 };
 use serde::de::DeserializeOwned;
 use serde_json::Value;
@@ -90,14 +90,14 @@ fn dispatch(ctx: &ServerContext, request: Request) -> Result<Value, RpcError> {
             json(reply.ok_or_else(|| no_such_pane(&wait.pane.to_string()))?)
         }
         AgentRead::METHOD => read_agent(ctx, &params(request.params)?),
-        PaneSend::METHOD => {
-            let send: PaneSend = params(request.params)?;
-            if !ctx.type_text(&send) {
-                return Err(no_such_pane(&send.pane.to_string()));
-            }
+        PaneSend::METHOD => send(ctx, &params(request.params)?),
+        TabRename::METHOD => rename_tab(ctx, &params(request.params)?),
+        ViewFile::METHOD => {
+            let view: ViewFile = params(request.params)?;
+            ctx.view_file(&view)
+                .map_err(|why| RpcError::new(RpcError::FAILED, why))?;
             Ok(Value::Object(serde_json::Map::new()))
         }
-        TabRename::METHOD => rename_tab(ctx, &params(request.params)?),
         SessionInfo::METHOD => json(ctx.info()),
         KillSession::METHOD => {
             ctx.kill();
@@ -108,6 +108,14 @@ fn dispatch(ctx: &ServerContext, request: Request) -> Result<Value, RpcError> {
             format!("unknown method {other:?}"),
         )),
     }
+}
+
+/// `pane.send`: types into the pane.
+fn send(ctx: &ServerContext, send: &PaneSend) -> Result<Value, RpcError> {
+    if !ctx.type_text(send) {
+        return Err(no_such_pane(&send.pane.to_string()));
+    }
+    Ok(Value::Object(serde_json::Map::new()))
 }
 
 /// The error for a method naming a pane the session doesn't have.

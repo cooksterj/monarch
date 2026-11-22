@@ -79,6 +79,17 @@ impl AttachApp {
         self.dirty = true;
     }
 
+    /// `monarch view` from `pane`'s shell: the viewer opens on `file`,
+    /// in place of a file picker or viewer already open.
+    pub(super) fn view_file(&mut self, pane: PaneId, file: CodeFile) {
+        self.popups.files = None;
+        let mut viewer = FileViewer::new(pane, file.path.clone());
+        viewer.load(Ok(file));
+        self.popups.viewer = Some(viewer);
+        self.focus.set_overlay(true);
+        self.dirty = true;
+    }
+
     /// Keys while the viewer is open.
     pub(super) fn viewer_input(&mut self, bytes: &[u8]) {
         for key in OverlayKey::decode(bytes) {
@@ -91,6 +102,9 @@ impl AttachApp {
                 FileViewerStep::Close => self.close_viewer(),
                 FileViewerStep::Ask(quote) => return self.open_ask_with(Some(quote)),
                 FileViewerStep::Copy(text) => self.copy(text),
+                FileViewerStep::Edit(path) if std::path::Path::new(&path).is_absolute() => {
+                    self.say("e edits files in the pane's checkout; this one is outside it");
+                }
                 FileViewerStep::Edit(path) => {
                     let pane = viewer.pane();
                     self.close_viewer();
