@@ -148,9 +148,11 @@ prompt's second option. The status line says what was sent.
 press `prefix e`, type what you want and press `Enter`. Every pane running an agent is listed:
 ones that can take a prompt now first, then those in the selection's checkout (`here`). `Tab` or
 the arrows choose another. Your words and the selection, quoted as a code block, are typed into
-that agent's pane as one paste and submitted. Monarch only sends to an agent at its prompt (idle,
-done or failed): a working agent would get it mid-turn, and a blocked one would take it as the
-answer to its question, so for those the status line says why nothing was sent. With nothing
+that agent's pane as one paste and submitted. Monarch only types into an agent at its prompt
+(idle, done or failed): a working agent would get it mid-turn, and a blocked one would take it as
+the answer to its question. Ask one of those and the prompt is queued instead: the server types
+it in as soon as the agent is back at its prompt (after its turn, or after you answer it). Several
+prompts for one agent go one per turn, oldest first. An agent that has exited is refused. With nothing
 selected, `prefix e` sends just your words. `a` does the same from copy mode (on its selection)
 and from the review (on the hunk shown).
 

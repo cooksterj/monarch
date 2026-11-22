@@ -11,6 +11,7 @@ mod agents;
 mod arrange;
 mod clients;
 mod commands;
+mod prompts;
 mod render;
 mod screens;
 mod waits;
@@ -26,7 +27,7 @@ use monarch_term::{HostProfile, ShadowGrid};
 
 pub use actions::ActionEffect;
 
-use crate::{ClientHandle, PaneIo, Placement, StateEngine};
+use crate::{ClientHandle, PaneIo, Placement, PromptQueue, StateEngine};
 
 /// Window size assumed until a client reports its own.
 pub const DEFAULT_SIZE: ScreenSize = ScreenSize { cols: 80, rows: 24 };
@@ -57,6 +58,8 @@ pub struct SessionState {
     next_client: ClientId,
     next_pane: PaneId,
     agents: StateEngine,
+    /// Prompts waiting for their agent to be ready.
+    prompts: PromptQueue,
     /// Which agent a foreground program name is (see `LaunchConfig::programs`).
     agent_programs: BTreeMap<String, AgentKind>,
     /// Stamps agent state changes.
@@ -84,6 +87,7 @@ impl SessionState {
             next_client: ClientId(1),
             next_pane: PaneId(1),
             agents: StateEngine::default(),
+            prompts: PromptQueue::default(),
             agent_programs: AgentKind::ALL
                 .into_iter()
                 .map(|kind| (kind.program().to_owned(), kind))
@@ -141,6 +145,7 @@ impl SessionState {
         let before = self.visible_panes();
         self.panes.remove(&id);
         self.agents.forget(id);
+        self.prompts.forget(id);
         let area = self.area();
         if let Some(index) = self.tabs.iter().position(|t| t.contains(id))
             && self.tabs[index].remove(area, id)

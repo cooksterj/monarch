@@ -11,6 +11,9 @@ impl SessionState {
     /// waiters and tell every client.
     pub(super) fn agent_changed(&mut self, pane: PaneId, status: AgentStatus) {
         let now = self.clock.now();
+        if status.state.takes_prompt() {
+            self.prompts.release(pane);
+        }
         let timing = self.agents.record(pane, status.state, now);
         self.agents.log(pane, &status, now);
         self.broadcast(&ServerMsg::Agent {
