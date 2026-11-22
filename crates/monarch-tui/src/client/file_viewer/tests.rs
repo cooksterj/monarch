@@ -110,3 +110,55 @@ fn jumping_shows_the_line_with_context_above_and_clamps_to_the_file() {
     v.jump(0);
     assert_eq!(v.cursor(), 0, "0 is the first line");
 }
+
+#[test]
+fn slash_searches_n_and_shift_n_go_again_and_wrap() {
+    let mut v = viewer(100);
+    keys(
+        &mut v,
+        &[
+            Char('/'),
+            Char('l'),
+            Char('i'),
+            Char('n'),
+            Char('e'),
+            Char(' '),
+            Char('5'),
+        ],
+    );
+    assert_eq!(v.typing(), Some("line 5"), "keys type the query");
+    assert_eq!(v.cursor(), 0, "nothing moves while typing");
+    keys(&mut v, &[OverlayKey::Enter]);
+    assert_eq!((v.cursor(), v.query()), (4, Some("line 5")), "line 5");
+    keys(&mut v, &[Char('n')]);
+    assert_eq!(
+        (v.cursor(), v.top()),
+        (49, 46),
+        "then line 50, context above"
+    );
+    keys(&mut v, &[Char('N'), Char('N')]);
+    assert_eq!(v.cursor(), 58, "back past the top to line 59");
+    assert_eq!(v.matches_in("Line 5 line 5"), [(0, 6), (7, 13)]);
+    keys(&mut v, &[Char('/'), Char('z'), OverlayKey::Enter]);
+    assert_eq!(v.status(), Some("no line has \"z\""));
+    assert_eq!(v.cursor(), 58, "stays put");
+    keys(&mut v, &[Char('/'), Char('x'), Esc]);
+    assert_eq!(
+        (v.typing(), v.query()),
+        (None, Some("z")),
+        "Esc drops the typing"
+    );
+}
+
+#[test]
+fn h_and_l_scroll_sideways_and_0_comes_back() {
+    let mut v = viewer(3);
+    keys(&mut v, &[Char('l'), Char('l'), OverlayKey::Right]);
+    assert_eq!(v.left(), 24);
+    keys(&mut v, &[Char('h')]);
+    assert_eq!(v.left(), 16);
+    keys(&mut v, &[Char('0')]);
+    assert_eq!(v.left(), 0);
+    keys(&mut v, &[Char('h'), OverlayKey::Left]);
+    assert_eq!(v.left(), 0, "never past the start");
+}

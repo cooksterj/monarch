@@ -3,6 +3,7 @@
 //! ask an agent about what is selected.
 
 mod motion;
+mod search;
 
 use monarch_core::PaneId;
 use monarch_proto::CodeFile;
@@ -26,6 +27,14 @@ pub struct FileViewer {
     page: usize,
     /// Digits typed before a motion (`42G`).
     count: Option<usize>,
+    /// Columns scrolled off the left of every line.
+    left: usize,
+    /// A query being typed after `/`.
+    typing: Option<String>,
+    /// The last query searched for (`n`, `N`).
+    query: Option<String>,
+    /// What the last search found nothing for, to show.
+    status: Option<String>,
 }
 
 impl FileViewer {
@@ -41,6 +50,10 @@ impl FileViewer {
             anchor: None,
             page: 20,
             count: None,
+            left: 0,
+            typing: None,
+            query: None,
+            status: None,
         }
     }
 
@@ -94,10 +107,14 @@ impl FileViewer {
 
     /// One key: `j`/`k` and the arrows move, Ctrl-d/Ctrl-u half a page,
     /// Space/`b` (PgDn/PgUp) a page, `g`/`G` the ends (`42G` line 42),
+    /// `h`/`l` scroll sideways (`0` back), `/` searches (`n`/`N` again),
     /// `V` or `v` selects lines, `a` asks an agent about them (or the
     /// cursor's line), `y` copies them, `e` opens the editor; Esc clears
     /// the selection, then closes, as `q` does.
     pub fn key(&mut self, key: OverlayKey) -> FileViewerStep {
+        if self.search_key(key) {
+            return FileViewerStep::Open;
+        }
         if let OverlayKey::Char(c @ '0'..='9') = key
             && (c != '0' || self.count.is_some())
         {
@@ -146,6 +163,18 @@ impl FileViewer {
             start: first + 1,
             lines,
         })
+    }
+
+    /// Columns scrolled off the left of every line.
+    #[must_use]
+    pub fn left(&self) -> usize {
+        self.left
+    }
+
+    /// What the last search found nothing for.
+    #[must_use]
+    pub fn status(&self) -> Option<&str> {
+        self.status.as_deref()
     }
 
     /// Lines in the file; 0 while loading or on an error.
