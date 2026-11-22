@@ -38,6 +38,13 @@ impl FileViewer {
         self.go_to(to);
     }
 
+    /// Opens on line `line` (from 1, clamped), shown a third of the way
+    /// down the page so the lines before it give context.
+    pub fn jump(&mut self, line: usize) {
+        self.go_to(line.saturating_sub(1));
+        self.top = self.cursor.saturating_sub(self.page / 3);
+    }
+
     /// Puts the cursor on `line`, clamped to the file, and scrolls to it.
     fn go_to(&mut self, line: usize) {
         self.cursor = line.min(self.len().saturating_sub(1));

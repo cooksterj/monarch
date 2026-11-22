@@ -45,7 +45,7 @@ pub(super) fn view_selected(ctx: &Arc<ServerContext>, id: ClientId, at: Selected
                 .text_range(start, end, SelectShape::Chars)
         };
         let msg = match ctx.open_named(pane, &text) {
-            Ok(file) => ServerMsg::ViewFile { pane, file },
+            Ok((file, line)) => ServerMsg::ViewFile { pane, file, line },
             Err(_) => ServerMsg::NotAFile {
                 pane,
                 text: ServerContext::search_text(&text),

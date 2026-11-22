@@ -93,3 +93,20 @@ fn loading_and_failed_files_offer_nothing_to_ask_but_still_close() {
     assert_eq!((v.pane(), v.path()), (PaneId(1), "bin"));
     assert_eq!(keys(&mut v, &[Char('q')]), FileViewerStep::Close);
 }
+
+#[test]
+fn jumping_shows_the_line_with_context_above_and_clamps_to_the_file() {
+    let mut v = viewer(100);
+    v.jump(42);
+    assert_eq!(
+        (v.cursor(), v.top()),
+        (41, 38),
+        "a third of the page above it"
+    );
+    v.jump(1);
+    assert_eq!((v.cursor(), v.top()), (0, 0));
+    v.jump(500);
+    assert_eq!(v.cursor(), 99, "past the end: the last line");
+    v.jump(0);
+    assert_eq!(v.cursor(), 0, "0 is the first line");
+}

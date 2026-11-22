@@ -42,22 +42,34 @@ impl ServerContext {
             return Err(format!("{} is not an absolute path", view.path));
         }
         let failed = |e: std::io::Error| format!("can't read {}: {e}", view.path);
-        let real = path.canonicalize().map_err(failed)?;
+        // `monarch view src/a.rs:42` names a line, unless that is the file.
+        let (real, line) = match (path.canonicalize(), named(&view.path)) {
+            (Ok(real), _) => (real, None),
+            (Err(e), Some((name, line @ Some(_)))) => {
+                (Path::new(name).canonicalize().map_err(|_| failed(e))?, line)
+            }
+            (Err(e), _) => return Err(failed(e)),
+        };
         let file = self.files.open_at(&real, &self.shown(view.pane, &real))?;
         let pane = view.pane;
-        self.lock().broadcast(&ServerMsg::ViewFile { pane, file });
+        self.lock()
+            .broadcast(&ServerMsg::ViewFile { pane, file, line });
         Ok(())
     }
 
     /// The file `text` (selected in `pane`) names, read and highlighted:
     /// a path from the pane's directory or home (`~/`), a trailing
-    /// `:line` or `:line:col` left off. Reads the disk: call it off the
-    /// async runtime.
+    /// `:line` or `:line:col` returned as the line to open on. Reads the
+    /// disk: call it off the async runtime.
     ///
     /// # Errors
     /// The text names no readable file.
-    pub fn open_named(&self, pane: PaneId, text: &str) -> Result<CodeFile, String> {
-        let name = named(text).ok_or_else(|| format!("{text:?} is not a path"))?;
+    pub fn open_named(
+        &self,
+        pane: PaneId,
+        text: &str,
+    ) -> Result<(CodeFile, Option<usize>), String> {
+        let (name, line) = named(text).ok_or_else(|| format!("{text:?} is not a path"))?;
         let cwd = self.lock().place(pane).map(|p| p.cwd);
         let cwd = cwd.ok_or_else(|| "this pane's directory isn't known yet".to_owned())?;
         let home = std::env::var_os("HOME").map(PathBuf::from);
@@ -67,14 +79,15 @@ impl ServerContext {
         };
         let failed = |e: std::io::Error| format!("can't read {name}: {e}");
         let real = path.canonicalize().map_err(failed)?;
-        self.files.open_at(&real, &self.shown(pane, &real))
+        let file = self.files.open_at(&real, &self.shown(pane, &real))?;
+        Ok((file, line))
     }
 
     /// What to search the checkout for when `text` names no file: the
     /// path it seems to be (`a.rs` for `a.rs:42`), else the text trimmed.
     #[must_use]
     pub fn search_text(text: &str) -> String {
-        named(text).unwrap_or(text.trim()).to_owned()
+        named(text).map_or(text.trim(), |(name, _)| name).to_owned()
     }
 
     /// How the viewer names `real`: from the top of `pane`'s checkout when
@@ -98,23 +111,25 @@ impl ServerContext {
     }
 }
 
-/// The path in a selection: one line, without surrounding quotes or a
-/// trailing `:line[:col]` (as compilers and agents print them).
-fn named(text: &str) -> Option<&str> {
+/// The path in a selection and the line it names: one line, without
+/// surrounding quotes, a trailing `:line[:col]` (as compilers and agents
+/// print them) taken as the line.
+fn named(text: &str) -> Option<(&str, Option<usize>)> {
     let text = text.trim();
     if text.contains('\n') {
         return None;
     }
     let mut name = text.trim_matches(|c| matches!(c, '"' | '\'' | '`'));
+    let mut line = None;
     for _ in 0..2 {
         if let Some((head, tail)) = name.rsplit_once(':')
-            && !tail.is_empty()
-            && tail.bytes().all(|b| b.is_ascii_digit())
+            && let Ok(number) = tail.parse::<usize>()
         {
             name = head;
+            line = Some(number);
         }
     }
-    (!name.is_empty()).then_some(name)
+    (!name.is_empty()).then_some((name, line))
 }
 
 #[cfg(test)]
@@ -165,10 +180,11 @@ mod tests {
             pane,
             path: path.to_string_lossy().into_owned(),
         };
-        let mut shown = || match rx.try_recv().expect("sent").pop() {
-            Some(ServerMsg::ViewFile { file, .. }) => file.path,
+        let mut sent = || match rx.try_recv().expect("sent").pop() {
+            Some(ServerMsg::ViewFile { file, line, .. }) => (file.path, line),
             other => panic!("{other:?}"),
         };
+        let mut shown = || sent().0;
         ctx.view_file(&view(&dir.path().join("a.rs")))
             .expect("inside");
         assert_eq!(shown(), "a.rs", "from the checkout's top");
@@ -176,6 +192,9 @@ mod tests {
         ctx.view_file(&view(&notes)).expect("outside");
         let real = notes.canonicalize().expect("real");
         assert_eq!(shown(), real.to_string_lossy(), "whole");
+        let at_line = dir.path().join("a.rs:1");
+        ctx.view_file(&view(&at_line)).expect("a line");
+        assert_eq!(sent(), ("a.rs".to_owned(), Some(1)));
     }
 
     #[test]
@@ -201,10 +220,14 @@ mod tests {
     #[test]
     fn a_selection_names_a_path_without_quotes_or_a_line_number() {
         use super::named;
-        assert_eq!(named("  src/a.rs  "), Some("src/a.rs"));
-        assert_eq!(named("`src/a.rs:42`"), Some("src/a.rs"));
-        assert_eq!(named("src/a.rs:42:7"), Some("src/a.rs"));
-        assert_eq!(named("C:a"), Some("C:a"), "only digits are a line");
+        assert_eq!(named("  src/a.rs  "), Some(("src/a.rs", None)));
+        assert_eq!(named("`src/a.rs:42`"), Some(("src/a.rs", Some(42))));
+        assert_eq!(
+            named("src/a.rs:42:7"),
+            Some(("src/a.rs", Some(42))),
+            "the line, not the column"
+        );
+        assert_eq!(named("C:a"), Some(("C:a", None)), "only digits are a line");
         assert_eq!(named("two\nlines"), None);
         assert_eq!(named(" "), None);
         assert_eq!(ServerContext::search_text(" a.rs:42 "), "a.rs");
@@ -221,8 +244,9 @@ mod tests {
         std::fs::write(dir.path().join("src/a.rs"), "fn a() {}").expect("write");
         let cwd = dir.path().join("src").to_string_lossy().into_owned();
         ctx.lock().set_place(pane, Some(PanePlace::outside(cwd)));
-        let file = ctx.open_named(pane, "a.rs:3").expect("found");
+        let (file, line) = ctx.open_named(pane, "a.rs:3").expect("found");
         assert!(file.path.ends_with("src/a.rs"), "{}", file.path);
+        assert_eq!(line, Some(3));
         let err = ctx.open_named(pane, "missing.rs").expect_err("missing");
         assert!(err.starts_with("can't read missing.rs"), "{err}");
     }
