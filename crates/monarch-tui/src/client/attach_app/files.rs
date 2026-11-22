@@ -102,13 +102,17 @@ impl AttachApp {
         self.dirty = true;
     }
 
-    /// `monarch view` from `pane`'s shell: the viewer opens on `file`,
-    /// in place of a file picker or viewer already open.
-    pub(super) fn view_file(&mut self, pane: PaneId, file: CodeFile) {
+    /// `monarch view` from `pane`'s shell, or a selected name: the viewer
+    /// opens on `file` (at `line`, when the name gave one), in place of a
+    /// file picker or viewer already open.
+    pub(super) fn view_file(&mut self, pane: PaneId, file: CodeFile, line: Option<usize>) {
         self.popups.files = None;
         self.popups.viewing = None;
         let mut viewer = FileViewer::new(pane, file.path.clone());
         viewer.load(Ok(file));
+        if let Some(line) = line {
+            viewer.jump(line);
+        }
         self.popups.viewer = Some(viewer);
         self.focus.set_overlay(true);
         self.dirty = true;

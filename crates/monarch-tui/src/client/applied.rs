@@ -36,7 +36,7 @@ pub struct Applied {
     /// Files opened in the viewer, by pane.
     pub opened: Vec<(PaneId, Result<CodeFile, String>)>,
     /// Files to show over a pane, asked for from its shell.
-    pub viewed: Vec<(PaneId, CodeFile)>,
+    pub viewed: Vec<(PaneId, CodeFile, Option<usize>)>,
     /// Selections that named no file: what to search the checkout for.
     pub not_files: Vec<(PaneId, String)>,
     /// Answers to quote requests: the pane and the range's text.
@@ -61,7 +61,7 @@ impl Applied {
             ServerMsg::Quote { pane, text } => self.quotes.push((pane, text)),
             ServerMsg::Files { pane, files } => self.files.push((pane, files)),
             ServerMsg::FileOpened { pane, file } => self.opened.push((pane, file)),
-            ServerMsg::ViewFile { pane, file } => self.viewed.push((pane, file)),
+            ServerMsg::ViewFile { pane, file, line } => self.viewed.push((pane, file, line)),
             ServerMsg::NotAFile { pane, text } => self.not_files.push((pane, text)),
             _ => {}
         }
@@ -92,8 +92,9 @@ mod tests {
         applied.collect(ServerMsg::ViewFile {
             pane,
             file: CodeFile::default(),
+            line: Some(4),
         });
-        assert_eq!(applied.viewed, [(pane, CodeFile::default())]);
+        assert_eq!(applied.viewed, [(pane, CodeFile::default(), Some(4))]);
         assert_eq!(applied.files, [(pane, Ok(vec!["a.rs".to_owned()]))]);
         assert_eq!(applied.clipboard, ["x"]);
     }

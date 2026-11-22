@@ -129,6 +129,9 @@ pub enum ServerMsg {
         pane: PaneId,
         /// The file, highlighted.
         file: CodeFile,
+        /// The line to open on (from 1), when the name gave one
+        /// (`src/a.rs:42`).
+        line: Option<usize>,
     },
     /// Answer to [`super::ClientMsg::ViewSelected`] when the selection
     /// names no file: its text, to search the checkout for instead.
@@ -174,6 +177,7 @@ mod tests {
             ServerMsg::ViewFile {
                 pane,
                 file: CodeFile::default(),
+                line: Some(42),
             },
             ServerMsg::NotAFile {
                 pane,
