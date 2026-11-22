@@ -72,10 +72,13 @@ version_group = "monarch"
 name = "monarch-mux-cli"
 version_group = "monarch"
 
-# New since v0.1.7: release-plz looks every crate up at the shared tag, where
-# this one doesn't exist yet, and fails ("cannot find package"). It takes its
-# version from the workspace, so it still moves in step. Delete this block
-# once a release includes it.
+# New since v0.1.7. release-plz looks every workspace crate up at its last
+# release tag (whatever `release` says), and the shared `v0.1.7` tag doesn't
+# have this one: "cannot find package". A tag name nothing matches makes it a
+# first release instead; `release = false` keeps it out of the release PR. It
+# takes its version from the workspace, so it still moves in step. Delete this
+# block once a release includes it.
 [[package]]
 name = "monarch-mux-syntax"
 release = false
+git_tag_name = "monarch-mux-syntax-v{{ version }}"
