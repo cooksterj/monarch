@@ -63,6 +63,15 @@ impl PaneSpec {
         }
     }
 
+    /// The same pane with `prompt` as the agent's first message: the
+    /// last argument, which Claude Code and Codex both take as one. Only
+    /// the first launch has it; a restored agent resumes instead.
+    #[must_use]
+    pub fn with_prompt(mut self, prompt: &str) -> Self {
+        self.argv.push(prompt.to_owned());
+        self
+    }
+
     /// The command to spawn, with an honest environment (G11): the user's
     /// extra variables, then xterm-class `TERM`, `TERM_PROGRAM=monarch` and
     /// Monarch's own variables (which win), and no variables from an

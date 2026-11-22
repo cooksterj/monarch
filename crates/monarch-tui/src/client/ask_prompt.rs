@@ -1,12 +1,14 @@
 //! The ask composer: a prompt for an agent, the agent it goes to, and
 //! what it quotes (a selection or a review hunk, or nothing).
 
-use monarch_core::Action;
+use monarch_core::{Action, AgentKind};
 
 use super::{AskStep, AskTarget, Picker, Quote};
-use crate::{OverlayKey, PickerStep};
+use crate::{OverlayKey, PickerItem, PickerStep};
 
 const KEYS: &str = " enter send · tab agent · esc cancel ";
+/// Below the agents running: starting new ones, asked the prompt first.
+const START_DETAIL: &str = "start beside, asked this";
 
 /// The prompt typed so far over the agents it can go to, ranked, and the
 /// quote. Pure data.
@@ -26,8 +28,7 @@ impl AskPrompt {
             Some(quote) => format!("ask about {}", quote.summary()),
             None => "ask an agent".to_owned(),
         };
-        let items = targets.iter().map(AskTarget::item).collect();
-        let picker = Picker::prompt(title, items).with_text(KEYS, "no agent to ask");
+        let picker = Picker::prompt(title, items(&targets)).with_text(KEYS, "no agent to ask");
         Self {
             picker,
             targets,
@@ -51,36 +52,66 @@ impl AskPrompt {
     /// keeping the highlight on the same agent.
     pub fn refresh(&mut self, mut targets: Vec<AskTarget>) {
         AskTarget::rank(&mut targets);
-        self.picker
-            .refresh(targets.iter().map(AskTarget::item).collect());
+        self.picker.refresh(items(&targets));
         self.targets = targets;
     }
 
-    /// One key: type the prompt, Tab or the arrows choose the agent,
-    /// Enter sends to it if it can take a prompt now, Esc closes.
+    /// One key: type the prompt, Tab or the arrows choose the agent (or
+    /// new ones), Enter sends to it if it can take a prompt now or starts
+    /// the new ones with it, Esc closes.
     pub fn key(&mut self, key: OverlayKey) -> AskStep {
-        match self.picker.key(key) {
-            PickerStep::Run(Action::FocusPane(pane)) => {
-                let ask = self.picker.query().trim();
-                let Some(target) = self.targets.iter().find(|t| t.pane == pane) else {
-                    return AskStep::Open;
-                };
-                if ask.is_empty() {
-                    return AskStep::Refuse("write what to ask first".into());
-                }
-                if let Some(why) = target.not_ready() {
-                    return AskStep::Refuse(why);
-                }
-                let text = match &self.quote {
-                    Some(quote) => quote.message(ask),
-                    None => ask.to_owned(),
-                };
-                AskStep::Send { pane, text }
-            }
-            PickerStep::Close => AskStep::Close,
+        let chosen = match self.picker.key(key) {
+            PickerStep::Run(action) => action,
+            PickerStep::Close => return AskStep::Close,
+            _ => return AskStep::Open,
+        };
+        let ask = self.picker.query().trim();
+        if ask.is_empty() {
+            return AskStep::Refuse("write what to ask first".into());
+        }
+        let text = match &self.quote {
+            Some(quote) => quote.message(ask),
+            None => ask.to_owned(),
+        };
+        match chosen {
+            Action::FocusPane(pane) => match self.targets.iter().find(|t| t.pane == pane) {
+                Some(target) => match target.not_ready() {
+                    Some(why) => AskStep::Refuse(why),
+                    None => AskStep::Send { pane, text },
+                },
+                None => AskStep::Open,
+            },
+            Action::LaunchAgent => self
+                .picker
+                .selected_index()
+                .and_then(|i| starts().into_iter().nth(i.checked_sub(self.targets.len())?))
+                .map_or(AskStep::Open, |kinds| AskStep::Start { kinds, text }),
             _ => AskStep::Open,
         }
     }
+}
+
+/// The rows: the agents running, then each new one to start, then all of
+/// them at once.
+fn items(targets: &[AskTarget]) -> Vec<PickerItem> {
+    let start = starts().into_iter().map(|kinds| {
+        let names: Vec<&str> = kinds.iter().map(|k| k.display_name()).collect();
+        PickerItem {
+            label: format!("+ new {}", names.join(" and ")),
+            detail: START_DETAIL.to_owned(),
+            action: Action::LaunchAgent,
+        }
+    });
+    targets.iter().map(AskTarget::item).chain(start).collect()
+}
+
+/// What the start rows start, in order: each agent alone, then every one.
+fn starts() -> Vec<Vec<AgentKind>> {
+    let mut starts: Vec<Vec<AgentKind>> = AgentKind::ALL.iter().map(|k| vec![*k]).collect();
+    if AgentKind::ALL.len() > 1 {
+        starts.push(AgentKind::ALL.to_vec());
+    }
+    starts
 }
 
 #[cfg(test)]
@@ -160,9 +191,45 @@ mod tests {
     }
 
     #[test]
-    fn with_no_agents_enter_does_nothing() {
-        let mut prompt = AskPrompt::new(None, Vec::new());
-        typed(&mut prompt, "x");
-        assert_eq!(prompt.key(OverlayKey::Enter), AskStep::Open);
+    fn with_no_agents_enter_starts_one_asked_the_prompt() {
+        let mut prompt = AskPrompt::new(quoted(), Vec::new());
+        typed(&mut prompt, "why?");
+        assert_eq!(
+            prompt.key(OverlayKey::Enter),
+            AskStep::Start {
+                kinds: vec![AgentKind::Claude],
+                text: "why?\n\nSelected in pane 9:\n```\npanic!()\n```".into()
+            }
+        );
+    }
+
+    #[test]
+    fn new_agents_are_offered_after_the_running_ones_and_all_at_once_last() {
+        let mut prompt = AskPrompt::new(None, vec![target(1, AgentState::Idle)]);
+        let labels: Vec<&str> = prompt
+            .picker()
+            .rows()
+            .map(|(i, _)| i.label.as_str())
+            .collect();
+        assert!(labels[0].ends_with("codex"), "{labels:?}");
+        assert_eq!(
+            labels[1..],
+            [
+                "+ new Claude Code",
+                "+ new Codex",
+                "+ new Claude Code and Codex"
+            ]
+        );
+        typed(&mut prompt, "go");
+        for _ in 0..3 {
+            prompt.key(OverlayKey::Tab);
+        }
+        assert_eq!(
+            prompt.key(OverlayKey::Enter),
+            AskStep::Start {
+                kinds: AgentKind::ALL.to_vec(),
+                text: "go".into()
+            }
+        );
     }
 }

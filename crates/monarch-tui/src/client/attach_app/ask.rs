@@ -8,9 +8,6 @@ use monarch_proto::{ClientMsg, GridPoint, SelectShape};
 use super::AttachApp;
 use crate::{AskPrompt, AskStep, AskTarget, OverlayKey, Quote};
 
-/// Said when there is nobody to ask.
-const NO_AGENT: &str = "no agent to ask yet: start one first";
-
 impl AttachApp {
     /// `prefix e`: asks about the mouse selection in the focused pane,
     /// once the server has read its text, or opens the composer without
@@ -36,9 +33,6 @@ impl AttachApp {
         end: GridPoint,
         shape: SelectShape,
     ) {
-        if self.ask_targets(Some(pane)).is_empty() {
-            return self.say(NO_AGENT);
-        }
         self.popups.quoting = Some(pane);
         let msg = ClientMsg::Quote {
             pane,
@@ -56,12 +50,10 @@ impl AttachApp {
         }
     }
 
-    /// Opens the composer quoting `quote`, over whatever is open.
+    /// Opens the composer quoting `quote`, over whatever is open: to the
+    /// agents running, or new ones it starts.
     pub(super) fn open_ask_with(&mut self, quote: Option<Quote>) {
         let targets = self.ask_targets(quote.as_ref().map(Quote::pane));
-        if targets.is_empty() {
-            return self.say(NO_AGENT);
-        }
         self.popups.ask = Some(AskPrompt::new(quote, targets));
         self.focus.set_overlay(true);
         self.dirty = true;
@@ -78,6 +70,16 @@ impl AttachApp {
                 AskStep::Open => {}
                 AskStep::Refuse(why) => self.say(&why),
                 AskStep::Close => self.close_ask(),
+                AskStep::Start { kinds, text } => {
+                    let names: Vec<&str> = kinds.iter().map(|k| k.name()).collect();
+                    let msg = ClientMsg::LaunchWithPrompt {
+                        kinds,
+                        prompt: text,
+                    };
+                    let _ = self.link.send(&msg);
+                    self.close_ask();
+                    self.say(&format!("starting {} with the ask", names.join(" and ")));
+                }
                 AskStep::Send { pane, text } => {
                     let _ = self.link.send(&ClientMsg::Send {
                         pane,

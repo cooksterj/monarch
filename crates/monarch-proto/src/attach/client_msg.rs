@@ -129,6 +129,15 @@ pub enum ClientMsg {
     /// `prefix c` starts a shell). The tab reaches every client through
     /// the layout.
     LaunchAgent(AgentKind),
+    /// Start each agent in `kinds` beside the focused pane, each given
+    /// `prompt` as its first message (the ask composer, when no agent
+    /// running suits). They reach every client through the layout.
+    LaunchWithPrompt {
+        /// The agents, one pane each.
+        kinds: Vec<AgentKind>,
+        /// What each is asked first.
+        prompt: String,
+    },
     /// A mouse drag on a divider: put the divider on `pane`'s `dir` side
     /// at column (or row, for `Up`/`Down`) `to` of the pane area.
     DragDivider {
@@ -237,6 +246,12 @@ mod tests {
     #[test]
     fn launches_survive_the_attach_encoding() {
         let msg = ClientMsg::LaunchAgent(AgentKind::Codex);
+        let bytes = postcard::to_allocvec(&msg).expect("encode");
+        assert_eq!(postcard::from_bytes::<ClientMsg>(&bytes).ok(), Some(msg));
+        let msg = ClientMsg::LaunchWithPrompt {
+            kinds: AgentKind::ALL.to_vec(),
+            prompt: "why?".into(),
+        };
         let bytes = postcard::to_allocvec(&msg).expect("encode");
         assert_eq!(postcard::from_bytes::<ClientMsg>(&bytes).ok(), Some(msg));
     }

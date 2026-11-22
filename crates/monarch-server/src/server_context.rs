@@ -15,6 +15,7 @@ use crate::{
     SpawnParams, SystemProbe, WorktreeManager,
 };
 
+mod agents;
 mod explain;
 mod files;
 mod input;
