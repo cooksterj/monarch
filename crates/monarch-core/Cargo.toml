@@ -11,6 +11,8 @@ authors.workspace = true
 
 [lib]
 name = "monarch_core"
+# No doc tests: rustdoc would link the crate just to find none.
+doctest = false
 
 [dependencies]
 serde.workspace = true
