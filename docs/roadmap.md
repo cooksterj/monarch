@@ -49,8 +49,6 @@ publishing stays off (`git_only`) until the user decides otherwise.
    subagent…", Antigravity's "· N tasks").
 4. **Mouse reports in multi-pane layouts**: re-encode coordinates for every layout, not only one
    full-screen pane.
-5. **Remnant text** re-reported on 2026-11-12, unreproduced: on the next sighting, check whether it
-   survives detach and reattach.
 
 Then the differentiators, in order (why: [decisions](decisions.md#product)):
 

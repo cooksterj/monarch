@@ -98,6 +98,15 @@ impl<W: Write> Backend for HostBackend<W> {
         let mut pen = Pen::default();
         let mut last = None;
         for (x, y, cell) in content {
+            let blank;
+            let cell = if cell.symbol().chars().any(char::is_control) {
+                // A control character would move the host's cursor (a tab
+                // jumps to the next stop) where the buffer drew one cell.
+                blank = Cell::new(" ").set_style(cell.style()).clone();
+                &blank
+            } else {
+                cell
+            };
             let right = Position::new(x.saturating_add(1), y);
             // The spacer the diff skipped after a wide glyph: blank it
             // first, so a host drawing the glyph narrow shows nothing stale
@@ -209,6 +218,13 @@ mod tests {
             "{out:?}"
         );
         assert!(at(&out, "a") < at(&out, "b") && at(&out, "b") < at(&out, "c"));
+    }
+
+    #[test]
+    fn control_characters_are_never_sent_to_the_host() {
+        let out = draw(&[("a", 0), ("\t", 1), ("b", 2), ("\r", 3), ("c", 4)]);
+        assert!(out.contains("a b c"), "blanks in their place: {out:?}");
+        assert!(!out.contains('\t') && !out.contains('\r'), "{out:?}");
     }
 
     #[test]

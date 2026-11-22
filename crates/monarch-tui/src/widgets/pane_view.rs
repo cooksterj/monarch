@@ -66,8 +66,10 @@ impl Widget for PaneView<'_> {
                     continue;
                 };
                 // Wide-char spacers keep a blank symbol; ratatui skips the
-                // cell after a double-width symbol when diffing.
-                if cell.width == 0 {
+                // cell after a double-width symbol when diffing. The
+                // emulator keeps a tab (`\t`) in the cell it started from,
+                // for copying; drawn, it is a blank.
+                if cell.width == 0 || cell.ch.is_control() {
                     target.set_symbol(" ");
                 } else if cell.combining.is_empty() {
                     target.set_char(cell.ch);
@@ -124,6 +126,20 @@ mod tests {
         assert_eq!(buf[(0, 0)].symbol(), "h");
         assert_eq!(buf[(1, 0)].fg, Color::Indexed(1));
         assert_eq!(buf[(0, 1)].symbol(), "界");
+    }
+
+    #[test]
+    fn a_tab_kept_in_a_cell_is_drawn_as_a_blank() {
+        let mut s = screen();
+        s.rows[0][2] = Cell::new('\t', 1);
+        let area = Rect::new(0, 0, 4, 2);
+        let mut buf = Buffer::empty(area);
+        PaneView::new(&s).render(area, &mut buf);
+        assert_eq!(
+            buf[(2, 0)].symbol(),
+            " ",
+            "never a tab the host would act on"
+        );
     }
 
     #[test]
