@@ -41,9 +41,9 @@ publishing stays off (`git_only`) until the user decides otherwise.
    code, write a prompt, pick an agent. The prompt carries the selection's `path:lines`. Done: sends
    to an agent at its prompt, queues for a busy or blocked one and sends when it is ready, starts
    new agents beside the pane with the prompt; the sidebar counts a queue (`+2`) and the agent info
-   lists it, `1`–`9` dropping one. Next slices, in order:
-   - **New agents in a worktree** (`NewWorktree.prompt`).
-   - Source lookup: a screen selection found with `git grep` in the pane's checkout gets its
+   lists it, `1`–`9` dropping one; `^t` starts new agents each in a new worktree instead.
+   Next slices, in order:
+   - **Source lookup**: a screen selection found with `git grep` in the pane's checkout gets its
      `path:lines`, else "from pane N".
    - A right-click "ask" (opening the menu clears the selection today).
 2. **Mouse selection in the file viewer**: drag to select lines, as `V` does.

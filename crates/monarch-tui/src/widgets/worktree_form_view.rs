@@ -20,6 +20,8 @@ const MESSAGE_ROWS: usize = 3;
 /// Where the values start, after the labels.
 const VALUE_X: u16 = 9;
 const KEYS: &str = " tab choose · enter create · esc cancel ";
+/// From the ask composer the agents are already chosen.
+const ASK_KEYS: &str = " enter create · esc cancel ";
 
 /// The form as drawn over the panes.
 #[derive(Debug, Clone, Copy)]
@@ -118,9 +120,15 @@ impl Widget for WorktreeFormView<'_> {
             return;
         }
         let dim = Style::new().add_modifier(Modifier::DIM);
+        let asked = self.form.asked_agents();
+        let (title, keys) = match asked {
+            Some(kinds) if kinds.len() > 1 => (" new worktree for each agent ", ASK_KEYS),
+            Some(_) => (" new worktree ", ASK_KEYS),
+            None => (" new worktree ", KEYS),
+        };
         let inner = PopupFrame::new(Chrome::new(self.theme))
-            .title(" new worktree ")
-            .footer(KEYS)
+            .title(title)
+            .footer(keys)
             .draw(popup, buf);
         let room = inner.width.saturating_sub(VALUE_X);
         let value_x = inner.x + VALUE_X;
@@ -133,7 +141,13 @@ impl Widget for WorktreeFormView<'_> {
             Style::new(),
         );
         buf.set_string(inner.x + 1, inner.y + 1, "start", dim);
-        self.draw_choices(value_x - 1, inner.y + 1, room + 1, buf);
+        match asked {
+            Some(kinds) => {
+                let line = asked_line(kinds);
+                buf.set_stringn(value_x, inner.y + 1, line, usize::from(room), Style::new());
+            }
+            None => self.draw_choices(value_x - 1, inner.y + 1, room + 1, buf),
+        }
         let style = self.message().map_or(dim, |(_, style)| style);
         let lines = self.message_lines(inner.width.saturating_sub(2));
         for (row, line) in (inner.y + 2..inner.bottom()).zip(lines) {
@@ -142,12 +156,27 @@ impl Widget for WorktreeFormView<'_> {
     }
 }
 
+/// `Claude Code, asked your prompt`, or for several, each with the end
+/// with the end of its branch: `Claude Code (-claude), Codex (-codex)`.
+fn asked_line(kinds: &[monarch_core::AgentKind]) -> String {
+    if let [kind] = kinds {
+        return format!("{}, asked your prompt", kind.display_name());
+    }
+    let names: Vec<String> = kinds
+        .iter()
+        .map(|k| format!("{} (-{})", k.display_name(), k.name()))
+        .collect();
+    names.join(", ")
+}
+
 fn inner(popup: Rect) -> Rect {
     PopupFrame::inner(popup)
 }
 
 #[cfg(test)]
 mod tests {
+    use monarch_core::AgentKind;
+
     use crate::OverlayKey;
 
     use super::*;
@@ -190,6 +219,24 @@ mod tests {
             theme: None,
         };
         assert_eq!(view.cursor(Rect::new(0, 0, 64, 6)), Position::new(18, 1));
+    }
+
+    #[test]
+    fn an_ask_shows_its_agents_instead_of_the_choices() {
+        let one = WorktreeForm::for_ask("/r", vec![AgentKind::Claude], "x".into(), "why slow");
+        insta::assert_snapshot!(draw(&one, 64), @"
+        ╭ new worktree ────────────────────────────────────────────╮
+        │ branch  ask/why-slow                                     │
+        │ start   Claude Code, asked your prompt                   │
+        ╰ enter create · esc cancel ───────────────────────────────╯
+        ");
+        let both = WorktreeForm::for_ask("/r", AgentKind::ALL.to_vec(), "x".into(), "why slow");
+        insta::assert_snapshot!(draw(&both, 64), @"
+        ╭ new worktree for each agent ─────────────────────────────╮
+        │ branch  ask/why-slow                                     │
+        │ start   Claude Code (-claude), Codex (-codex)            │
+        ╰ enter create · esc cancel ───────────────────────────────╯
+        ");
     }
 
     #[test]

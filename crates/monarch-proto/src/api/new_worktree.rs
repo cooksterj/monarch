@@ -26,6 +26,11 @@ pub struct NewWorktree {
     /// `[projects].worktree_root` from the caller's config.
     #[serde(default)]
     pub root: Option<String>,
+    /// What `agent` is asked first, given as its starting prompt (the
+    /// ask composer starting a new agent in a worktree); ignored for a
+    /// shell.
+    #[serde(default)]
+    pub prompt: Option<String>,
 }
 
 impl NewWorktree {
@@ -43,6 +48,7 @@ mod tests {
             serde_json::from_str(r#"{"dir":"/r","name":"feat"}"#).expect("parses");
         assert_eq!(parsed.name, "feat");
         assert_eq!((parsed.base, parsed.agent, parsed.root), (None, None, None));
+        assert_eq!(parsed.prompt, None);
         assert!(serde_json::from_str::<NewWorktree>(r#"{"dir":"/r"}"#).is_err());
     }
 
@@ -52,6 +58,7 @@ mod tests {
             dir: "/r".into(),
             name: "feat".into(),
             agent: Some(AgentKind::Codex),
+            prompt: Some("why?".into()),
             ..NewWorktree::default()
         };
         let bytes = postcard::to_stdvec(&request).expect("encode");

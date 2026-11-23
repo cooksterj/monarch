@@ -164,6 +164,13 @@ the quote as its first message. With no agent running these are the only rows, s
 Claude Code with the prompt. A restored agent resumes its conversation, so the first prompt is
 never sent again.
 
+`Ctrl-t` in the composer switches those rows to start each agent in a **new worktree** instead
+(and back): Enter then opens the new-worktree form with a branch named from your words
+(`ask/why-is-it-slow`), ready to edit. Enter there makes the worktree and starts the agent in a
+new tab, asked your prompt. `+ new Claude Code and Codex` makes one worktree each, their branches
+ending `-claude` and `-codex`, so the two never touch each other's files. Beside the pane stays the
+default each time the composer opens.
+
 **Why does it say Working?** `prefix i` opens the agent info for the focused pane: its state,
 how long it has been there and which signal set it (hooks, a notification, its screen, or
 Monarch launching it); what its screen shows to the detection rules now, with the rule that

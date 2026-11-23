@@ -2,11 +2,11 @@
 //! copy-mode range or a review hunk, its keys, and sending the prompt to
 //! the chosen agent.
 
-use monarch_core::PaneId;
+use monarch_core::{AgentKind, PaneId};
 use monarch_proto::{ClientMsg, GridPoint, SelectShape};
 
 use super::AttachApp;
-use crate::{AskPrompt, AskStep, AskTarget, OverlayKey, Quote};
+use crate::{AskPrompt, AskStep, AskTarget, OverlayKey, Quote, WorktreeForm};
 
 impl AttachApp {
     /// `prefix e`: asks about the mouse selection in the focused pane,
@@ -78,15 +78,9 @@ impl AttachApp {
                         pane.0
                     ));
                 }
-                AskStep::Start { kinds, text } => {
-                    let names: Vec<&str> = kinds.iter().map(|k| k.name()).collect();
-                    let msg = ClientMsg::LaunchWithPrompt {
-                        kinds,
-                        prompt: text,
-                    };
-                    let _ = self.link.send(&msg);
-                    self.close_ask();
-                    self.say(&format!("starting {} with the ask", names.join(" and ")));
+                AskStep::Start { kinds, text } => self.start_beside(kinds, text),
+                AskStep::StartInWorktree { kinds, text, words } => {
+                    self.start_in_worktree(kinds, text, &words);
                 }
                 AskStep::Send { pane, text } => {
                     let _ = self.link.send(&ClientMsg::Send {
@@ -99,6 +93,37 @@ impl AttachApp {
                 }
             }
         }
+    }
+
+    /// Starts `kinds` beside the pane, each asked `text`.
+    fn start_beside(&mut self, kinds: Vec<AgentKind>, text: String) {
+        let names: Vec<&str> = kinds.iter().map(|k| k.name()).collect();
+        let started = format!("starting {} with the ask", names.join(" and "));
+        let msg = ClientMsg::LaunchWithPrompt {
+            kinds,
+            prompt: text,
+        };
+        let _ = self.link.send(&msg);
+        self.close_ask();
+        self.say(&started);
+    }
+
+    /// Swaps the composer for the branch form that starts `kinds` in new
+    /// worktrees of the repository the ask is about, each asked `text`.
+    /// Outside a repository the composer stays open, saying so.
+    fn start_in_worktree(&mut self, kinds: Vec<AgentKind>, text: String, words: &str) {
+        let quoted = self
+            .popups
+            .ask
+            .as_ref()
+            .and_then(|a| a.quote().map(Quote::pane));
+        let Some(dir) = quoted.or(self.state.focus()).and_then(|p| self.repo_dir(p)) else {
+            self.say("not in a git repository: ^t starts it beside instead");
+            return;
+        };
+        self.close_ask();
+        self.popups.form = Some(WorktreeForm::for_ask(dir, kinds, text, words));
+        self.focus.set_overlay(true);
     }
 
     /// Keeps an open composer's agents in step with their states.

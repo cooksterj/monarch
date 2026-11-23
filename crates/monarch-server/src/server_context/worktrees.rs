@@ -19,13 +19,7 @@ impl ServerContext {
     /// worktree then stays).
     pub fn new_worktree(&self, request: &NewWorktree) -> Result<WorktreeCreated, ServerError> {
         let (path, new_branch) = self.worktrees.create(request)?;
-        let spec = PaneSpec {
-            cwd: Some(path.clone()),
-            ..request
-                .agent
-                .map(|kind| PaneSpec::agent(kind, &self.launch.agent(kind)))
-                .unwrap_or_default()
-        };
+        let spec = self.worktree_spec(request, path.clone());
         let pane = self.spawn(&spec, None, Placement::Tab { activate: true })?;
         Ok(WorktreeCreated {
             path: path.to_string_lossy().into_owned(),
@@ -33,6 +27,22 @@ impl ServerContext {
             new_branch,
             pane,
         })
+    }
+
+    /// What runs in a new worktree at `path`: `request`'s agent, given its
+    /// prompt if it has one, or a shell.
+    fn worktree_spec(&self, request: &NewWorktree, path: PathBuf) -> PaneSpec {
+        let agent = request
+            .agent
+            .map(|kind| PaneSpec::agent(kind, &self.launch.agent(kind)));
+        let agent = match (agent, &request.prompt) {
+            (Some(spec), Some(prompt)) => Some(spec.with_prompt(prompt)),
+            (agent, _) => agent,
+        };
+        PaneSpec {
+            cwd: Some(path),
+            ..agent.unwrap_or_default()
+        }
     }
 
     /// Every worktree of every repository a pane works in: projects in
@@ -172,6 +182,43 @@ mod tests {
         );
         let untracked: Vec<_> = list.iter().map(|e| e.status.map(|s| s.untracked)).collect();
         assert_eq!(untracked, [Some(0), Some(1)]);
+    }
+
+    #[test]
+    fn an_agent_in_a_new_worktree_gets_its_prompt_a_shell_does_not() {
+        let ctx = context();
+        let path = PathBuf::from("/w/app/ask");
+        let request = NewWorktree {
+            dir: "/src/app".into(),
+            name: "ask/why".into(),
+            agent: Some(monarch_core::AgentKind::Claude),
+            prompt: Some("why is it slow?".into()),
+            ..NewWorktree::default()
+        };
+        let spec = ctx.worktree_spec(&request, path.clone());
+        assert_eq!(spec.cwd, Some(path.clone()));
+        assert_eq!(
+            spec.argv.last().map(String::as_str),
+            Some("why is it slow?")
+        );
+        let plain = NewWorktree {
+            prompt: None,
+            ..request.clone()
+        };
+        let without = ctx.worktree_spec(&plain, path.clone());
+        assert_eq!(
+            without.argv.len() + 1,
+            spec.argv.len(),
+            "only the prompt added"
+        );
+        let shell = NewWorktree {
+            agent: None,
+            ..request
+        };
+        assert_eq!(
+            ctx.worktree_spec(&shell, path).argv,
+            PaneSpec::default().argv
+        );
     }
 
     #[test]
