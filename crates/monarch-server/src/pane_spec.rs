@@ -41,6 +41,27 @@ impl PaneSpec {
         }
     }
 
+    /// An [`Self::edit`] spec opening at `line` (from 1): `file:line` for
+    /// the editors that read it so (helix, VS Code, Sublime, Zed), else
+    /// `+line` before the file, as vi, nano, emacs and micro take it.
+    #[must_use]
+    pub fn at_line(mut self, editor: &str, line: usize) -> Self {
+        let program = editor.split_whitespace().next().unwrap_or_default();
+        let name = program.rsplit('/').next().unwrap_or(program);
+        let Some(file) = self.argv.pop() else {
+            return self;
+        };
+        match name {
+            "hx" | "helix" | "subl" | "zed" => self.argv.push(format!("{file}:{line}")),
+            "code" | "codium" | "cursor" => {
+                self.argv
+                    .extend(["-g".to_owned(), format!("{file}:{line}")]);
+            }
+            _ => self.argv.extend([format!("+{line}"), file]),
+        }
+        self
+    }
+
     /// A spec running `sh -c <command>` style shell text with the user's shell.
     #[must_use]
     pub fn shell_command(command: &str) -> Self {
@@ -155,6 +176,19 @@ mod tests {
         assert_eq!(spec.argv[2], "code --wait \"$@\"");
         assert_eq!(spec.argv[4], "a b;rm x.rs", "never shell text");
         assert_eq!(spec.cwd.as_deref(), Some(std::path::Path::new("/repo")));
+    }
+
+    #[test]
+    fn editors_open_at_a_line_the_way_each_takes_it() {
+        let tail = |editor: &str| {
+            let spec = PaneSpec::edit(editor, "a.rs", "/r".into()).at_line(editor, 42);
+            spec.argv[4..].to_vec()
+        };
+        assert_eq!(tail("nvim"), ["+42", "a.rs"]);
+        assert_eq!(tail("/usr/bin/vim -p"), ["+42", "a.rs"], "flags kept");
+        assert_eq!(tail("hx"), ["a.rs:42"]);
+        assert_eq!(tail("code --wait"), ["-g", "a.rs:42"]);
+        assert_eq!(tail("nano"), ["+42", "a.rs"]);
     }
 
     #[test]

@@ -84,6 +84,8 @@ pub enum ClientMsg {
         /// The editor command, run by `sh` with the file as its last
         /// argument (as git runs `$EDITOR`).
         editor: String,
+        /// The line to open at (from 1), if any.
+        line: Option<usize>,
     },
     /// Make a worktree and open a tab in it (as the API's
     /// `worktree.create`); answered with `ServerMsg::WorktreeMade`.

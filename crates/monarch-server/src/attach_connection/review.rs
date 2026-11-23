@@ -20,8 +20,14 @@ pub(super) fn request(ctx: &Arc<ServerContext>, id: ClientId, pane: PaneId) {
 
 /// Opens `path` from `pane`'s checkout in `editor`, zoomed over the
 /// focused pane.
-pub(super) fn edit(ctx: &ServerContext, pane: PaneId, path: &str, editor: &str) {
-    if let Err(e) = ctx.edit(pane, path, editor) {
+pub(super) fn edit(
+    ctx: &ServerContext,
+    pane: PaneId,
+    path: &str,
+    editor: &str,
+    line: Option<usize>,
+) {
+    if let Err(e) = ctx.edit(pane, path, editor, line) {
         eprintln!("monarch: {e}");
     }
     ctx.wake();

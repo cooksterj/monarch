@@ -90,7 +90,12 @@ fn handle(ctx: &Arc<ServerContext>, id: ClientId, msg: ClientMsg) -> bool {
         ClientMsg::ViewSelected { pane, start, end } => {
             files::view_selected(ctx, id, files::SelectedRange { pane, start, end });
         }
-        ClientMsg::Edit { pane, path, editor } => review::edit(ctx, pane, &path, &editor),
+        ClientMsg::Edit {
+            pane,
+            path,
+            editor,
+            line,
+        } => review::edit(ctx, pane, &path, &editor, line),
         ClientMsg::NewWorktree(request) => worktree::request(ctx, id, request),
         ClientMsg::Worktrees => worktree::list(ctx, id),
         ClientMsg::OpenWorktree(path) => worktree::open(ctx, &path),

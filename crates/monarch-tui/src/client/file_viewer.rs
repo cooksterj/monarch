@@ -140,7 +140,10 @@ impl FileViewer {
                 Some(Quote::File { lines, .. }) => FileViewerStep::Copy(lines.join("\n")),
                 _ => FileViewerStep::Open,
             },
-            OverlayKey::Char('e') => FileViewerStep::Edit(self.path.clone()),
+            OverlayKey::Char('e') => FileViewerStep::Edit {
+                path: self.path.clone(),
+                line: self.selection().map_or(self.cursor, |(first, _)| first) + 1,
+            },
             key => {
                 self.motion(key, count);
                 FileViewerStep::Open

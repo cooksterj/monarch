@@ -2,11 +2,11 @@
 //! checkout, opening a file, and what the viewer's keys ask for (an
 //! agent, the clipboard, the editor).
 
-use monarch_core::PaneId;
+use monarch_core::{Action, Key, PaneId};
 use monarch_proto::{ClientMsg, CodeFile};
 
-use super::AttachApp;
 use super::review::editor;
+use super::{AttachApp, AttachOutcome};
 use crate::{FilePickStep, FilePicker, FileViewer, FileViewerStep, OverlayKey};
 
 impl AttachApp {
@@ -118,9 +118,21 @@ impl AttachApp {
         self.dirty = true;
     }
 
-    /// Keys while the viewer is open.
-    pub(super) fn viewer_input(&mut self, bytes: &[u8]) {
+    /// Keys while the viewer is open. The prefix works here too: `prefix
+    /// e` asks about the viewer's lines, the prefix twice is the viewer's
+    /// own Ctrl-b (page up), and any other command closes the viewer first.
+    pub(super) fn viewer_input(&mut self, bytes: &[u8]) -> Option<AttachOutcome> {
         for key in OverlayKey::decode(bytes) {
+            let is_prefix = key == OverlayKey::Ctrl(char::from(self.opts.prefix + 0x60));
+            if self.prefix_pending && !is_prefix {
+                self.on_prefix(false);
+                return self.viewer_command(key);
+            }
+            if is_prefix && !self.prefix_pending {
+                self.on_prefix(true);
+                continue;
+            }
+            self.on_prefix(false);
             let Some(viewer) = self.popups.viewer.as_mut() else {
                 break;
             };
@@ -128,19 +140,51 @@ impl AttachApp {
             match viewer.key(key) {
                 FileViewerStep::Open => {}
                 FileViewerStep::Close => self.close_viewer(),
-                FileViewerStep::Ask(quote) => return self.open_ask_with(Some(quote)),
+                FileViewerStep::Ask(quote) => {
+                    self.open_ask_with(Some(quote));
+                    return None;
+                }
                 FileViewerStep::Copy(text) => self.copy(text),
-                FileViewerStep::Edit(path) if std::path::Path::new(&path).is_absolute() => {
+                FileViewerStep::Edit { path, .. } if std::path::Path::new(&path).is_absolute() => {
                     self.say("e edits files in the pane's checkout; this one is outside it");
                 }
-                FileViewerStep::Edit(path) => {
+                FileViewerStep::Edit { path, line } => {
                     let pane = viewer.pane();
                     self.close_viewer();
-                    let editor = editor(std::env::var("VISUAL").ok(), std::env::var("EDITOR").ok());
-                    let _ = self.link.send(&ClientMsg::Edit { pane, path, editor });
+                    self.edit_at(pane, path, line);
                 }
             }
         }
+        None
+    }
+
+    /// Opens `path` from `pane`'s checkout in the user's editor at `line`.
+    fn edit_at(&mut self, pane: PaneId, path: String, line: usize) {
+        let editor = editor(std::env::var("VISUAL").ok(), std::env::var("EDITOR").ok());
+        let msg = ClientMsg::Edit {
+            pane,
+            path,
+            editor,
+            line: Some(line),
+        };
+        let _ = self.link.send(&msg);
+    }
+
+    /// The key after the prefix in the viewer: the ask quotes the viewer's
+    /// lines; other commands run with the viewer closed.
+    fn viewer_command(&mut self, key: OverlayKey) -> Option<AttachOutcome> {
+        let OverlayKey::Char(c) = key else {
+            return None;
+        };
+        let action =
+            Key::from_byte(u8::try_from(c).ok()?).and_then(|k| self.opts.keymap.action(k))?;
+        if action == Action::Ask {
+            let quote = self.popups.viewer.as_ref().and_then(FileViewer::quote);
+            self.open_ask_with(quote);
+            return None;
+        }
+        self.close_viewer();
+        self.run_action(action)
     }
 
     fn close_file_picker(&mut self) {

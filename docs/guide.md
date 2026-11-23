@@ -244,8 +244,13 @@ by their full path, and `e` only edits files in the checkout.
 | `V` or `v` | select lines (again to stop) |
 | `a` | ask an agent about the selection, or the cursor's line |
 | `y` | copy the selection, or the cursor's line |
-| `e` | open the file in `$EDITOR`, zoomed over the pane |
+| `e` | open the file in `$EDITOR` at the first selected line (or the cursor's), zoomed over the pane |
+| `prefix e` | ask an agent about the selection, as `a` does |
 | `Esc` | clear the selection, then close; `q` closes |
+
+The prefix works in the viewer: `prefix e` asks about the selected lines, the prefix twice is the
+viewer's own `Ctrl-b` (page up), and any other command closes the viewer, then runs. `e` passes
+the line as `+42 file` (vi, nano, emacs, micro) or `file:42` (helix, Sublime, Zed; `-g` for VS Code).
 
 ## Copy mode and the mouse
 
