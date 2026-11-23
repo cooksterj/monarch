@@ -38,6 +38,7 @@ impl StateEngine {
             },
             agent,
             subagents: Vec::new(),
+            queued: Vec::new(),
         };
         self.guessed.insert(pane);
         self.replace(pane, &current, next)
@@ -63,6 +64,7 @@ impl StateEngine {
                 activity: None,
                 agent: current.agent,
                 subagents: Vec::new(),
+                queued: Vec::new(),
             }
         } else {
             self.guessed.remove(&pane);

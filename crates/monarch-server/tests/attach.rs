@@ -209,7 +209,7 @@ async fn agent_reports_reach_attached_clients() {
         &socket,
         PaneSpec::shell_command("cat"),
     )));
-    let (mut rx, _tx) = connect(&socket).await;
+    let (mut rx, mut tx) = connect(&socket).await;
     until(&mut rx, |m| matches!(m, ServerMsg::Layout(_))).await;
     let report = r#"{"id":1,"method":"agent.report","params":{"pane":1,"agent":"claude","state":"blocked","activity":"Allow Bash?"}}"#;
     assert_eq!(api_call(&socket, report).await, r#"{"id":1,"result":{}}"#);
@@ -218,11 +218,28 @@ async fn agent_reports_reach_attached_clients() {
         activity: Some("Allow Bash?".into()),
         agent: Some(monarch_core::AgentKind::Claude),
         subagents: Vec::new(),
+        queued: Vec::new(),
     };
     until(&mut rx, |m| {
         matches!(m, ServerMsg::Agent { pane: PaneId(1), status: got, timing: Some(_) } if *got == status)
     })
     .await;
+    let ask = ClientMsg::SendWhenReady {
+        pane: PaneId(1),
+        text: "why?".into(),
+    };
+    tx.send(ask).await.expect("queue");
+    let queued = |m: &ServerMsg| match m {
+        ServerMsg::Agent { status, .. } => Some(status.queued.clone()),
+        _ => None,
+    };
+    until(&mut rx, |m| queued(m).is_some_and(|q| q == ["why?"])).await;
+    let drop = ClientMsg::DropQueued {
+        pane: PaneId(1),
+        text: "why?".into(),
+    };
+    tx.send(drop).await.expect("drop");
+    until(&mut rx, |m| queued(m).is_some_and(|q| q.is_empty())).await;
     let missing = r#"{"id":2,"method":"agent.report","params":{"pane":9,"agent":"claude"}}"#;
     assert!(api_call(&socket, missing).await.contains("-32001"));
     server.abort();

@@ -107,6 +107,7 @@ mod tests {
                 activity: Some("Edit a.rs".into()),
                 agent: None,
                 subagents: Vec::new(),
+                queued: Vec::new(),
             },
             source: StatusSource::Notification,
             manifest: None,

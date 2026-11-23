@@ -36,6 +36,7 @@ mod tests {
             activity: None,
             agent: None,
             subagents: Vec::new(),
+            queued: Vec::new(),
         };
         let item = AttentionItem {
             tab: 0,

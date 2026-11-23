@@ -40,10 +40,9 @@ publishing stays off (`git_only`) until the user decides otherwise.
 1. **Ask from a selection** (`prefix e`; `a` in copy mode, review and the file viewer): select
    code, write a prompt, pick an agent. The prompt carries the selection's `path:lines`. Done: sends
    to an agent at its prompt, queues for a busy or blocked one and sends when it is ready, starts
-   new agents beside the pane with the prompt. Next slices, in order:
-   - **See and cancel the queue**: a queued-prompt count on the agent's sidebar row (and in its
-     agent info), and a way to drop a queued prompt (from the agent info, or the composer).
-   - New agents in a worktree (`NewWorktree.prompt`).
+   new agents beside the pane with the prompt; the sidebar counts a queue (`+2`) and the agent info
+   lists it, `1`–`9` dropping one. Next slices, in order:
+   - **New agents in a worktree** (`NewWorktree.prompt`).
    - Source lookup: a screen selection found with `git grep` in the pane's checkout gets its
      `path:lines`, else "from pane N".
    - A right-click "ask" (opening the menu clears the selection today).

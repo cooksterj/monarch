@@ -14,6 +14,7 @@ impl SessionState {
         if status.state.takes_prompt() {
             self.prompts.release(pane);
         }
+        let status = self.with_queue(pane, status);
         let timing = self.agents.record(pane, status.state, now);
         self.agents.log(pane, &status, now);
         self.broadcast(&ServerMsg::Agent {

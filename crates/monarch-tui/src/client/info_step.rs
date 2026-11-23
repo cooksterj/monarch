@@ -9,6 +9,9 @@ pub enum InfoStep {
     Close,
     /// Still open: ask the server again.
     Refresh,
+    /// Still open: drop the agent's queued prompt at this index (0 is
+    /// next).
+    DropQueued(usize),
 }
 
 #[cfg(test)]
@@ -19,5 +22,6 @@ mod tests {
     fn steps_compare_by_value() {
         assert_eq!(InfoStep::Open, InfoStep::Open);
         assert_ne!(InfoStep::Close, InfoStep::Refresh);
+        assert_ne!(InfoStep::DropQueued(0), InfoStep::DropQueued(1));
     }
 }

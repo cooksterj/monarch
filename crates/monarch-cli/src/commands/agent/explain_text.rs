@@ -68,6 +68,7 @@ pub(super) fn detail(pane: &PaneExplanation, now: UnixMillis) -> String {
     }
     text.push_str(&history(&pane.transitions, now));
     text.push_str(&subagents(&pane.status.subagents));
+    text.push_str(&queued(&pane.status.queued));
     let Some(manifest) = &pane.manifest else {
         let _ = writeln!(
             text,
@@ -136,6 +137,19 @@ fn subagents(children: &[SubagentStatus]) -> String {
             let _ = write!(text, "  {activity}");
         }
         text.push('\n');
+    }
+    text
+}
+
+/// `queued    1  why is it slow?`: the prompts waiting for the agent,
+/// next first, each as its first line.
+fn queued(prompts: &[String]) -> String {
+    let mut text = String::new();
+    for (n, prompt) in (1..).zip(prompts) {
+        let head = if n == 1 { "queued" } else { "" };
+        let first = prompt.lines().map(str::trim).find(|l| !l.is_empty());
+        let first: String = first.unwrap_or_default().chars().take(PREVIEW).collect();
+        let _ = writeln!(text, "{head:<9} {n}  {first}");
     }
     text
 }
@@ -330,6 +344,24 @@ mod tests {
             "{text}"
         );
         assert!(!detail(&shell(), UnixMillis(0)).contains("subagent"));
+    }
+
+    #[test]
+    fn the_detail_lists_queued_prompts_next_first() {
+        let plain = shell();
+        let pane = PaneExplanation {
+            status: AgentStatus {
+                queued: vec!["why?".into(), "\n  explain this\nmore".into()],
+                ..plain.status.clone()
+            },
+            ..plain
+        };
+        let text = detail(&pane, UnixMillis(0));
+        assert!(
+            text.contains("queued    1  why?\n          2  explain this\n"),
+            "{text}"
+        );
+        assert!(!detail(&shell(), UnixMillis(0)).contains("queued"));
     }
 
     #[test]

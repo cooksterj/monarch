@@ -27,6 +27,9 @@ pub struct SidebarRow {
     /// How long its agent has been in its state; drawn dim at the right
     /// (`3m`), taking room from the detail.
     pub age: Option<Duration>,
+    /// How many prompts wait for its agent; drawn dim at the right
+    /// (`+2`), before the age.
+    pub queued: usize,
     /// It is the focused pane.
     pub focused: bool,
     /// It is in the shown tab; others are drawn dim.
@@ -49,6 +52,7 @@ mod tests {
             look: None,
             detail: None,
             age: None,
+            queued: 0,
             focused: true,
             shown: true,
             subagents: Vec::new(),
@@ -59,6 +63,9 @@ mod tests {
         assert_ne!(row, other);
         other.focused = true;
         other.age = Some(Duration::from_secs(3));
+        assert_ne!(row, other);
+        other.age = None;
+        other.queued = 1;
         assert_ne!(row, other);
     }
 }

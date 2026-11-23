@@ -139,6 +139,7 @@ mod tests {
                 activity: None,
                 agent: Some(AgentKind::Codex),
                 subagents: Vec::new(),
+                queued: Vec::new(),
             };
             let msg = ServerMsg::Agent {
                 pane: PaneId(*id),

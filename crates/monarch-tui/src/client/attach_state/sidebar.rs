@@ -35,6 +35,7 @@ impl AttachState {
                     look: None,
                     detail: activity(agent).or_else(|| place.and_then(where_in)),
                     age: self.age(pane, now),
+                    queued: agent.queued.len(),
                     focused: Some(pane.pane) == layout.focus,
                     shown: tab == layout.active_tab,
                     subagents: agent.subagents.iter().map(SubagentRow::from).collect(),
@@ -385,6 +386,7 @@ mod tests {
             activity: activity.map(Into::into),
             agent: Some(monarch_core::AgentKind::Claude),
             subagents: Vec::new(),
+            queued: Vec::new(),
         };
         let blocked = status(AgentState::Blocked, Some("Allow Bash: rm -rf target?"));
         let msgs = [
@@ -447,6 +449,7 @@ mod tests {
             activity: Some("Allow Bash ls? · Explore".into()),
             agent: Some(monarch_core::AgentKind::Claude),
             subagents: vec![child],
+            queued: Vec::new(),
         };
         let msg = ServerMsg::Agent {
             pane: PaneId(1),
@@ -474,13 +477,14 @@ mod tests {
     }
 
     #[test]
-    fn rows_age_their_agents_state() {
+    fn rows_age_their_agents_state_and_count_its_queue() {
         let mut state = state();
         let status = AgentStatus {
             state: AgentState::Working,
             activity: Some("Edit a.rs".into()),
             agent: Some(monarch_core::AgentKind::Claude),
             subagents: Vec::new(),
+            queued: vec!["why?".into(), "how?".into()],
         };
         let msg = ServerMsg::Agent {
             pane: PaneId(1),
@@ -497,7 +501,9 @@ mod tests {
         assert_eq!(claude.age, Some(std::time::Duration::from_secs(42)));
         assert_eq!(claude.detail.as_deref(), Some("Edit a.rs"));
         let shell = rows.iter().find(|r| r.pane == PaneId(2)).expect("row");
+        assert_eq!(claude.queued, 2);
         assert_eq!(shell.age, None, "a shell has no state to age");
+        assert_eq!(shell.queued, 0);
         assert!(state.any_running());
     }
 }

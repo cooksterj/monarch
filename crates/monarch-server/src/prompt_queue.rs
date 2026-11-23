@@ -51,6 +51,30 @@ impl PromptQueue {
         self.waiting.get(&pane).map_or(0, VecDeque::len)
     }
 
+    /// The prompts waiting for `pane`, next first.
+    #[must_use]
+    pub fn queued(&self, pane: PaneId) -> Vec<String> {
+        self.waiting
+            .get(&pane)
+            .map_or_else(Vec::new, |q| q.iter().cloned().collect())
+    }
+
+    /// Drops the first prompt waiting for `pane` that reads `text`;
+    /// whether there was one. A prompt already due is past dropping.
+    pub fn drop_queued(&mut self, pane: PaneId, text: &str) -> bool {
+        let Some(queue) = self.waiting.get_mut(&pane) else {
+            return false;
+        };
+        let Some(at) = queue.iter().position(|t| t == text) else {
+            return false;
+        };
+        queue.remove(at);
+        if queue.is_empty() {
+            self.waiting.remove(&pane);
+        }
+        true
+    }
+
     /// Drops everything for a pane that is gone.
     pub fn forget(&mut self, pane: PaneId) {
         self.waiting.remove(&pane);
@@ -79,6 +103,25 @@ mod tests {
         assert_eq!(q.take_due(), [(P, "second".to_owned())]);
         q.release(P);
         assert!(q.take_due().is_empty() && q.waiting(P) == 0);
+    }
+
+    #[test]
+    fn a_waiting_prompt_can_be_listed_and_dropped_but_not_once_due() {
+        let mut q = PromptQueue::default();
+        q.push(P, "a".into(), false);
+        q.push(P, "b".into(), false);
+        q.push(P, "a".into(), false);
+        assert_eq!(q.queued(P), ["a", "b", "a"]);
+        assert!(q.drop_queued(P, "a"), "the first that reads it");
+        assert_eq!(q.queued(P), ["b", "a"]);
+        assert!(!q.drop_queued(P, "c"), "no such prompt");
+        assert!(!q.drop_queued(PaneId(9), "b"), "no such queue");
+        q.release(P);
+        assert!(!q.drop_queued(P, "b"), "already due");
+        assert_eq!(q.take_due(), [(P, "b".to_owned())]);
+        assert!(q.drop_queued(P, "a"));
+        assert_eq!(q.waiting(P), 0);
+        assert!(q.queued(P).is_empty());
     }
 
     #[test]
