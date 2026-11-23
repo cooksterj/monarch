@@ -188,11 +188,11 @@ fn draw_badge(status: &CheckoutStatus, chrome: Chrome<'_>, area: Rect, buf: &mut
     }
 }
 
-/// `▸ ● ✻ label  detail  3m`: the focus marker, the state's glyph, the
-/// agent's icon (a blank keeps rows aligned when some have one and this
-/// doesn't), the pane's activity or directory, dim, and at the right how
-/// long its agent has been in its state, dim, which the detail makes
-/// room for.
+/// `▸ ● ✻ label  detail  +2 3m`: the focus marker, the state's glyph,
+/// the agent's icon (a blank keeps rows aligned when some have one and
+/// this doesn't), the pane's activity or directory, dim, and at the right
+/// how many prompts wait for its agent and how long it has been in its
+/// state, dim, which the detail makes room for.
 fn pane_line(pane: &SidebarRow, row: Rect, (icons, chrome): (bool, Chrome<'_>), buf: &mut Buffer) {
     let marker = if pane.focused { "▸" } else { " " };
     let glyph = pane.look.map_or(pane.state.glyph(), |l| l.symbol);
@@ -217,11 +217,11 @@ fn pane_line(pane: &SidebarRow, row: Rect, (icons, chrome): (bool, Chrome<'_>), 
     let dim = Style::new().add_modifier(Modifier::DIM);
     let mut end = row.right();
     let mut gap = 2;
-    if let Some(age) = pane.age.map(age_label) {
-        let width = u16::try_from(age.len()).unwrap_or(u16::MAX);
+    if let Some(right) = right_label(pane) {
+        let width = u16::try_from(right.chars().count()).unwrap_or(u16::MAX);
         if row.right() - x >= width + 2 {
             end = row.right() - width;
-            buf.set_stringn(end, row.y, &age, usize::from(width), dim);
+            buf.set_stringn(end, row.y, &right, usize::from(width), dim);
             gap = 3;
         }
     }
@@ -230,6 +230,13 @@ fn pane_line(pane: &SidebarRow, row: Rect, (icons, chrome): (bool, Chrome<'_>), 
         let detail = fit_text(detail, left - gap);
         buf.set_stringn(x + 2, row.y, &detail, left - gap, dim);
     }
+}
+
+/// `+2 3m`: the prompts queued for the agent and its age, either alone.
+fn right_label(pane: &SidebarRow) -> Option<String> {
+    let queued = (pane.queued > 0).then(|| format!("+{}", pane.queued));
+    let parts: Vec<String> = queued.into_iter().chain(pane.age.map(age_label)).collect();
+    (!parts.is_empty()).then(|| parts.join(" "))
 }
 
 /// Colours a glyph cell from its look; without a colour, states that
@@ -277,10 +284,26 @@ mod tests {
             look: None,
             detail: detail.map(Into::into),
             age: None,
+            queued: 0,
             focused: pane == 1,
             shown: pane < 3,
             subagents: Vec::new(),
         }
+    }
+
+    #[test]
+    fn queued_prompts_are_counted_before_the_age() {
+        let mut groups = groups();
+        groups[1].rows[0].queued = 2;
+        let (text, _) = draw(&groups, 24, 6);
+        assert!(text.contains("    $ 2 htop  tmp    +2│"), "alone: {text}");
+        groups[1].rows[0].age = Some(std::time::Duration::from_secs(3 * 60));
+        let (text, buf) = draw(&groups, 24, 6);
+        assert!(text.contains("    $ 2 htop  tmp +2 3m│"), "{text}");
+        assert!(
+            buf[(18, 5)].modifier.contains(Modifier::DIM),
+            "count is dim"
+        );
     }
 
     #[test]

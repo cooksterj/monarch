@@ -57,6 +57,13 @@ impl AttachApp {
                 InfoStep::Refresh => {
                     let _ = self.link.send(&ClientMsg::Explain(info.pane()));
                 }
+                InfoStep::DropQueued(index) => {
+                    // The server tells every client the shorter queue,
+                    // and that asks again here.
+                    let text = info.queued(index).unwrap_or_default().to_owned();
+                    let pane = info.pane();
+                    let _ = self.link.send(&ClientMsg::DropQueued { pane, text });
+                }
                 InfoStep::Close => {
                     self.popups.info = None;
                     self.focus.set_overlay(self.any_overlay());

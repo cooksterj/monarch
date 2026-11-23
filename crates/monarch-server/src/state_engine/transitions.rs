@@ -74,6 +74,7 @@ mod tests {
             activity: activity.map(Into::into),
             agent: Some(AgentKind::Claude),
             subagents: Vec::new(),
+            queued: Vec::new(),
         }
     }
 

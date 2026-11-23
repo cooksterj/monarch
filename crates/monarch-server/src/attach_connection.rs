@@ -123,6 +123,9 @@ fn apply(ctx: &ServerContext, id: ClientId, msg: &ClientMsg) {
     match msg {
         ClientMsg::Resize(size) => state.resize_client(id, *size),
         ClientMsg::HostInfo(info) => state.set_host(*info),
+        ClientMsg::DropQueued { pane, text } => {
+            state.drop_queued(*pane, text);
+        }
         ClientMsg::Focus(pane) => {
             let before = state.focus();
             state.set_focus(*pane);

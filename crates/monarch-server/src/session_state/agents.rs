@@ -26,7 +26,7 @@ impl SessionState {
     /// What `pane`'s agent is doing.
     #[must_use]
     pub fn agent_status(&self, pane: PaneId) -> AgentStatus {
-        self.agents.status(pane)
+        self.with_queue(pane, self.agents.status(pane))
     }
 
     /// Applies an agent's hook report and tells every client if the
@@ -177,6 +177,7 @@ mod tests {
             activity: Some("Bash cargo test".into()),
             agent: Some(AgentKind::Claude),
             subagents: Vec::new(),
+            queued: Vec::new(),
         };
         let sent = rx.try_recv().expect("a message");
         assert_eq!(

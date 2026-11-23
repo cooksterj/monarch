@@ -40,6 +40,7 @@ impl StateEngine {
                 .flatten(),
             agent: agent.or(current.agent),
             subagents: Vec::new(),
+            queued: Vec::new(),
         };
         self.guessed.insert(pane);
         self.screened.insert(pane);

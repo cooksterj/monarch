@@ -102,6 +102,12 @@ already says. Dates are when the decision was made.
   (trust dialogs, updates), and the same race would come back for every agent kind added later.
   The argument is only part of the first launch: restore rebuilds an agent's command from its
   config and resumes the conversation, so the prompt is never sent twice.
+- **Queued prompts ride on the agent's status and are dropped by text** (2026-11-22).
+  `AgentStatus.queued` reaches the sidebar, the agent info and `monarch agent explain` through the
+  `Agent` message, the layout and the explanation that already carry the status, rather than a
+  new message kept in step with all three. A drop names the prompt's text, not its position: a
+  prompt typed in between the client listing the queue and the drop arriving would shift every
+  index, and the client would drop the wrong one.
 
 ## Persistence
 

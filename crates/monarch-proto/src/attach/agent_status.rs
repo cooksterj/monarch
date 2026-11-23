@@ -21,6 +21,10 @@ pub struct AgentStatus {
     /// under its row.
     #[serde(default)]
     pub subagents: Vec<SubagentStatus>,
+    /// Prompts asked of it while it wasn't at its prompt, next first;
+    /// each is typed in when it is ready for it.
+    #[serde(default)]
+    pub queued: Vec<String>,
 }
 
 impl AgentStatus {

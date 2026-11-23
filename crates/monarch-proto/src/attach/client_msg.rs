@@ -194,6 +194,15 @@ pub enum ClientMsg {
         /// The other end, inclusive.
         end: GridPoint,
     },
+    /// Drop a prompt queued for `pane`'s agent by `SendWhenReady` before
+    /// it is typed in: the first still waiting that reads `text` (by text,
+    /// not position, so one typed in meanwhile can't shift another out).
+    DropQueued {
+        /// The agent's pane.
+        pane: PaneId,
+        /// The prompt, as its status listed it.
+        text: String,
+    },
 }
 
 #[cfg(test)]
@@ -262,6 +271,16 @@ mod tests {
         let msg = ClientMsg::LaunchWithPrompt {
             kinds: AgentKind::ALL.to_vec(),
             prompt: "why?".into(),
+        };
+        let bytes = postcard::to_allocvec(&msg).expect("encode");
+        assert_eq!(postcard::from_bytes::<ClientMsg>(&bytes).ok(), Some(msg));
+    }
+
+    #[test]
+    fn dropping_a_queued_prompt_survives_the_attach_encoding() {
+        let msg = ClientMsg::DropQueued {
+            pane: PaneId(4),
+            text: "why?".into(),
         };
         let bytes = postcard::to_allocvec(&msg).expect("encode");
         assert_eq!(postcard::from_bytes::<ClientMsg>(&bytes).ok(), Some(msg));

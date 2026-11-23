@@ -105,6 +105,7 @@ impl StateEngine {
             activity: None,
             agent: Some(kind),
             subagents: Vec::new(),
+            queued: Vec::new(),
         };
         self.replace(pane, &current, next)
     }
@@ -186,6 +187,7 @@ mod tests {
                 activity: Some("Edit a.rs".into()),
                 agent: Some(AgentKind::Claude),
                 subagents: Vec::new(),
+                queued: Vec::new(),
             })
         );
         let blocked = engine.report(PaneId(1), &report(Some(AgentState::Blocked), None));

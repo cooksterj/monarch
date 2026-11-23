@@ -67,11 +67,25 @@ impl AgentInfo {
         self.rows = rows.max(1);
     }
 
+    /// The prompt queued for the agent at `index` (0 is next), as the
+    /// server last listed it.
+    #[must_use]
+    pub fn queued(&self, index: usize) -> Option<&str> {
+        let explained = self.explained.as_ref()?.as_ref()?;
+        explained.status.queued.get(index).map(String::as_str)
+    }
+
     /// Applies one key: arrows, `j`/`k` and pages scroll, `r` asks again,
-    /// Esc, `q`, `i` or Ctrl-c closes.
+    /// `1`–`9` drops that queued prompt, Esc, `q`, `i` or Ctrl-c closes.
     pub fn key(&mut self, key: OverlayKey) -> InfoStep {
         let page = isize::try_from(self.rows).unwrap_or(isize::MAX);
         match key {
+            OverlayKey::Char(c @ '1'..='9') => {
+                let index = c as usize - '1' as usize;
+                if self.queued(index).is_some() {
+                    return InfoStep::DropQueued(index);
+                }
+            }
             OverlayKey::Esc | OverlayKey::Char('q' | 'i') | OverlayKey::Ctrl('c' | 'g') => {
                 return InfoStep::Close;
             }
@@ -87,8 +101,9 @@ impl AgentInfo {
         InfoStep::Open
     }
 
-    /// The page at `now`: the status and where it came from, the states
-    /// entered lately, then the manifest's rules.
+    /// The page at `now`: the status and where it came from, the prompts
+    /// queued for it, the states entered lately, then the manifest's
+    /// rules.
     #[must_use]
     pub fn lines(&self, now: UnixMillis) -> Vec<HelpLine> {
         let explained = match &self.explained {
@@ -97,6 +112,7 @@ impl AgentInfo {
             Some(Some(explained)) => explained,
         };
         let mut lines = status_lines(explained, now);
+        lines.extend(queue_lines(&explained.status.queued));
         if !explained.transitions.is_empty() {
             lines.push(HelpLine::Heading("Recent states, oldest first".into()));
             lines.extend(explained.transitions.iter().map(|t| transition(t, now)));
@@ -155,6 +171,32 @@ fn status_lines(explained: &PaneExplanation, now: UnixMillis) -> Vec<HelpLine> {
     };
     lines.push(HelpLine::entry("screen", screen));
     lines
+}
+
+/// `1   why is this slow?`: the prompts waiting for the agent, next
+/// first, numbered by the key that drops them; none for an empty queue.
+fn queue_lines(queued: &[String]) -> Vec<HelpLine> {
+    if queued.is_empty() {
+        return Vec::new();
+    }
+    let mut lines = vec![HelpLine::Heading(
+        "Queued, typed in next first · 1–9 drops one".into(),
+    )];
+    for (n, text) in (1..).zip(queued) {
+        let key = if n <= 9 { n.to_string() } else { String::new() };
+        lines.push(HelpLine::entry(key, head(text)));
+    }
+    lines
+}
+
+/// The start of `text` on one line, at most [`PREVIEW`] characters.
+fn head(text: &str) -> String {
+    let flat = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    if flat.chars().count() <= PREVIEW {
+        return flat;
+    }
+    let cut: String = flat.chars().take(PREVIEW).collect();
+    format!("{cut}…")
 }
 
 /// `3m ago   ● Working · from its hooks · Edit a.rs`.
@@ -250,6 +292,7 @@ mod tests {
                 activity: Some("Allow Bash?".into()),
                 agent: Some(monarch_core::AgentKind::Claude),
                 subagents: Vec::new(),
+                queued: Vec::new(),
             },
             source: StatusSource::Hooks,
             manifest: Some("claude 2026.1".into()),
@@ -355,6 +398,31 @@ mod tests {
         assert_eq!(info.key(OverlayKey::Esc), InfoStep::Close);
         assert_eq!(info.key(OverlayKey::Char('i')), InfoStep::Close);
         assert_eq!(info.pane(), PaneId(3));
+    }
+
+    #[test]
+    fn queued_prompts_are_listed_next_first_and_dropped_by_number() {
+        let mut info = AgentInfo::new(PaneId(3), "claude");
+        assert_eq!(
+            info.key(OverlayKey::Char('1')),
+            InfoStep::Open,
+            "nothing yet"
+        );
+        let mut explained = claude();
+        let long = format!("explain\n\n{}", "x".repeat(100));
+        explained.status.queued = vec!["why?".into(), long];
+        info.load(Some(Box::new(explained)));
+        let lines = texts(&info.lines(NOW));
+        assert_eq!(lines[4], "# Queued, typed in next first · 1–9 drops one");
+        assert_eq!(lines[5], "1|why?");
+        assert!(lines[6].starts_with("2|explain xxx") && lines[6].ends_with('…'));
+        assert_eq!(lines[7], "# Recent states, oldest first");
+        assert_eq!(info.key(OverlayKey::Char('2')), InfoStep::DropQueued(1));
+        assert_eq!(info.queued(0), Some("why?"));
+        assert_eq!(info.key(OverlayKey::Char('3')), InfoStep::Open, "no third");
+        assert_eq!(info.queued(2), None);
+        let many: Vec<String> = (1..=10).map(|n| format!("p{n}")).collect();
+        assert_eq!(queue_lines(&many)[10], HelpLine::entry("", "p10"), "no key");
     }
 
     #[test]

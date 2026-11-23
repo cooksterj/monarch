@@ -152,7 +152,9 @@ that agent's pane as one paste and submitted. Monarch only types into an agent a
 (idle, done or failed): a working agent would get it mid-turn, and a blocked one would take it as
 the answer to its question. Ask one of those and the prompt is queued instead: the server types
 it in as soon as the agent is back at its prompt (after its turn, or after you answer it). Several
-prompts for one agent go one per turn, oldest first. An agent that has exited is refused. With nothing
+prompts for one agent go one per turn, oldest first. The agent's sidebar row counts what waits
+(`+2`, before its age), and its agent info (`prefix i`) lists the prompts: press `1`–`9` there to
+drop one before it is typed in. An agent that has exited is refused. With nothing
 selected, `prefix e` sends just your words. `a` does the same from copy mode (on its selection)
 and from the review (on the hunk shown).
 
@@ -167,7 +169,8 @@ how long it has been there and which signal set it (hooks, a notification, its s
 Monarch launching it); what its screen shows to the detection rules now, with the rule that
 fired; the last few states it entered, oldest first, each with its signal and activity; and
 every rule of its manifest, `▶` the winner and `✓` other matches, with the end of the text a
-matched rule read. It follows the agent while open: each change of state asks the server again,
+matched rule read. Prompts queued for it are listed under its status, next first; `1`–`9` drops
+that one. It follows the agent while open: each change of state asks the server again,
 and `r` asks by hand. `↑` `↓` scroll; `Esc`, `q` or `i` closes. `monarch agent explain p3` prints
 the same from a shell.
 

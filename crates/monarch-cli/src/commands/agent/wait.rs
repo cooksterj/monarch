@@ -151,6 +151,7 @@ mod tests {
             activity: Some("Allow Bash: rm?".into()),
             agent: None,
             subagents: Vec::new(),
+            queued: Vec::new(),
         };
         assert_eq!(
             line(PaneId(3), AgentState::Blocked, &status),
