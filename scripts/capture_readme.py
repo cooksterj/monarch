@@ -836,6 +836,52 @@ def stills(host, out):
     host.pump(8.0)
 
 
+def highlighted(host, name):
+    """Whether the reverse-video row of an open picker names `name`."""
+    rows, _ = host.snapshot()
+    for row in rows:
+        lit = "".join(cell[0] for cell in row if cell[4])
+        if len(lit) > 10 and name in lit:
+            return True
+    return False
+
+
+def ask(host, name, prompt):
+    """`prefix e` with nothing selected: type `prompt`, Tab to `name`, send."""
+    host.keys(b"\x02e")
+    host.pump(0.8)
+    type_text(host, prompt)
+    for _ in range(12):
+        if highlighted(host, name):
+            break
+        host.keys(b"\t")
+        host.pump(0.3)
+    else:
+        raise SystemExit(f"capture_readme: {name} never highlighted in the ask composer")
+    return lambda: (host.keys(b"\r"), host.pump(0.8))
+
+
+def queue(host, out):
+    """Prompts asked of retry while it is blocked: the composer, the
+    sidebar's count, and the agent info listing them."""
+    def shot(name, crop):
+        render(host.snapshot(), os.path.join(out, f"{name}.png"), 2, Shot(crop=crop))
+
+    send = ask(host, "retry", "also retry on 503 responses")
+    shot("ask", box_crop(host.snapshot(), "ask an agent"))
+    send()
+    ask(host, "retry", "then rerun the flaky jitter test")()
+    host.pump(0.6)
+    shot("ask-queue-sidebar", SIDEBAR)
+    host.keys(b"\x022")               # the retry tab
+    host.pump(0.6)
+    host.keys(b"\x02i")
+    host.pump(1.5)
+    shot("ask-queue", box_crop(host.snapshot(), "agent info"))
+    host.keys(b"\x1b")
+    host.pump(0.5)
+
+
 def record_restored(monarch, out):
     """Agents started the way the README says, a real `kill -9`, a real
     restore: Monarch runs `claude --resume <id>` and the stub prints it."""
@@ -918,7 +964,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("monarch")
     ap.add_argument("out")
-    ap.add_argument("--only", choices=["hero", "stills", "social", "welcome", "restored"],
+    ap.add_argument("--only", choices=["hero", "stills", "queue", "social", "welcome", "restored"],
                     help="capture just one set")
     ap.add_argument("--debug", action="store_true", help="print the opening screen and CLI output")
     args = ap.parse_args()
@@ -948,6 +994,13 @@ def main():
             record_hero(host, out, root)
         if args.only in (None, "stills"):
             stills(host, out)
+        if args.only == "queue":
+            host.set_theme("monarch-dark", animations=False)
+            host.pump(8.0)
+            host.tell("retry", screen=RETRY_ASK, hook=ASK_RETRY)
+            host.pump(1.2)
+        if args.only in (None, "stills", "queue"):
+            queue(host, out)
         if args.only == "social":
             host.set_theme("monarch-dark", animations=False)
             host.pump(8.0)

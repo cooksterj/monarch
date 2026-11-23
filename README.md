@@ -78,6 +78,19 @@ When an agent in another tab needs a decision, such as permission to run a comma
 
 <img src="docs/assets/inbox.png" width="640" alt="The inbox. It lists retry, blocked on 'Allow Bash cargo clean and cargo test', and header, done with its last message. A hint line reads: move, enter jump, y/n/1-9 answer, esc close.">
 
+### Ask an agent about what you're reading
+
+Select text with the mouse (code in vim, a stack trace, a log) and press `prefix e`. Type a prompt and pick an agent: your words and the selection, quoted with its `path:lines` where Monarch knows them, go to that agent as one message. `a` does the same from copy mode, the file viewer and the diff review. With nothing selected, only your words are sent. The list also offers new Claude Code or Codex agents, started beside your pane and given the prompt as their first message.
+
+<img src="docs/assets/ask.png" width="560" alt="The ask composer, titled ask an agent, with the prompt also retry on 503 responses typed in. Below it the agents it can go to with their states: docs idle, a11y, tests, pay and header working, and retry blocked and highlighted. Then rows to start a new Claude Code, a new Codex, or both beside the pane, asked this. A hint line reads: enter send, tab agent, esc cancel.">
+
+Monarch types into an agent only when it is at its prompt. Ask one that is working or waiting on you, and the prompt is queued and sent when the agent is ready, one per turn. The agent's sidebar row counts what is waiting (`+2`), and `prefix i` lists the queued prompts in order; press `1`–`9` there to drop one before it is sent.
+
+<p>
+  <img src="docs/assets/ask-queue-sidebar.png" width="300" alt="The sidebar. Under checkout-api, the retry row is blocked on Allow Bash and shows +2 before its age of 14 seconds: two prompts wait for it.">
+  <img src="docs/assets/ask-queue.png" width="520" alt="The agent info for retry, blocked for 16 seconds from its hooks. Under its status, a section headed Queued, typed in next first, 1-9 drops one, lists 1: also retry on 503 responses, and 2: then rerun the flaky jitter test. Below come its recent states and its manifest rules.">
+</p>
+
 ### Where agent state comes from
 
 Agents report their own state. `monarch setup` installs hooks for Claude Code and Codex, backing up each file it edits. Other agents are recognised from terminal notifications and from what is on their screen.
