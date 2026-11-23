@@ -22,10 +22,12 @@
 brew tap cooksterj/monarch && brew trust cooksterj/monarch && brew install cooksterj/monarch/monarch
 ```
 
-<picture>
-  <source media="(max-width: 600px)" srcset="docs/assets/hero-phone.webp">
-  <img src="docs/assets/hero.webp" width="100%" alt="A recording of Monarch with six agents, and two sub-agents under a11y, in a sidebar grouped by git repository. The agent named retry, in another tab, shows an amber diamond because it needs permission to run a command. The user opens the inbox, types 1 to answer without leaving the pane they are in, and retry goes back to work. They then jump to the agent named header, which has finished, and read its diff.">
-</picture>
+<p align="center">
+  <picture>
+    <source media="(max-width: 600px)" srcset="docs/assets/hero-phone.webp">
+    <img src="docs/assets/hero.webp" width="100%" alt="A recording of Monarch with six agents, and two sub-agents under a11y, in a sidebar grouped by git repository. The agent named retry, in another tab, shows an amber diamond because it needs permission to run a command. The user opens the inbox, types 1 to answer without leaving the pane they are in, and retry goes back to work. They then jump to the agent named header, which has finished, and read its diff.">
+  </picture>
+</p>
 
 <sub>Recorded from the real binary in a PTY. The agents are scripted, the repositories are disposable, and the captions and amber row highlight were added for the recording. [`scripts/capture_readme.py`](scripts/capture_readme.py) regenerates every image on this page.</sub>
 
@@ -56,17 +58,28 @@ From inside Monarch, `prefix N` opens the same action as a form. The prefix is `
 
 The sidebar groups panes by repository and worktree, derived from each pane's working directory with no configuration. Each row shows the agent's state, its program, its name, what it is doing and how long its current turn has taken. Each worktree's heading shows how it differs from its upstream.
 
-<p align="center">
-  <img src="docs/assets/sidebar.png" width="300" alt="Monarch's sidebar. Panes are grouped under checkout-api and storefront by branch, each with a state glyph, an agent icon, a name, its current activity and a stopwatch. Under the a11y agent, two indented sub-agent rows: Name the footer links, working, and Check colour contrast, done. The feat/retry branch shows plus 7, minus 3 and 1 commit to push.">
-</p>
+<table align="center">
+  <tr>
+    <td width="299"><img src="docs/assets/sidebar.png" width="299" alt="Monarch's sidebar. Panes are grouped under checkout-api and storefront by branch, each with a state glyph, an agent icon, a name, its current activity and a stopwatch. Under the a11y agent, two indented sub-agent rows: Name the footer links, working, and Check colour contrast, done. The feat/retry branch shows plus 7, minus 3 and 1 commit to push."></td>
+    <td>
 
-| State | | Worktree badge | |
-|:---:|---|:---:|---|
-| `●` | working | `+7` `−3` | lines added and removed |
-| `◆` | blocked, waiting on you | `?1` | untracked files |
-| `○` | idle | `↑1` `↓1` | commits ahead of and behind upstream |
-| `✓` | done | | |
-| `✗` | error | | |
+| State | |
+|:---:|---|
+| `●` | working |
+| `◆` | blocked, waiting on you |
+| `○` | idle |
+| `✓` | done |
+| `✗` | error |
+
+| Worktree badge | |
+|:---:|---|
+| `+7` `−3` | lines added and removed |
+| `?1` | untracked files |
+| `↑1` `↓1` | commits ahead of and behind upstream |
+
+</td>
+  </tr>
+</table>
 
 **Sub-agents** appear as indented rows beneath the agent that started them, named by their task and marked with the same glyphs: Claude Code's sub-agents and teammates, and agents Codex spawns. A sub-agent's question blocks its parent, so it reaches the inbox like any other. Finished rows remain until your next prompt, so you can see what was done.
 
@@ -76,32 +89,38 @@ When an agent in another tab needs a decision, such as permission to run a comma
 
 `prefix a` opens the attention inbox: every agent waiting on you, longest wait first, with its question or last message and how long it has been waiting. Press `y`, `n` or a number to answer; Monarch sends the reply to that agent in the form it expects, and you stay in your current pane. `Enter` jumps to the agent's pane instead, `prefix Tab` goes directly to the next blocked agent, and `prefix g` then `b` filters the pane list to blocked agents.
 
-<img src="docs/assets/inbox.png" width="640" alt="The inbox. It lists retry, blocked on 'Allow Bash cargo clean and cargo test', and header, done with its last message. A hint line reads: move, enter jump, y/n/1-9 answer, esc close.">
+<p align="center">
+  <img src="docs/assets/inbox.png" width="596" alt="The inbox. It lists retry, blocked on 'Allow Bash cargo clean and cargo test', and header, done with its last message. A hint line reads: move, enter jump, y/n/1-9 answer, esc close.">
+</p>
 
 ### Ask an agent about what you're reading
 
 Select text with the mouse (code in vim, a stack trace, a log) and press `prefix e`. Type a prompt and pick an agent: your words and the selection, quoted with its `path:lines` where Monarch knows them, go to that agent as one message. `a` does the same from copy mode, the file viewer and the diff review. With nothing selected, only your words are sent. The list also offers new Claude Code or Codex agents, started beside your pane and given the prompt as their first message.
 
 <p align="center">
-  <img src="docs/assets/ask.png" width="560" alt="The ask composer, titled ask an agent, with the prompt also retry on 503 responses typed in. Below it the agents it can go to with their states: docs idle, a11y, tests, pay and header working, and retry blocked and highlighted. Then rows to start a new Claude Code, a new Codex, or both beside the pane, asked this. A hint line reads: enter send, tab agent, esc cancel.">
+  <img src="docs/assets/ask.png" width="596" alt="The ask composer, titled ask an agent, with the prompt also retry on 503 responses typed in. Below it the agents it can go to with their states: docs idle, a11y, tests, pay and header working, and retry blocked and highlighted. Then rows to start a new Claude Code, a new Codex, or both beside the pane, asked this. A hint line reads: enter send, tab agent, esc cancel.">
 </p>
 
 Monarch types into an agent only when it is at its prompt. Ask one that is working or waiting on you, and the prompt is queued and sent when the agent is ready, one per turn. The agent's sidebar row counts what is waiting (`+2`), and `prefix i` lists the queued prompts in order; press `1`–`9` there to drop one before it is sent.
 
 <p align="center">
-  <img src="docs/assets/ask-queue-sidebar.png" width="283" alt="The sidebar. Under checkout-api, the retry row is blocked on Allow Bash and shows +2 before its age of 14 seconds: two prompts wait for it.">
-  <img src="docs/assets/ask-queue.png" width="460" alt="The agent info for retry, blocked for 16 seconds from its hooks. Under its status, a section headed Queued, typed in next first, 1-9 drops one, lists 1: also retry on 503 responses, and 2: then rerun the flaky jitter test. Below come its recent states and its manifest rules.">
+  <img src="docs/assets/ask-queue-sidebar.png" width="36%" alt="The sidebar. Under checkout-api, the retry row is blocked on Allow Bash and shows +2 before its age of 14 seconds: two prompts wait for it.">
+  <img src="docs/assets/ask-queue.png" width="59%" alt="The agent info for retry, blocked for 16 seconds from its hooks. Under its status, a section headed Queued, typed in next first, 1-9 drops one, lists 1: also retry on 503 responses, and 2: then rerun the flaky jitter test. Below come its recent states and its manifest rules.">
 </p>
 
 ### Where agent state comes from
 
 Agents report their own state. `monarch setup` installs hooks for Claude Code and Codex, backing up each file it edits. Other agents are recognised from terminal notifications and from what is on their screen.
 
-<img src="docs/assets/signals.svg" width="560" alt="A diagram. Monarch learns an agent's state from three sources, most trusted first: the agent's own hooks, terminal notifications, and detection rules for 22 agents reading the screen. They resolve to one state per pane: working, blocked, idle, done, error or exited.">
+<p align="center">
+  <img src="docs/assets/signals.svg" width="560" alt="A diagram. Monarch learns an agent's state from three sources, most trusted first: the agent's own hooks, terminal notifications, and detection rules for 22 agents reading the screen. They resolve to one state per pane: working, blocked, idle, done, error or exited.">
+</p>
 
 Every state can be explained. `prefix i` shows, for the current pane, the state and the signal that set it, how the detection rules read the screen, and the agent's recent state history. The view updates live while it is open.
 
-<img src="docs/assets/agent-info.png" width="640" alt="The agent info for retry. State: Blocked for 5s, from its hooks. Activity: Allow Bash cargo clean and cargo test retry. Program: claude. Screen: Blocked by rule bash_permission_prompt, claude 2026.10.11. Under Recent states, oldest first: Idle from its screen, Working from its hooks with the prompt fix the retry backoff, Blocked on the Bash permission, Working on the command, then Blocked again 5 seconds ago. Under Rules, the first twelve of 31 rules in the Claude manifest with their state, priority and region.">
+<p align="center">
+  <img src="docs/assets/agent-info.png" width="704" alt="The agent info for retry. State: Blocked for 5s, from its hooks. Activity: Allow Bash cargo clean and cargo test retry. Program: claude. Screen: Blocked by rule bash_permission_prompt, claude 2026.10.11. Under Recent states, oldest first: Idle from its screen, Working from its hooks with the prompt fix the retry backoff, Blocked on the Bash permission, Working on the command, then Blocked again 5 seconds ago. Under Rules, the first twelve of 31 rules in the Claude manifest with their state, priority and region.">
+</p>
 
 The same information is available from the command line:
 
@@ -131,7 +150,9 @@ Known limitations: Kitty graphics and sixel images are not yet supported, and wh
 
 When an agent finishes, a green tick appears on its row. `prefix v` shows the pane's uncommitted changes file by file, so you can review the work before accepting it. Press `c` on a hunk to write a note; Monarch sends it to the agent's prompt with the file and hunk attached while you keep reading. `e` opens the file in `$EDITOR`.
 
-<img src="docs/assets/review.png" width="100%" alt="The review view for branch fix/header: two files listed on the left, and on the right a coloured diff of src/header.tsx with added lines in green and removed lines in red.">
+<p align="center">
+  <img src="docs/assets/review.png" width="100%" alt="The review view for branch fix/header: two files listed on the left, and on the right a coloured diff of src/header.tsx with added lines in green and removed lines in red.">
+</p>
 
 ### Detach and reattach from anywhere
 
@@ -148,10 +169,12 @@ On a machine that stays on, connect with `ssh` and run `monarch` to pick up wher
 
 If the server stops unexpectedly, after a reboot or a `kill -9`, the next `monarch` restores your tabs, splits and each pane's working directory. Agents that Monarch started resume their conversations: `claude --resume` for Claude Code, `codex resume` for Codex.
 
-<picture>
-  <source media="(max-width: 600px)" srcset="docs/assets/restored-phone.png">
-  <img src="docs/assets/restored.png" width="100%" alt="Monarch just after a kill -9 and a new attach. The sidebar is back with all six agents, grouped by repository and branch. The retry pane reads: monarch, restored after the server stopped, resuming Claude Code session, followed by the scripted agent printing the claude --resume command Monarch ran.">
-</picture>
+<p align="center">
+  <picture>
+    <source media="(max-width: 600px)" srcset="docs/assets/restored-phone.png">
+    <img src="docs/assets/restored.png" width="100%" alt="Monarch just after a kill -9 and a new attach. The sidebar is back with all six agents, grouped by repository and branch. The retry pane reads: monarch, restored after the server stopped, resuming Claude Code session, followed by the scripted agent printing the claude --resume command Monarch ran.">
+  </picture>
+</p>
 
 An agent you started by hand returns as a shell in the same directory. As with tmux, running programs and their screens cannot outlive the server. `monarch kill` ends a session permanently.
 
@@ -275,7 +298,9 @@ Run `brew upgrade cooksterj/monarch/monarch` or the installer again. The hooks c
 
 On first attach, a welcome screen lists the essential keys.
 
-<img src="docs/assets/welcome.webp" width="100%" alt="Monarch's welcome screen: pixel-art monarch butterflies rise past a card with the name, the tagline and the keys a newcomer needs.">
+<p align="center">
+  <img src="docs/assets/welcome.webp" width="100%" alt="Monarch's welcome screen: pixel-art monarch butterflies rise past a card with the name, the tagline and the keys a newcomer needs.">
+</p>
 
 ## Reference
 
