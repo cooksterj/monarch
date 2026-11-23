@@ -10,6 +10,18 @@ they need polishing.
 
 ## [Unreleased]
 
+## [0.1.9](https://github.com/cooksterj/monarch/compare/v0.1.8...v0.1.9) - 2026-11-23
+
+### Added
+
+- *(ask)* ^t starts asked agents each in a new worktree ([#183](https://github.com/cooksterj/monarch/pull/183))
+- *(ask)* see and drop prompts queued for an agent ([#180](https://github.com/cooksterj/monarch/pull/180))
+
+### Other
+
+- *(readme)* centre the ask captures and size the pair to one height ([#181](https://github.com/cooksterj/monarch/pull/181))
+- point the docs at v0.1.8 and take the dependabot updates ([#178](https://github.com/cooksterj/monarch/pull/178))
+
 ## [0.1.8](https://github.com/cooksterj/monarch/compare/v0.1.7...v0.1.8) - 2026-11-23
 
 ### Added
