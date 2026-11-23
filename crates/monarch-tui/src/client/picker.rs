@@ -107,19 +107,34 @@ impl Picker {
     }
 
     /// Replaces the items, keeping the highlight on the same row if it is
-    /// still there.
+    /// still there: the row with the same action and label, else the
+    /// first with the same action (rows that share an action, such as the
+    /// ask composer's start rows, are told apart by their labels).
     pub fn refresh(&mut self, items: Vec<PickerItem>) {
-        let kept = self.selected_item().map(|item| item.action);
+        let kept = self
+            .selected_item()
+            .map(|item| (item.action, item.label.clone()));
         self.items = items;
         self.refilter();
+        let Some((action, label)) = kept else {
+            return;
+        };
         let items = &self.items;
-        if let Some(i) = self
-            .matches
-            .iter()
-            .position(|m| Some(items[m.item].action) == kept)
-        {
+        let at = |same_label: bool| {
+            self.matches.iter().position(|m| {
+                let item = &items[m.item];
+                item.action == action && (!same_label || item.label == label)
+            })
+        };
+        if let Some(i) = at(true).or_else(|| at(false)) {
             self.selected = i;
         }
+    }
+
+    /// Changes the footer keys, keeping the no-rows text.
+    pub fn set_keys(&mut self, keys: impl Into<String>) {
+        let empty = self.text.take().map(|(_, e)| e).unwrap_or_default();
+        self.text = Some((keys.into(), empty));
     }
 
     /// Applies one key: type to search, Backspace, Ctrl-w (word), Ctrl-u
@@ -290,6 +305,12 @@ mod tests {
         assert_eq!(palette().text(), None);
         p.set_title("other");
         assert_eq!(p.title(), "other");
+        p.set_keys(" more keys ");
+        assert_eq!(
+            p.text(),
+            Some((" more keys ", "nothing")),
+            "no-rows text kept"
+        );
         typed(&mut p, "tab");
         assert_eq!(p.selected_index(), Some(3), "new tab is item 3");
         typed(&mut p, "zzz");
@@ -404,5 +425,30 @@ mod tests {
         assert_eq!(prompt.key(OverlayKey::Enter), PickerStep::Run(second));
         let empty = Picker::prompt("ask", Vec::new());
         assert_eq!(empty.selected_item(), None);
+    }
+
+    #[test]
+    fn a_refresh_keeps_the_highlight_on_a_row_sharing_its_action() {
+        let start = |label: &str, detail: &str| PickerItem {
+            label: label.into(),
+            detail: detail.into(),
+            action: Action::LaunchAgent,
+        };
+        let rows = |detail| {
+            vec![
+                start("+ new Claude Code", detail),
+                start("+ new Codex", detail),
+            ]
+        };
+        let mut prompt = Picker::prompt("ask", rows("beside"));
+        prompt.key(OverlayKey::Down);
+        prompt.refresh(rows("in a worktree"));
+        assert_eq!(
+            prompt.selected(),
+            1,
+            "the same label, not the first launch row"
+        );
+        prompt.refresh(vec![start("+ new Gemini", "beside")]);
+        assert_eq!(prompt.selected(), 0, "label gone: the same action");
     }
 }

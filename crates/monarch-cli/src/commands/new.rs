@@ -41,6 +41,7 @@ pub(crate) fn run(
         base: args.base.clone(),
         agent: args.agent,
         root: (config.projects.worktree_root.as_ref()).map(|r| r.to_string_lossy().into_owned()),
+        prompt: None,
     };
     let mut client = ApiClient::connect(&socket)?;
     client.set_timeout(GIT_TIMEOUT)?;

@@ -6,9 +6,14 @@ use monarch_core::{Action, AgentKind, AgentState};
 use super::{AskStep, AskTarget, Picker, Quote};
 use crate::{OverlayKey, PickerItem, PickerStep};
 
-const KEYS: &str = " enter send · tab agent · esc cancel ";
-/// Below the agents running: starting new ones, asked the prompt first.
+/// The footer while new agents start beside the pane, and while they
+/// start in worktrees: each names what `^t` switches to.
+const KEYS: &str = " enter send · tab agent · ^t worktree · esc cancel ";
+const KEYS_WORKTREE: &str = " enter send · tab agent · ^t beside · esc cancel ";
+/// Below the agents running: starting new ones, asked the prompt first,
+/// beside the pane or each in a new worktree.
 const START_DETAIL: &str = "start beside, asked this";
+const WORKTREE_DETAIL: &str = "new worktree, asked this";
 
 /// The prompt typed so far over the agents it can go to, ranked, and the
 /// quote. Pure data.
@@ -17,6 +22,8 @@ pub struct AskPrompt {
     picker: Picker,
     targets: Vec<AskTarget>,
     quote: Option<Quote>,
+    /// New agents start each in a new worktree instead of beside the pane.
+    worktree: bool,
 }
 
 impl AskPrompt {
@@ -28,11 +35,13 @@ impl AskPrompt {
             Some(quote) => format!("ask about {}", quote.summary()),
             None => "ask an agent".to_owned(),
         };
-        let picker = Picker::prompt(title, items(&targets)).with_text(KEYS, "no agent to ask");
+        let picker =
+            Picker::prompt(title, items(&targets, false)).with_text(KEYS, "no agent to ask");
         Self {
             picker,
             targets,
             quote,
+            worktree: false,
         }
     }
 
@@ -48,12 +57,26 @@ impl AskPrompt {
         &self.picker
     }
 
+    /// Whether new agents start in worktrees (`^t`) rather than beside.
+    #[must_use]
+    pub fn in_worktree(&self) -> bool {
+        self.worktree
+    }
+
     /// Replaces the agents (their states change while it is open),
     /// keeping the highlight on the same agent.
     pub fn refresh(&mut self, mut targets: Vec<AskTarget>) {
         AskTarget::rank(&mut targets);
-        self.picker.refresh(items(&targets));
+        self.picker.refresh(items(&targets, self.worktree));
         self.targets = targets;
+    }
+
+    /// `^t`: new agents start in worktrees, or beside the pane again.
+    fn toggle_worktree(&mut self) {
+        self.worktree = !self.worktree;
+        self.picker.refresh(items(&self.targets, self.worktree));
+        self.picker
+            .set_keys(if self.worktree { KEYS_WORKTREE } else { KEYS });
     }
 
     /// One key: type the prompt, Tab or the arrows choose the agent (or
@@ -61,6 +84,10 @@ impl AskPrompt {
     /// it is busy or waiting on you) or starts the new ones with it, Esc
     /// closes.
     pub fn key(&mut self, key: OverlayKey) -> AskStep {
+        if key == OverlayKey::Ctrl('t') {
+            self.toggle_worktree();
+            return AskStep::Open;
+        }
         let chosen = match self.picker.key(key) {
             PickerStep::Run(action) => action,
             PickerStep::Close => return AskStep::Close,
@@ -83,24 +110,38 @@ impl AskPrompt {
                 Some(_) => AskStep::Queue { pane, text },
                 None => AskStep::Open,
             },
-            Action::LaunchAgent => self
-                .picker
-                .selected_index()
-                .and_then(|i| starts().into_iter().nth(i.checked_sub(self.targets.len())?))
-                .map_or(AskStep::Open, |kinds| AskStep::Start { kinds, text }),
+            Action::LaunchAgent => self.start(text, ask.to_owned()),
             _ => AskStep::Open,
+        }
+    }
+
+    /// Enter on a start row: its agents, beside the pane or each in a new
+    /// worktree, asked `text` (the user's `words` plus the quote).
+    fn start(&self, text: String, words: String) -> AskStep {
+        let index = self.picker.selected_index();
+        let kinds =
+            index.and_then(|i| starts().into_iter().nth(i.checked_sub(self.targets.len())?));
+        match kinds {
+            None => AskStep::Open,
+            Some(kinds) if self.worktree => AskStep::StartInWorktree { kinds, text, words },
+            Some(kinds) => AskStep::Start { kinds, text },
         }
     }
 }
 
 /// The rows: the agents running, then each new one to start, then all of
-/// them at once.
-fn items(targets: &[AskTarget]) -> Vec<PickerItem> {
+/// them at once; the start rows say where they start.
+fn items(targets: &[AskTarget], worktree: bool) -> Vec<PickerItem> {
+    let detail = if worktree {
+        WORKTREE_DETAIL
+    } else {
+        START_DETAIL
+    };
     let start = starts().into_iter().map(|kinds| {
         let names: Vec<&str> = kinds.iter().map(|k| k.display_name()).collect();
         PickerItem {
             label: format!("+ new {}", names.join(" and ")),
-            detail: START_DETAIL.to_owned(),
+            detail: detail.to_owned(),
             action: Action::LaunchAgent,
         }
     });
@@ -239,5 +280,37 @@ mod tests {
                 text: "go".into()
             }
         );
+    }
+
+    #[test]
+    fn ctrl_t_starts_new_agents_in_worktrees_and_back_beside() {
+        let mut prompt = AskPrompt::new(quoted(), vec![target(1, AgentState::Idle)]);
+        assert!(!prompt.in_worktree(), "beside the pane by default");
+        typed(&mut prompt, "why?");
+        prompt.key(OverlayKey::Tab);
+        prompt.key(OverlayKey::Tab);
+        assert_eq!(prompt.key(OverlayKey::Ctrl('t')), AskStep::Open);
+        assert!(prompt.in_worktree());
+        assert_eq!(prompt.picker().query(), "why?", "the prompt is kept");
+        let (row, _) = prompt.picker().rows().nth(2).expect("codex row");
+        assert_eq!(row.detail, WORKTREE_DETAIL);
+        assert_eq!(prompt.picker().text().map(|t| t.0), Some(KEYS_WORKTREE));
+        prompt.refresh(vec![target(1, AgentState::Working)]);
+        assert_eq!(
+            prompt.key(OverlayKey::Enter),
+            AskStep::StartInWorktree {
+                kinds: vec![AgentKind::Codex],
+                text: "why?\n\nSelected in pane 9:\n```\npanic!()\n```".into(),
+                words: "why?".into(),
+            },
+            "the highlight stayed on Codex through the toggle and a refresh"
+        );
+        prompt.key(OverlayKey::Ctrl('t'));
+        assert!(!prompt.in_worktree());
+        assert_eq!(prompt.picker().text().map(|t| t.0), Some(KEYS));
+        assert!(matches!(
+            prompt.key(OverlayKey::Enter),
+            AskStep::Start { .. }
+        ));
     }
 }

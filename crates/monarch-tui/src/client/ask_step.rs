@@ -32,6 +32,18 @@ pub enum AskStep {
         /// The whole prompt, quote included.
         text: String,
     },
+    /// Start each of `kinds` in a new worktree of its own, each asked
+    /// `text` first; the composer closes and the branch form opens,
+    /// named from `words`.
+    StartInWorktree {
+        /// The agents to start, one worktree each.
+        kinds: Vec<AgentKind>,
+        /// The whole prompt, quote included.
+        text: String,
+        /// What the user wrote, without the quote: the branch's name
+        /// comes from it.
+        words: String,
+    },
     /// Nothing sent, and why; the composer stays open.
     Refuse(String),
 }
@@ -44,5 +56,15 @@ mod tests {
     fn steps_compare_by_value() {
         assert_eq!(AskStep::Refuse("a".into()), AskStep::Refuse("a".into()));
         assert_ne!(AskStep::Open, AskStep::Close);
+        let beside = AskStep::Start {
+            kinds: Vec::new(),
+            text: "a".into(),
+        };
+        let apart = AskStep::StartInWorktree {
+            kinds: Vec::new(),
+            text: "a".into(),
+            words: "a".into(),
+        };
+        assert_ne!(beside, apart);
     }
 }

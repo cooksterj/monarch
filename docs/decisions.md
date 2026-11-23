@@ -108,6 +108,12 @@ already says. Dates are when the decision was made.
   new message kept in step with all three. A drop names the prompt's text, not its position: a
   prompt typed in between the client listing the queue and the drop arriving would shift every
   index, and the client would drop the wrong one.
+- **Asked agents start in a worktree only when you choose it** (2026-11-22). Beside the pane stays
+  the default, and `^t` in the composer switches the start rows to worktrees, rather than doubling
+  them (a short list) or making worktrees the default (the user's call: most asks are quick). The
+  branch is suggested from the ask and shown in the `prefix N` form to edit, since a name made up
+  silently is hard to find again. Several agents get a worktree each (`-claude`, `-codex`):
+  sharing one would put two agents on the same files.
 
 ## Persistence
 
