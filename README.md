@@ -80,7 +80,7 @@ When an agent in another tab needs a decision, such as permission to run a comma
 
 ### Ask an agent about what you're reading
 
-Select text with the mouse (code in vim, a stack trace, a log) and press `prefix e`. Type a prompt and pick an agent: your words and the selection, quoted with its `path:lines` where Monarch knows them, go to that agent as one message. `a` does the same from copy mode, the file viewer and the diff review. With nothing selected, only your words are sent. The list also offers new Claude Code or Codex agents, started beside your pane and given the prompt as their first message.
+Select text with the mouse (code in vim, a stack trace, a log) and press `prefix e`. Type a prompt and pick an agent: your words and the selection, quoted with its `path:lines` where Monarch knows them, go to that agent as one message. `a` does the same from copy mode, the file viewer and the diff review. With nothing selected, only your words are sent. The list also offers new Claude Code or Codex agents, started beside your pane and given the prompt as their first message; press `Ctrl-t` to start them instead each in a new worktree, on a branch named from your prompt.
 
 <p align="center">
   <img src="docs/assets/ask.png" width="560" alt="The ask composer, titled ask an agent, with the prompt also retry on 503 responses typed in. Below it the agents it can go to with their states: docs idle, a11y, tests, pay and header working, and retry blocked and highlighted. Then rows to start a new Claude Code, a new Codex, or both beside the pane, asked this. A hint line reads: enter send, tab agent, esc cancel.">
@@ -198,7 +198,7 @@ Monarch is the youngest and smallest project in this comparison. Several of thes
 | **Plugins** | — | ✓ | ✓ | custom sidebars | ✓ | via TPM | — |
 | **Platforms** | macOS, Linux | macOS, Linux, Windows | macOS, Linux, Windows, BSD | macOS | macOS, Linux, Windows | macOS, Linux, BSD | macOS, Linux |
 | **License** | MIT or Apache-2.0 | Apache-2.0 | MIT | GPL-3.0+, some parts BUSL-1.1 | MIT | ISC | AGPL-3.0 |
-| **Latest release** | v0.1.8 | v0.9.5 | v0.12.1 | v0.65.2.2 | v0.45.1 | 3.8 | v1.0.20 |
+| **Latest release** | v0.1.9 | v0.9.5 | v0.12.1 | v0.65.2.2 | v0.45.1 | 3.8 | v1.0.20 |
 
 <sub>Checked against each project's docs on 2026-11-05. The cmux column describes its macOS app; cmux also has a separate terminal multiplexer, cmux TUI. These tools move quickly: Zellij's unreleased changes already add an inbox and agent status.</sub>
 
@@ -252,7 +252,7 @@ Each release also publishes tarballs and checksums on the [releases page](https:
 With a stable Rust toolchain, 1.88 or newer:
 
 ```sh
-cargo install --git https://github.com/cooksterj/monarch --tag v0.1.8   # a release
+cargo install --git https://github.com/cooksterj/monarch --tag v0.1.9   # a release
 cargo install --git https://github.com/cooksterj/monarch                # latest main
 cargo install --path . --locked                                         # from a clone
 ```
