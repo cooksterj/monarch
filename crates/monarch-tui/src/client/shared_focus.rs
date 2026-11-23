@@ -20,6 +20,9 @@ pub struct SharedFocus {
     scrolled: AtomicBool,
     /// A pop-up (palette, picker) is open and takes the keys.
     overlay: AtomicBool,
+    /// The pane the pop-up belongs to, when it claims the keys only while
+    /// that pane is focused (the file viewer); 0 for none.
+    pinned: AtomicU32,
     /// Every visible pane's place, read only on mouse presses.
     panes: Mutex<Vec<(PaneId, Rect)>>,
     /// Host columns the sidebar takes at the left; 0 when hidden.
@@ -84,11 +87,29 @@ impl SharedFocus {
         self.scrolled.store(false, Ordering::Release);
     }
 
-    /// Whether a pop-up is open; its keys go to the main loop instead of
-    /// the pane.
+    /// Whether a pop-up has the keys, so they go to the main loop instead
+    /// of the pane: one is open and, if it is pinned to a pane, that pane
+    /// is focused.
     #[must_use]
     pub fn overlay(&self) -> bool {
         self.overlay.load(Ordering::Acquire)
+            && self.pinned().is_none_or(|pane| self.pane() == Some(pane))
+    }
+
+    /// Pins the pop-up's claim on the keys to `pane` (`None`: wherever the
+    /// focus is).
+    pub fn pin_overlay(&self, pane: Option<PaneId>) {
+        self.pinned
+            .store(pane.map_or(0, |p| p.0), Ordering::Release);
+    }
+
+    /// The pane the pop-up's claim is pinned to.
+    #[must_use]
+    pub fn pinned(&self) -> Option<PaneId> {
+        match self.pinned.load(Ordering::Acquire) {
+            0 => None,
+            id => Some(PaneId(id)),
+        }
     }
 
     /// Opens or closes the pop-up's claim on the keys.
@@ -184,6 +205,28 @@ mod tests {
         assert!(!focus.overlay());
         focus.set_overlay(true);
         assert!(focus.overlay());
+    }
+
+    #[test]
+    fn a_pinned_overlay_has_the_keys_only_on_its_pane() {
+        let focus = SharedFocus::default();
+        let on = |pane| {
+            focus.set(&FocusView {
+                pane: Some(PaneId(pane)),
+                ..FocusView::default()
+            });
+        };
+        focus.set_overlay(true);
+        focus.pin_overlay(Some(PaneId(1)));
+        on(1);
+        assert!(focus.overlay(), "the viewer's pane");
+        on(2);
+        assert!(!focus.overlay(), "keys go to the other pane");
+        focus.pin_overlay(None);
+        assert!(focus.overlay(), "unpinned: wherever the focus is");
+        focus.set_overlay(false);
+        focus.pin_overlay(Some(PaneId(2)));
+        assert!(!focus.overlay(), "nothing open");
     }
 
     #[test]

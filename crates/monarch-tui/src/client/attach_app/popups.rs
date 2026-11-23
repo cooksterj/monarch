@@ -56,6 +56,17 @@ pub(super) struct Popups {
 impl Popups {
     /// Whether any is open.
     pub fn any(&self) -> bool {
+        self.viewer.is_some() || self.any_but_viewer()
+    }
+
+    /// The file viewer's pane, when it is the only pop-up open: it then
+    /// has the keys only while its pane is focused.
+    pub fn lone_viewer(&self) -> Option<PaneId> {
+        let viewer = self.viewer.as_ref()?;
+        (!self.any_but_viewer()).then(|| viewer.pane())
+    }
+
+    fn any_but_viewer(&self) -> bool {
         self.picker.is_some()
             || self.goto.is_some()
             || self.info.is_some()
@@ -68,7 +79,6 @@ impl Popups {
             || self.note.is_some()
             || self.ask.is_some()
             || self.files.is_some()
-            || self.viewer.is_some()
             || self.form.is_some()
             || self.help.is_some()
             || self.welcome.is_some()
@@ -174,5 +184,16 @@ mod tests {
         let drawn = popups.views(Chrome::default(), "ctrl+b", false, now);
         assert!(drawn.picker.is_some(), "the go-to picker draws as a picker");
         assert!(drawn.info.is_some());
+    }
+
+    #[test]
+    fn the_viewer_is_pinned_to_its_pane_only_when_alone() {
+        let mut popups = Popups::default();
+        assert_eq!(popups.lone_viewer(), None);
+        popups.viewer = Some(FileViewer::new(PaneId(4), "a.rs"));
+        assert!(popups.any());
+        assert_eq!(popups.lone_viewer(), Some(PaneId(4)));
+        popups.ask = Some(AskPrompt::new(None, Vec::new()));
+        assert_eq!(popups.lone_viewer(), None, "the composer has the keys");
     }
 }

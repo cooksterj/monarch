@@ -18,7 +18,7 @@ mod mouse_log;
 mod route_mouse;
 
 use mouse_log::MouseLog;
-use route_mouse::route_mouse;
+use route_mouse::{focus_click, route_mouse};
 
 use super::{ClientEvent, DividerGrab, InputKeys, MouseRouter, ServerLink, SharedFocus, TtyFeed};
 use crate::{HostInput, HostInputFilter, HostProbe, InputEvent, MouseExtractor, PrefixParser};
@@ -102,10 +102,7 @@ fn run(p: &InputParams, mut stdin: impl Read) {
             probe.abandon(&mut input);
         }
         if p.focus.overlay() {
-            if !input.is_empty() {
-                pipeline.log.overlay(input.len());
-                let _ = p.events.send(ClientEvent::OverlayInput(input.clone()));
-            }
+            overlay_input(p, &mut pipeline, &input);
             continue;
         }
         parser.feed(&input, &mut events);
@@ -118,6 +115,30 @@ fn run(p: &InputParams, mut stdin: impl Read) {
         }
     }
     let _ = p.events.send(ClientEvent::InputClosed);
+}
+
+/// Input while a pop-up has the keys: all of it goes to the main loop,
+/// except that over a pop-up pinned to its pane (the file viewer) the
+/// mouse still focuses another pane.
+fn overlay_input(p: &InputParams, pipe: &mut Pipeline, input: &[u8]) {
+    if input.is_empty() {
+        return;
+    }
+    if p.focus.pinned().is_none() {
+        pipe.log.overlay(input.len());
+        let _ = p.events.send(ClientEvent::OverlayInput(input.to_vec()));
+        return;
+    }
+    pipe.mice.split(input, &mut pipe.pieces);
+    for piece in std::mem::take(&mut pipe.pieces) {
+        match piece {
+            HostInput::Keys(keys) => {
+                pipe.log.overlay(keys.len());
+                let _ = p.events.send(ClientEvent::OverlayInput(keys));
+            }
+            HostInput::Mouse(event) => focus_click(p, pipe, &event),
+        }
+    }
 }
 
 /// Applies the latest reloaded keys, if any.
@@ -148,6 +169,7 @@ fn dispatch(p: &InputParams, pipe: &mut Pipeline, event: InputEvent) {
         }
         InputEvent::Command(key) => {
             if pipe.overlay_keys.contains(&key) {
+                p.focus.pin_overlay(None);
                 p.focus.set_overlay(true);
             }
             let _ = p.events.send(ClientEvent::Command(key));
