@@ -29,25 +29,25 @@ publishing stays off (`git_only`) until the user decides otherwise.
   switching.
 - [x] **M6 Polish and release**: themes, help, doctor, welcome, 20-pane performance pass, docs,
   v0.1.0 release.
+- [x] **File viewer** (`prefix f`, `monarch view`): tree-sitter highlighting, `/` search, sideways
+  scroll, open at a selected `path:line`, `V` select and ask, `e` edits at the line; review diffs
+  highlighted the same way.
 - [x] **Sub-agents** (slices 1–2): Claude Code and Codex sub-agent rows in the sidebar, named by
   their task, blocking their parent when they ask.
 
 ## Next up
 
-1. **File viewer** (`prefix f`): search the checkout, read a file highlighted by tree-sitter, `V`
-   select, `a` ask with the exact `path:lines`; `monarch view <file>`; a selected file name opens
-   with `prefix f`, at the `:line` it names; `/` search and `h`/`l` sideways scroll; review
-   diffs highlighted the same way.
-2. **Ask from a selection** (`prefix e`; `a` in copy mode and review): select code, write a prompt,
-   pick an agent. The prompt carries the selection's `path:lines`, found with `git grep` in the
-   pane's checkout, else "from pane N". Enter sends at once to an idle agent and queues for a busy
-   or blocked one until it is idle. With no agent in the checkout, it starts one with the prompt
-   (a split here, or a new worktree), or several at once. Slices: ~~existing agents~~ (done:
-   sends only to an agent at its prompt, refuses the rest); ~~new agents beside the pane~~ (done:
-   one or every kind, the prompt as their first argument); new agents in a worktree
-   (`NewWorktree.prompt`); source lookup; ~~the send-when-idle queue~~ (done; not yet shown on the sidebar, and a
-   queued prompt can't be cancelled); a right-click "ask" (opening
-   the menu clears the selection today).
+1. **Ask from a selection** (`prefix e`; `a` in copy mode, review and the file viewer): select
+   code, write a prompt, pick an agent. The prompt carries the selection's `path:lines`. Done: sends
+   to an agent at its prompt, queues for a busy or blocked one and sends when it is ready, starts
+   new agents beside the pane with the prompt. Next slices, in order:
+   - **See and cancel the queue**: a queued-prompt count on the agent's sidebar row (and in its
+     agent info), and a way to drop a queued prompt (from the agent info, or the composer).
+   - New agents in a worktree (`NewWorktree.prompt`).
+   - Source lookup: a screen selection found with `git grep` in the pane's checkout gets its
+     `path:lines`, else "from pane N".
+   - A right-click "ask" (opening the menu clears the selection today).
+2. **Mouse selection in the file viewer**: drag to select lines, as `V` does.
 3. **Sub-agent slice 3**: a manifest count capture for agents without hooks (Grok's "Waiting on
    subagent…", Antigravity's "· N tasks").
 4. **Mouse reports in multi-pane layouts**: re-encode coordinates for every layout, not only one
