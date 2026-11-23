@@ -51,6 +51,26 @@ pub(super) fn route_mouse(p: &InputParams, pipe: &mut Pipeline, event: &MouseEve
     send_mouse(p, action);
 }
 
+/// The mouse over a pop-up pinned to its pane: a press on another pane
+/// focuses it (the pop-up stays on its own), dividers still drag, and the
+/// rest is the pop-up's, which takes no mouse.
+pub(super) fn focus_click(p: &InputParams, pipe: &mut Pipeline, event: &MouseEvent) {
+    if pipe.focusing {
+        pipe.focusing = !matches!(event.kind, MouseKind::Release(_));
+        return;
+    }
+    if divider_drag(p, pipe, event) {
+        return;
+    }
+    if matches!(event.kind, MouseKind::Press(_))
+        && let Some(other) = p.focus.pane_at(event.col, event.row)
+        && Some(other) != p.focus.pane()
+    {
+        let _ = p.link.send(&ClientMsg::Focus(other));
+        pipe.focusing = true;
+    }
+}
+
 /// The wheel over the sidebar scrolls it. Returns whether the event was
 /// one.
 fn sidebar_wheel(p: &InputParams, event: &MouseEvent) -> bool {

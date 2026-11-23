@@ -170,6 +170,7 @@ impl AttachApp {
             if let Some(outcome) = event.and_then(|e| self.handle(e)) {
                 return Ok(outcome);
             }
+            self.pin_viewer();
             self.check_resize()?;
             self.drag_tick();
             self.animate();

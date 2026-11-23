@@ -170,21 +170,36 @@ impl AttachApp {
         let _ = self.link.send(&msg);
     }
 
+    /// Keeps the shared focus's pin in step: a lone viewer has the keys
+    /// only while its pane is focused, so the other panes stay usable.
+    pub(super) fn pin_viewer(&self) {
+        self.focus
+            .pin_overlay(self.popups.lone_viewer().filter(|_| self.copy.is_none()));
+    }
+
     /// The key after the prefix in the viewer: the ask quotes the viewer's
-    /// lines; other commands run with the viewer closed.
+    /// lines, moving the focus leaves the viewer open on its pane, and
+    /// other commands run with the viewer closed.
     fn viewer_command(&mut self, key: OverlayKey) -> Option<AttachOutcome> {
         let OverlayKey::Char(c) = key else {
             return None;
         };
         let action =
             Key::from_byte(u8::try_from(c).ok()?).and_then(|k| self.opts.keymap.action(k))?;
-        if action == Action::Ask {
-            let quote = self.popups.viewer.as_ref().and_then(FileViewer::quote);
-            self.open_ask_with(quote);
-            return None;
+        match action {
+            Action::Ask => {
+                let quote = self.popups.viewer.as_ref().and_then(FileViewer::quote);
+                self.open_ask_with(quote);
+                None
+            }
+            Action::Focus(_) | Action::FocusNext | Action::FocusPrev | Action::FocusPane(_) => {
+                self.run_action(action)
+            }
+            _ => {
+                self.close_viewer();
+                self.run_action(action)
+            }
         }
-        self.close_viewer();
-        self.run_action(action)
     }
 
     fn close_file_picker(&mut self) {

@@ -249,7 +249,10 @@ by their full path, and `e` only edits files in the checkout.
 | `Esc` | clear the selection, then close; `q` closes |
 
 The prefix works in the viewer: `prefix e` asks about the selected lines, the prefix twice is the
-viewer's own `Ctrl-b` (page up), and any other command closes the viewer, then runs. `e` passes
+viewer's own `Ctrl-b` (page up), moving the focus (`prefix` and an arrow, `o`) leaves the viewer
+open on its pane, and any other command closes the viewer, then runs. Click another pane, or move
+to it, and your keys go there while the viewer stays up; come back and they go to the viewer
+again. `e` passes
 the line as `+42 file` (vi, nano, emacs, micro) or `file:42` (helix, Sublime, Zed; `-g` for VS Code).
 
 ## Copy mode and the mouse
