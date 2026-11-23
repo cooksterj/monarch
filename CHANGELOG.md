@@ -10,6 +10,37 @@ they need polishing.
 
 ## [Unreleased]
 
+## [0.1.8](https://github.com/cooksterj/monarch/compare/v0.1.7...v0.1.8) - 2026-11-23
+
+### Added
+
+- *(review)* highlight diffs as code, added and removed rows tinted ([#174](https://github.com/cooksterj/monarch/pull/174))
+- *(tui)* / search and sideways scroll in the file viewer ([#172](https://github.com/cooksterj/monarch/pull/172))
+- *(tui)* open a file at the line its name gives (src/a.rs:42) ([#169](https://github.com/cooksterj/monarch/pull/169))
+- *(server)* queue an ask for a busy agent and send it when it is ready ([#168](https://github.com/cooksterj/monarch/pull/168))
+- *(tui)* the ask composer starts new agents asked the prompt ([#167](https://github.com/cooksterj/monarch/pull/167))
+- *(tui)* the file viewer covers only its own pane, so a split stays in view ([#166](https://github.com/cooksterj/monarch/pull/166))
+- *(tui)* prefix f opens the file name selected on screen ([#165](https://github.com/cooksterj/monarch/pull/165))
+- *(cli)* monarch view <file> opens the file viewer over the pane ([#164](https://github.com/cooksterj/monarch/pull/164))
+- *(tui)* view a file from the checkout, highlighted, with prefix f ([#162](https://github.com/cooksterj/monarch/pull/162))
+- *(tui)* ask an agent about the selection with prefix e ([#161](https://github.com/cooksterj/monarch/pull/161))
+
+### Fixed
+
+- *(tui)* with the file viewer open, other panes stay usable ([#176](https://github.com/cooksterj/monarch/pull/176))
+- *(tui)* prefix works in the file viewer; e opens the editor at the selection ([#175](https://github.com/cooksterj/monarch/pull/175))
+- *(ci)* release-plz finds no release tag for the new syntax crate ([#171](https://github.com/cooksterj/monarch/pull/171))
+- *(ci)* release-plz skips the crate the last release doesn't have ([#170](https://github.com/cooksterj/monarch/pull/170))
+- *(tui)* never send a tab or other control character to the host ([#163](https://github.com/cooksterj/monarch/pull/163))
+
+### Other
+
+- *(roadmap)* file viewer done; seeing and cancelling the ask queue is next ([#177](https://github.com/cooksterj/monarch/pull/177))
+- *(roadmap)* put ask-from-a-selection first in Next up ([#160](https://github.com/cooksterj/monarch/pull/160))
+- *(roadmap)* plan the merge loop and turn record as the next differentiators ([#157](https://github.com/cooksterj/monarch/pull/157))
+- *(readme)* point the latest release at v0.1.7 ([#155](https://github.com/cooksterj/monarch/pull/155))
+- skip doc tests, which no crate has ([#173](https://github.com/cooksterj/monarch/pull/173))
+
 ## [0.1.7](https://github.com/cooksterj/monarch/compare/v0.1.6...v0.1.7) - 2026-11-20
 
 ### Fixed
