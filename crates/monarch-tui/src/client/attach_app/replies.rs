@@ -3,7 +3,7 @@
 //! that asked.
 
 use super::AttachApp;
-use crate::Applied;
+use crate::{Applied, Quote};
 
 impl AttachApp {
     /// Hands each answer in `applied` to whatever asked for it.
@@ -23,8 +23,8 @@ impl AttachApp {
         for (pane, explained) in std::mem::take(&mut applied.explained) {
             self.explained(pane, explained);
         }
-        for (pane, text) in std::mem::take(&mut applied.quotes) {
-            self.quoted(pane, text);
+        for (pane, text, source) in std::mem::take(&mut applied.quotes) {
+            self.quoted(Quote::selected(pane, text, source));
         }
         for (pane, files) in std::mem::take(&mut applied.files) {
             self.listed_files(pane, files);

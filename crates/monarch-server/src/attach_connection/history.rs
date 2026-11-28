@@ -1,13 +1,12 @@
-//! Requests that read a pane's whole grid for one client: search, copy
-//! (copy mode, and mouse selections that reach into scrollback) and quotes
-//! for an agent.
+//! Requests that read a pane's whole grid for one client: search and copy
+//! (copy mode, and mouse selections that reach into scrollback).
 
 use monarch_core::ClientId;
 use monarch_proto::{ClientMsg, ServerMsg};
 
 use crate::{ServerContext, SessionState};
 
-/// Answers a `Search`, `Copy` or `Quote` to the client that asked, and
+/// Answers a `Search` or `Copy` to the client that asked, and
 /// only to it. The pane is locked only while it is read.
 pub(super) fn reply(ctx: &ServerContext, id: ClientId, msg: ClientMsg) {
     let mut state = ctx.lock();
@@ -44,15 +43,6 @@ fn answer(state: &SessionState, msg: ClientMsg) -> Option<ServerMsg> {
             end,
             shape,
         } => ServerMsg::Clipboard(text(pane, start, end, shape)?),
-        ClientMsg::Quote {
-            pane,
-            start,
-            end,
-            shape,
-        } => ServerMsg::Quote {
-            pane,
-            text: text(pane, start, end, shape)?,
-        },
         _ => return None,
     })
 }
@@ -118,26 +108,5 @@ mod tests {
             ]
         );
         assert!(other.try_recv().is_err(), "nothing for the other client");
-    }
-
-    #[test]
-    fn quotes_come_back_as_text_and_gone_panes_get_no_answer() {
-        let ctx = context();
-        let pane = with_text(&ctx, b"hello world");
-        let (tx, mut asker) = mpsc::channel(8);
-        let id = ctx.lock().add_client(tx);
-        let quote = |pane| ClientMsg::Quote {
-            pane,
-            start: at(0, 0),
-            end: at(0, 4),
-            shape: SelectShape::Chars,
-        };
-        reply(&ctx, id, quote(PaneId(9)));
-        reply(&ctx, id, quote(pane));
-        let got: Vec<ServerMsg> = std::iter::from_fn(|| asker.try_recv().ok())
-            .flatten()
-            .collect();
-        let text = "hello".to_owned();
-        assert_eq!(got, [ServerMsg::Quote { pane, text }]);
     }
 }

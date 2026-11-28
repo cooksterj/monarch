@@ -81,9 +81,8 @@ fn handle(ctx: &Arc<ServerContext>, id: ClientId, msg: ClientMsg) -> bool {
         ClientMsg::Detach => return false,
         ClientMsg::Input { pane, bytes } => ctx.send_input(pane, bytes),
         ClientMsg::Action(action) => run_action(ctx, action),
-        msg @ (ClientMsg::Search { .. } | ClientMsg::Copy { .. } | ClientMsg::Quote { .. }) => {
-            history::reply(ctx, id, msg);
-        }
+        msg @ (ClientMsg::Search { .. } | ClientMsg::Copy { .. }) => history::reply(ctx, id, msg),
+        msg @ ClientMsg::Quote { .. } => files::quote(ctx, id, &msg),
         ClientMsg::Review(pane) => review::request(ctx, id, pane),
         ClientMsg::ListFiles(pane) => files::list(ctx, id, pane),
         ClientMsg::OpenFile { pane, path } => files::open(ctx, id, pane, path),

@@ -4,7 +4,7 @@
 use std::path::{Path, PathBuf};
 
 use monarch_core::PaneId;
-use monarch_proto::{CodeFile, ServerMsg, ViewFile};
+use monarch_proto::{CodeFile, QuoteSource, ServerMsg, ViewFile};
 
 use super::ServerContext;
 
@@ -25,6 +25,14 @@ impl ServerContext {
     /// The pane isn't in a checkout, or the file can't be shown.
     pub fn open_file(&self, pane: PaneId, path: &str) -> Result<CodeFile, String> {
         self.files.open(&self.checkout(pane)?, path)
+    }
+
+    /// Where in `pane`'s checkout `text` (selected on its screen) is, if
+    /// in one place. Runs git and reads the disk: call it off the async
+    /// runtime.
+    #[must_use]
+    pub fn locate(&self, pane: PaneId, text: &str) -> Option<QuoteSource> {
+        self.files.locate(&self.checkout(pane).ok()?, text)
     }
 
     /// `pane.view`: reads `view.path` (absolute, resolved in the pane's

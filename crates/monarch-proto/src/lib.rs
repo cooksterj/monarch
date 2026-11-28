@@ -30,7 +30,7 @@ pub use attach::{
 };
 pub use badge_part::BadgePart;
 pub use checkout_status::CheckoutStatus;
-pub use code::{CodeFile, CodeLine, CodeSpan};
+pub use code::{CodeFile, CodeLine, CodeSpan, QuoteSource};
 pub use error::ProtoError;
 pub use hello::Hello;
 pub use hello_ack::HelloAck;

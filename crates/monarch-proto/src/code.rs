@@ -3,11 +3,13 @@
 
 mod code_line;
 mod code_span;
+mod quote_source;
 
 use serde::{Deserialize, Serialize};
 
 pub use code_line::CodeLine;
 pub use code_span::CodeSpan;
+pub use quote_source::QuoteSource;
 
 /// One file, read and highlighted by the server.
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]

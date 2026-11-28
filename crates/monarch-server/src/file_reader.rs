@@ -1,6 +1,8 @@
 //! Reads files from a checkout for the file viewer: the list of them, and
 //! one file highlighted. Never reads outside the checkout.
 
+mod locate;
+
 use std::io::Read;
 use std::path::{Component, Path, PathBuf};
 use std::sync::Mutex;

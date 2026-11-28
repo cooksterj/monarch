@@ -4,7 +4,9 @@ use monarch_core::PaneId;
 use serde::{Deserialize, Serialize};
 
 use super::{AgentStatus, AgentTiming, Delta, LayoutMsg, PanePlace, Snapshot, StyleDef};
-use crate::{CodeFile, GridPoint, PaneExplanation, Review, WorktreeCreated, WorktreeEntry};
+use crate::{
+    CodeFile, GridPoint, PaneExplanation, QuoteSource, Review, WorktreeCreated, WorktreeEntry,
+};
 
 /// One server → client attach-stream message.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -114,12 +116,15 @@ pub enum ServerMsg {
         /// The file.
         file: Result<CodeFile, String>,
     },
-    /// Answer to [`super::ClientMsg::Quote`]: the text of the range.
+    /// Answer to [`super::ClientMsg::Quote`]: the text of the range, and
+    /// where it is in the pane's checkout when found there once.
     Quote {
         /// The pane read.
         pane: PaneId,
         /// The range's text, wrapped lines whole.
         text: String,
+        /// The file lines it shows, if found in one place.
+        source: Option<QuoteSource>,
     },
     /// Open the file viewer over `pane` on `file`: asked for from the
     /// pane's shell (`monarch view`), which every attached client shows,
@@ -194,6 +199,12 @@ mod tests {
         let msg = ServerMsg::Quote {
             pane: PaneId(2),
             text: "fn main() {}\n".into(),
+            source: Some(QuoteSource {
+                path: "src/main.rs".into(),
+                language: Some("rust".into()),
+                start: 1,
+                lines: vec!["fn main() {}".into()],
+            }),
         };
         let bytes = postcard::to_allocvec(&msg).expect("encode");
         assert_eq!(postcard::from_bytes::<ServerMsg>(&bytes).ok(), Some(msg));
