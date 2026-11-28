@@ -10,6 +10,16 @@ they need polishing.
 
 ## [Unreleased]
 
+## [0.1.10](https://github.com/cooksterj/monarch/compare/v0.1.9...v0.1.10) - 2026-11-28
+
+### Added
+
+- *(ask)* a screen selection found in the checkout is quoted as path:lines ([#186](https://github.com/cooksterj/monarch/pull/186))
+
+### Other
+
+- *(readme)* point the latest release at v0.1.9 ([#184](https://github.com/cooksterj/monarch/pull/184))
+
 ## [0.1.9](https://github.com/cooksterj/monarch/compare/v0.1.8...v0.1.9) - 2026-11-23
 
 ### Added
