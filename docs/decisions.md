@@ -114,6 +114,14 @@ already says. Dates are when the decision was made.
   branch is suggested from the ask and shown in the `prefix N` form to edit, since a name made up
   silently is hard to find again. Several agents get a worktree each (`-claude`, `-codex`):
   sharing one would put two agents on the same files.
+- **A screen selection is quoted as a file only when every line matches in exactly one place**
+  (2026-11-27). The server runs `git grep -F` for the longest line, then checks each hit against
+  every selected line (a line-number or diff gutter allowed before it, the first and last of several
+  lines allowed to be partial). A single line must be whole, so selected output that happens to
+  quote a string literal isn't sent as that code. Two matches, or no line of six characters or more,
+  falls back to "from pane N". A wrong `path:lines` misleads the agent; the fallback only costs it a
+  search. The lookup runs on the server before the composer opens, not afterwards, so the title
+  never changes while you type.
 
 ## Persistence
 

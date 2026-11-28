@@ -2,7 +2,8 @@
 
 use monarch_core::PaneId;
 use monarch_proto::{
-    CodeFile, GridPoint, PaneExplanation, Review, ServerMsg, WorktreeCreated, WorktreeEntry,
+    CodeFile, GridPoint, PaneExplanation, QuoteSource, Review, ServerMsg, WorktreeCreated,
+    WorktreeEntry,
 };
 
 /// Side effects collected by [`super::AttachState::apply`].
@@ -39,8 +40,9 @@ pub struct Applied {
     pub viewed: Vec<(PaneId, CodeFile, Option<usize>)>,
     /// Selections that named no file: what to search the checkout for.
     pub not_files: Vec<(PaneId, String)>,
-    /// Answers to quote requests: the pane and the range's text.
-    pub quotes: Vec<(PaneId, String)>,
+    /// Answers to quote requests: the pane, the range's text and where it
+    /// was found in the checkout.
+    pub quotes: Vec<(PaneId, String, Option<QuoteSource>)>,
     /// Panes whose agent status changed.
     pub agents: Vec<PaneId>,
 }
@@ -58,7 +60,7 @@ impl Applied {
             ServerMsg::Worktrees(list) => self.worktree_lists.push(list),
             ServerMsg::WorktreeRemoved(removed) => self.removed.push(removed),
             ServerMsg::Clipboard(text) => self.clipboard.push(text),
-            ServerMsg::Quote { pane, text } => self.quotes.push((pane, text)),
+            ServerMsg::Quote { pane, text, source } => self.quotes.push((pane, text, source)),
             ServerMsg::Files { pane, files } => self.files.push((pane, files)),
             ServerMsg::FileOpened { pane, file } => self.opened.push((pane, file)),
             ServerMsg::ViewFile { pane, file, line } => self.viewed.push((pane, file, line)),

@@ -3,6 +3,7 @@
 //! is fenced so the agent can't mistake where it ends.
 
 use monarch_core::PaneId;
+use monarch_proto::QuoteSource;
 
 use super::ReviewNote;
 
@@ -37,6 +38,22 @@ pub enum Quote {
 }
 
 impl Quote {
+    /// Text selected on `pane`'s screen: the file lines it shows when the
+    /// server found them in the pane's checkout, else the text itself.
+    #[must_use]
+    pub fn selected(pane: PaneId, text: String, source: Option<QuoteSource>) -> Self {
+        match source {
+            Some(source) => Self::File {
+                pane,
+                path: source.path,
+                language: source.language,
+                start: source.start,
+                lines: source.lines,
+            },
+            None => Self::Screen { pane, text },
+        }
+    }
+
     /// The pane the quote came from (for a hunk, the reviewed pane).
     #[must_use]
     pub fn pane(&self) -> PaneId {
@@ -159,6 +176,25 @@ mod tests {
         );
         assert_eq!(screen("x").summary(), "1 line from pane 3");
         assert_eq!(screen("").summary(), "1 line from pane 3", "never 0");
+    }
+
+    #[test]
+    fn a_selection_found_in_the_checkout_quotes_the_file_lines() {
+        let source = QuoteSource {
+            path: "src/a.rs".into(),
+            language: Some("rust".into()),
+            start: 7,
+            lines: vec!["    run();".into()],
+        };
+        let quote = Quote::selected(PaneId(3), "  7 │ run();".into(), Some(source));
+        assert_eq!(quote.pane(), PaneId(3));
+        assert_eq!(quote.summary(), "src/a.rs:7");
+        assert_eq!(
+            quote.message("Why?"),
+            "Why?\n\nAbout src/a.rs:7:\n```rust\n    run();\n```"
+        );
+        let unfound = Quote::selected(PaneId(3), "x".into(), None);
+        assert_eq!(unfound, screen("x"), "else the screen's text");
     }
 
     #[test]

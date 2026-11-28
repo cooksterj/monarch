@@ -43,10 +43,12 @@ impl AttachApp {
         let _ = self.link.send(&msg);
     }
 
-    /// The text of a range asked for: opens the composer quoting it.
-    pub(super) fn quoted(&mut self, pane: PaneId, text: String) {
+    /// The range asked for, as its text or the file lines it shows:
+    /// opens the composer quoting it.
+    pub(super) fn quoted(&mut self, quote: Quote) {
+        let pane = quote.pane();
         if self.popups.quoting.take_if(|p| *p == pane).is_some() {
-            self.open_ask_with(Some(Quote::Screen { pane, text }));
+            self.open_ask_with(Some(quote));
         }
     }
 

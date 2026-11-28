@@ -41,11 +41,9 @@ publishing stays off (`git_only`) until the user decides otherwise.
    code, write a prompt, pick an agent. The prompt carries the selection's `path:lines`. Done: sends
    to an agent at its prompt, queues for a busy or blocked one and sends when it is ready, starts
    new agents beside the pane with the prompt; the sidebar counts a queue (`+2`) and the agent info
-   lists it, `1`–`9` dropping one; `^t` starts new agents each in a new worktree instead.
-   Next slices, in order:
-   - **Source lookup**: a screen selection found with `git grep` in the pane's checkout gets its
-     `path:lines`, else "from pane N".
-   - A right-click "ask" (opening the menu clears the selection today).
+   lists it, `1`–`9` dropping one; `^t` starts new agents each in a new worktree instead; a screen
+   selection found in one place in the pane's checkout (`git grep`) is quoted as that file's
+   `path:lines`. Next slice: a right-click "ask" (opening the menu clears the selection today).
 2. **Mouse selection in the file viewer**: drag to select lines, as `V` does.
 3. **Sub-agent slice 3**: a manifest count capture for agents without hooks (Grok's "Waiting on
    subagent…", Antigravity's "· N tasks").
@@ -111,6 +109,8 @@ forwarding, bells), dropped on 2026-10-25 because the sidebar and inbox are the 
   branch.
 - `prefix A` always opens a tab (no split placement); dividers show no handle while dragging.
 - The go-to filter keys (`b w i d`) act only on an empty query.
+- Ask source lookup falls back to "from pane N" for selections whose lines soft-wrapped on screen
+  or have tabs inside them (the screen shows spaces), and for lines found in more than one place.
 
 **Release**
 - After each release, a `docs(readme): point the latest release at vX.Y.Z` PR updates the README's
